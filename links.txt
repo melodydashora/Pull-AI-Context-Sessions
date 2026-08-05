@@ -1,0 +1,5 @@
+# Test session links for pull_sessions.py — one URL per line.
+# Gemini share (cross-vendor test case):
+https://share.gemini.google/VQ3PavtFToU4
+# Claude share (contains follow-up tasks to review):
+https://claude.ai/share/babaa6b9-3e43-428c-af2e-e9165945108d

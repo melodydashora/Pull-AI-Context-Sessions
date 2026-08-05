@@ -10,7 +10,8 @@ Public share links need no login, which is the whole point: the person you send 
 - **Capture** — tries three strategies in order so it works across vendors: (1) Claude-style virtualized transcripts, scrolled top to bottom keeping the longest text per turn; (2) static turn containers from known public share pages — ChatGPT (`data-message-author-role`), Gemini (`user-query`/`model-response`), generic conversation-turn and article layouts — returning turns with user/assistant roles in document order; (3) full-page text as a last resort. Images inside turns are fetched with the page's own credentials and embedded, so capture always yields the complete context.
 - **Library tab** — sessions organized into projects (create and move via context menu), stored on-device as one folder per session (JSON + image files).
 - **Detail view** — the transcript as clean turn cards with inline images and selectable text.
-- **Export** — two formats from the share sheet: Markdown, or a single self-contained web page with every image embedded — the file to send someone research without making them sign in anywhere.
+- **Export** — from the share sheet: **Save as PDF** (the full context window as one portable document with images baked in), a self-contained web page, or Markdown. Any of them opens with no sign-in — the file to hand a colleague or feed to another model without making them log in.
+- **AI (optional, on-demand)** — when Apple's on-device model is available, a Summarize or Extract Code action runs entirely on-device (no network, no API key, nothing leaves the phone). It's never automatic: the raw transcript is the product; the AI is there only when you want a summary or want the code pulled out. The app works fully without it.
 
 ## Building (on your Mac)
 

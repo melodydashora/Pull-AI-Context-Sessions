@@ -15,6 +15,8 @@
 		FB0000000000000000000006 /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA0000000000000000000006 /* SessionStore.swift */; };
 		FB0000000000000000000007 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA0000000000000000000007 /* LibraryView.swift */; };
 		FB0000000000000000000008 /* SessionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA0000000000000000000008 /* SessionDetailView.swift */; };
+		FB000000000000000000000C /* PdfExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA000000000000000000000C /* PdfExporter.swift */; };
+		FB000000000000000000000D /* Summarizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA000000000000000000000D /* Summarizer.swift */; };
 		FB0000000000000000000009 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FA0000000000000000000009 /* Assets.xcassets */; };
 		FB000000000000000000000A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = FA000000000000000000000A /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
@@ -28,6 +30,8 @@
 		FA0000000000000000000006 /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
 		FA0000000000000000000007 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		FA0000000000000000000008 /* SessionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionDetailView.swift; sourceTree = "<group>"; };
+		FA000000000000000000000C /* PdfExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PdfExporter.swift; sourceTree = "<group>"; };
+		FA000000000000000000000D /* Summarizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Summarizer.swift; sourceTree = "<group>"; };
 		FA0000000000000000000009 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FA000000000000000000000A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		FA000000000000000000000B /* SessionCapture.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SessionCapture.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -63,6 +67,8 @@
 				FA0000000000000000000006 /* SessionStore.swift */,
 				FA0000000000000000000007 /* LibraryView.swift */,
 				FA0000000000000000000008 /* SessionDetailView.swift */,
+				FA000000000000000000000C /* PdfExporter.swift */,
+				FA000000000000000000000D /* Summarizer.swift */,
 				FA0000000000000000000009 /* Assets.xcassets */,
 				FA000000000000000000000A /* PrivacyInfo.xcprivacy */,
 			);
@@ -155,6 +161,8 @@
 				FB0000000000000000000006 /* SessionStore.swift in Sources */,
 				FB0000000000000000000007 /* LibraryView.swift in Sources */,
 				FB0000000000000000000008 /* SessionDetailView.swift in Sources */,
+				FB000000000000000000000C /* PdfExporter.swift in Sources */,
+				FB000000000000000000000D /* Summarizer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

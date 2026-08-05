@@ -142,6 +142,13 @@ final class SessionStore: ObservableObject {
     /// Writes a self-contained HTML file with images embedded as data URIs —
     /// one file that can be shared anywhere and opened without signing in.
     func exportHTML(_ session: CapturedSession) -> URL? {
+        writeExport(htmlString(session).data(using: .utf8), title: session.title, ext: "html")
+    }
+
+    /// The full transcript as a self-contained HTML string, with every image
+    /// embedded as a data URI. Used for the HTML export and as the source
+    /// the PDF exporter renders.
+    func htmlString(_ session: CapturedSession) -> String {
         var body = """
         <!DOCTYPE html>
         <html><head><meta charset="utf-8">
@@ -149,15 +156,11 @@ final class SessionStore: ObservableObject {
         <title>\(Self.escape(session.title))</title>
         <style>
         body { font-family: -apple-system, system-ui, sans-serif; margin: 0 auto;
-               max-width: 44rem; padding: 1.5rem; line-height: 1.5; }
+               max-width: 44rem; padding: 1.5rem; line-height: 1.5; color: #111; }
         .turn { border: 1px solid #ddd; border-radius: 12px; padding: 1rem;
                 margin: 1rem 0; white-space: pre-wrap; overflow-wrap: break-word; }
         .meta { color: #777; font-size: 0.85rem; }
         img { max-width: 100%; border-radius: 8px; margin-top: 0.6rem; }
-        @media (prefers-color-scheme: dark) {
-            body { background: #1b1b1d; color: #eee; }
-            .turn { border-color: #3a3a3d; }
-        }
         </style></head><body>
         <h1>\(Self.escape(session.title))</h1>
         <p class="meta">Source: \(Self.escape(session.sourceURL))<br>
@@ -182,7 +185,7 @@ final class SessionStore: ObservableObject {
             body += "</div>\n"
         }
         body += "</body></html>"
-        return writeExport(body.data(using: .utf8), title: session.title, ext: "html")
+        return body
     }
 
     // MARK: - Private

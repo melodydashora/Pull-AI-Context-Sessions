@@ -33,6 +33,24 @@ back through the owner so they can be fixed in the repo.
   fix trivial ones (typos, API signature mismatches) directly and note
   what changed; bounce anything structural back.
 
+## Two files need on-device verification
+
+Everything else was tested in Chromium; these two could not be (no iOS
+toolchain in the authoring environment):
+
+- `PdfExporter.swift` — renders the session HTML to PDF via an offscreen
+  WKWebView + `createPDF`. Confirm the PDF paginates the FULL transcript
+  (not just the first screen) and that embedded images appear. If long
+  sessions clip, set the web view frame height to the content height
+  before `createPDF`, or page through with `WKPDFConfiguration.rect`.
+- `Summarizer.swift` — Apple Foundation Models (on-device, optional). It's
+  wrapped in `#if canImport(FoundationModels)`, so the app builds with or
+  without the framework; when absent, `Summarizer.isAvailable` is false and
+  the AI menu is hidden. VERIFY the symbol names against the SDK you build
+  against (`SystemLanguageModel.default.availability`, `LanguageModelSession`,
+  `session.respond(to:)`, `response.content`) and the `iOS 26.0` availability
+  floor. Adjust only this file if they differ — nothing else depends on it.
+
 ## Build steps
 
 1. `git checkout claude/per-chat-attachment-fix-t5pumx` (or `main` once merged).
@@ -52,9 +70,13 @@ back through the owner so they can be fixed in the repo.
 4. Library: session appears under Inbox; context menu → Move to Project →
    New Project works; swipe-to-delete works.
 5. Detail view: turn cards render, images display inline, text selectable.
-6. Export menu: "Share as Web Page (with images)" produces a single HTML
-   file that opens with images embedded; "Share as Markdown" produces .md.
-7. Take screenshots of Browser, Library, and a detail view with images —
+6. Export menu → "Save as PDF": produces a PDF of the whole transcript
+   with images; open it to confirm all turns and images are present.
+   Also confirm "Web Page" and "Markdown" exports.
+7. If on-device AI is available on the test device (iOS 26+): the "AI"
+   menu appears; Summarize and Extract Code return text in a sheet. On
+   devices without it, the AI menu is absent (expected).
+8. Take screenshots of Browser, Library, and a detail view with images —
    these become the App Store screenshots (6.9" and 6.5" sizes).
 
 ## Polish expected on the Mac side

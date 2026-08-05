@@ -14,11 +14,20 @@ back through the owner so they can be fixed in the repo.
   appear, that's the first thing to fix (recreating the project file in
   Xcode and re-adding the 8 sources + assets + PrivacyInfo.xcprivacy is an
   acceptable repair — keep the file contents).
-- The capture JavaScript in `CaptureEngine.swift` is tested: it was run
-  against a mock virtualized transcript in Chromium and recovered all
-  turns and their images in order. Treat it as known-good; if capture
-  misbehaves on-device the suspect is the WKWebView integration, not the
-  script logic.
+- The capture JavaScript in `CaptureEngine.swift` is tested against mock
+  pages in Chromium: the Claude virtualized path (40 turns + images in
+  order), and the multi-model static-page paths — ChatGPT
+  (`data-message-author-role`), Gemini (`user-query`/`model-response`),
+  and generic articles — all returning turns with correct roles in
+  document order. Treat the script as known-good; if capture misbehaves
+  on-device the suspect is the WKWebView integration, not the logic.
+- REAL-PAGE TUNING (do this on the Mac): the vendor selectors are based
+  on public markup as of authoring and WILL drift. Test against actual
+  public share links (the two in `links.txt`, plus a real ChatGPT and
+  Gemini share). If a vendor's turns come back as one blob or with wrong
+  roles, update `SELECTOR_SETS` in `CaptureEngine.swift` — the fix is a
+  CSS selector change, self-contained, and safe to iterate on. Add new
+  vendors by appending a selector set.
 - Swift sources have NOT been compiled yet (no Swift/iOS toolchain in the
   cloud environment). Expect the possibility of small compile errors —
   fix trivial ones (typos, API signature mismatches) directly and note
@@ -33,11 +42,13 @@ back through the owner so they can be fixed in the repo.
 
 ## Test checklist (in the simulator)
 
-1. Browser tab loads claude.ai; log in; login survives an app relaunch.
+1. Browser tab shows the paste-a-link hint on first launch; pasting a
+   PUBLIC share link loads it with no sign-in required.
 2. Paste a session/share link (paste button next to the URL field), tap
    Capture — expect a "Saved N turn groups" alert.
 3. Test with the links in `links.txt` at the repo root (a Gemini share and
-   a Claude share) — the Gemini one exercises the full-page fallback path.
+   a Claude share), plus a real public ChatGPT share link — confirm turns
+   come back with correct You/Assistant roles. Tune SELECTOR_SETS if not.
 4. Library: session appears under Inbox; context menu → Move to Project →
    New Project works; swipe-to-delete works.
 5. Detail view: turn cards render, images display inline, text selectable.

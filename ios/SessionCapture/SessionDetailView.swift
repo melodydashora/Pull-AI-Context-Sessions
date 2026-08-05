@@ -62,11 +62,13 @@ private struct TurnCard: View {
     let index: Int
     let turn: CapturedTurn
 
+    private var isUser: Bool { turn.role == "user" }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Turn \(index + 1)")
-                .font(.caption.smallCaps())
-                .foregroundStyle(.secondary)
+            Text(turn.roleLabel ?? "Turn \(index + 1)")
+                .font(.caption.smallCaps().weight(.semibold))
+                .foregroundStyle(isUser ? Color.accentColor : Color.secondary)
             if !turn.text.isEmpty {
                 Text(turn.text)
                     .font(.callout)
@@ -88,7 +90,9 @@ private struct TurnCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.secondarySystemGroupedBackground))
+                .fill(isUser
+                    ? AnyShapeStyle(Color.accentColor.opacity(0.10))
+                    : AnyShapeStyle(Color(.secondarySystemGroupedBackground)))
         )
     }
 }

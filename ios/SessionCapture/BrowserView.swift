@@ -41,6 +41,11 @@ struct BrowserView: View {
                                 .padding(.top, 12)
                         }
                     }
+                    .overlay {
+                        if !browser.hasLoadedPage {
+                            startHint
+                        }
+                    }
             }
             .navigationTitle("Session Capture")
             .navigationBarTitleDisplayMode(.inline)
@@ -69,6 +74,21 @@ struct BrowserView: View {
                 Text(resultMessage ?? "")
             }
         }
+    }
+
+    private var startHint: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "link.badge.plus")
+                .font(.largeTitle)
+                .foregroundStyle(.secondary)
+            Text("Paste any public AI chat share link")
+                .font(.headline)
+            Text("Claude, ChatGPT, Gemini and more — public links need no sign-in. Load the page, then tap Capture to save the full transcript with images.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(32)
     }
 
     @MainActor

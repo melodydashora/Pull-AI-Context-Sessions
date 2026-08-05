@@ -1,16 +1,70 @@
 import Foundation
 
-/// The capture script, ported from the desktop tool (pull_sessions.py).
+/// The capture script, ported from the desktop tool (pull_sessions.py) and
+/// extended for public share pages from any vendor — no sign-in required
+/// for links that are already public.
 ///
-/// Chat transcripts on claude.ai are virtualized — only a handful of turn
-/// groups exist in the DOM at once — so the script walks the scroller from
-/// top to bottom and keeps the longest text seen for each data-index, along
-/// with the images that appear inside each turn. Pages without data-index
-/// turns (other vendors' share pages) fall back to the full rendered page
-/// text and its images, so capture always produces something.
+/// Strategy order:
+/// 1. Claude-style virtualized transcripts ([data-index] turns): walk the
+///    scroller top to bottom, keep the longest text per index.
+/// 2. Static turn containers from known vendors (ChatGPT's
+///    data-message-author-role, Gemini's user-query/model-response,
+///    conversation-turn testids, plain articles) — first selector set that
+///    matches wins, turns come back with user/assistant roles when the
+///    markup says so.
+/// 3. Full rendered page text, so capture always produces something.
+///
+/// Images inside turns are fetched with the page's own credentials and
+/// returned as data URLs (public pages need no credentials; signed-in
+/// pages still work).
 enum CaptureEngine {
     static let script = """
     const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+    function goodImage(img) {
+        const src = img.currentSrc || img.src;
+        if (!src) return null;
+        if (src.startsWith("data:") && !src.startsWith("data:image/")) return null;
+        if ((img.naturalWidth || 0) < 32 && (img.naturalHeight || 0) < 32) return null;
+        return src;
+    }
+
+    async function toDataURL(src) {
+        if (src.startsWith("data:image/")) {
+            return src.length <= 6 * 1024 * 1024 ? src : null;
+        }
+        try {
+            const resp = await fetch(src, { credentials: "include" });
+            if (!resp.ok) return null;
+            const blob = await resp.blob();
+            if (blob.size > 4 * 1024 * 1024 || !blob.type.startsWith("image/")) return null;
+            return await new Promise(resolve => {
+                const fr = new FileReader();
+                fr.onload = () => resolve(fr.result);
+                fr.onerror = () => resolve(null);
+                fr.readAsDataURL(blob);
+            });
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async function resolveImages(srcLists, cap) {
+        const unique = [];
+        for (const list of srcLists) {
+            for (const s of list) {
+                if (!unique.includes(s)) unique.push(s);
+            }
+        }
+        const bySrc = {};
+        for (const src of unique.slice(0, cap)) {
+            const d = await toDataURL(src);
+            if (d) bySrc[src] = d;
+        }
+        return srcLists.map(list => list.map(s => bySrc[s]).filter(Boolean));
+    }
+
+    // ---- Strategy 1: Claude-style virtualized transcript ----
 
     function findScroller() {
         const sels = [
@@ -32,20 +86,16 @@ enum CaptureEngine {
 
     const turnTexts = {};
     const turnImages = {};
-    function noteImage(idx, img) {
-        const src = img.currentSrc || img.src;
-        if (!src) return;
-        if (src.startsWith("data:") && !src.startsWith("data:image/")) return;
-        if ((img.naturalWidth || 0) < 32 && (img.naturalHeight || 0) < 32) return;
-        (turnImages[idx] = turnImages[idx] || new Set()).add(src);
-    }
     function harvest() {
         for (const el of document.querySelectorAll("[data-index]")) {
             const idx = parseInt(el.getAttribute("data-index"), 10);
             if (isNaN(idx)) continue;
             const t = el.innerText || "";
             if (!(idx in turnTexts) || t.length > turnTexts[idx].length) turnTexts[idx] = t;
-            for (const img of el.querySelectorAll("img")) noteImage(idx, img);
+            for (const img of el.querySelectorAll("img")) {
+                const src = goodImage(img);
+                if (src) (turnImages[idx] = turnImages[idx] || new Set()).add(src);
+            }
         }
     }
 
@@ -69,55 +119,73 @@ enum CaptureEngine {
         await sleep(450);
     }
 
-    async function toDataURL(src) {
-        if (src.startsWith("data:image/")) {
-            return src.length <= 6 * 1024 * 1024 ? src : null;
-        }
-        try {
-            const resp = await fetch(src, { credentials: "include" });
-            if (!resp.ok) return null;
-            const blob = await resp.blob();
-            if (blob.size > 4 * 1024 * 1024 || !blob.type.startsWith("image/")) return null;
-            return await new Promise(resolve => {
-                const fr = new FileReader();
-                fr.onload = () => resolve(fr.result);
-                fr.onerror = () => resolve(null);
-                fr.readAsDataURL(blob);
-            });
-        } catch (e) {
-            return null;
-        }
-    }
-
     const keys = Object.keys(turnTexts).map(Number).sort((a, b) => a - b);
     if (keys.length > 0) {
-        const srcs = [];
-        for (const k of keys) {
-            for (const s of (turnImages[k] || [])) {
-                if (!srcs.includes(s)) srcs.push(s);
-            }
-        }
-        const dataBySrc = {};
-        for (const src of srcs.slice(0, 24)) {
-            const d = await toDataURL(src);
-            if (d) dataBySrc[src] = d;
-        }
-        return keys.map(k => ({
+        const srcLists = keys.map(k => [...(turnImages[k] || [])]);
+        const imgLists = await resolveImages(srcLists, 24);
+        return keys.map((k, i) => ({
             text: turnTexts[k],
-            images: [...(turnImages[k] || [])].map(s => dataBySrc[s]).filter(Boolean)
+            role: null,
+            images: imgLists[i]
         }));
     }
 
+    // ---- Strategy 2: static turn containers (public share pages) ----
+
+    const SELECTOR_SETS = [
+        [
+            { sel: '[data-message-author-role="user"]', role: "user" },
+            { sel: '[data-message-author-role="assistant"]', role: "assistant" }
+        ],
+        [
+            { sel: "user-query", role: "user" },
+            { sel: "model-response", role: "assistant" }
+        ],
+        [
+            { sel: '[data-testid^="conversation-turn"]', role: null }
+        ],
+        [
+            { sel: "main article", role: null }
+        ]
+    ];
+
+    for (const set of SELECTOR_SETS) {
+        const nodes = [];
+        for (const { sel, role } of set) {
+            for (const node of document.querySelectorAll(sel)) {
+                const text = node.innerText || "";
+                if (!text.trim()) continue;
+                nodes.push({ node, role, text });
+            }
+        }
+        if (nodes.length === 0) continue;
+        nodes.sort((a, b) =>
+            (a.node.compareDocumentPosition(b.node) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1
+        );
+        const srcLists = nodes.map(n => {
+            const srcs = [];
+            for (const img of n.node.querySelectorAll("img")) {
+                const src = goodImage(img);
+                if (src && !srcs.includes(src)) srcs.push(src);
+            }
+            return srcs;
+        });
+        const imgLists = await resolveImages(srcLists, 24);
+        return nodes.map((n, i) => ({
+            text: n.text,
+            role: n.role,
+            images: imgLists[i]
+        }));
+    }
+
+    // ---- Strategy 3: full page ----
+
     const pageSrcs = [];
     for (const img of document.querySelectorAll("img")) {
-        const src = img.currentSrc || img.src;
-        if (src && (img.naturalWidth || 0) >= 32 && !pageSrcs.includes(src)) pageSrcs.push(src);
+        const src = goodImage(img);
+        if (src && !pageSrcs.includes(src)) pageSrcs.push(src);
     }
-    const pageImages = [];
-    for (const src of pageSrcs.slice(0, 12)) {
-        const d = await toDataURL(src);
-        if (d) pageImages.push(d);
-    }
-    return [{ text: document.body.innerText || "", images: pageImages }];
+    const pageImages = (await resolveImages([pageSrcs], 12))[0];
+    return [{ text: document.body.innerText || "", role: null, images: pageImages }];
     """
 }

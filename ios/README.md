@@ -1,11 +1,13 @@
 # Session Capture (iOS)
 
-Native SwiftUI version of the desktop `pull_sessions.py` tool: a multi-model AI context session capture app. Browse to any AI chat session or share link in the built-in browser, log in if the page needs it, and tap **Capture** — the app walks the virtualized transcript with the same scroll-and-harvest logic as the desktop tool and saves it to a local library with Markdown export.
+Native SwiftUI multi-model AI context capture app. Paste any **public** AI chat share link — Claude, ChatGPT, Gemini, and more — and tap **Capture**. The app renders the page in a built-in browser, walks the transcript (structured turns with user/assistant roles where the page exposes them, images included), and saves it to an on-device library. Export a session as a single self-contained web page so anyone can open the full research — images and all — **without signing in to anything**.
+
+Public share links need no login, which is the whole point: the person you send the exported page to, or the next model you feed it into, sees the complete context immediately instead of you copying it across a day. (Signed-in pages also work, since the browser keeps your login — but nothing about the app requires an account with any vendor.)
 
 ## How it works
 
 - **Browser tab** — a WKWebView with persistent cookies (your claude.ai login sticks across launches, like the desktop tool's profile directory). Paste a session or share link — there's a one-tap paste-and-go button — and tap Capture.
-- **Capture** — injects the ported capture script: finds the transcript scroller, scrolls top to bottom, keeps the longest text per `data-index` turn group, collects the images inside each turn (fetched with the page's own credentials, so signed-in content works), and requires the bottom to hold for two passes before finishing. Pages without `data-index` turns (other vendors) fall back to full-page text and images, so capture always yields something.
+- **Capture** — tries three strategies in order so it works across vendors: (1) Claude-style virtualized transcripts, scrolled top to bottom keeping the longest text per turn; (2) static turn containers from known public share pages — ChatGPT (`data-message-author-role`), Gemini (`user-query`/`model-response`), generic conversation-turn and article layouts — returning turns with user/assistant roles in document order; (3) full-page text as a last resort. Images inside turns are fetched with the page's own credentials and embedded, so capture always yields the complete context.
 - **Library tab** — sessions organized into projects (create and move via context menu), stored on-device as one folder per session (JSON + image files).
 - **Detail view** — the transcript as clean turn cards with inline images and selectable text.
 - **Export** — two formats from the share sheet: Markdown, or a single self-contained web page with every image embedded — the file to send someone research without making them sign in anywhere.

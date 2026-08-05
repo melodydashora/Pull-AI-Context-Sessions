@@ -4,7 +4,16 @@ import Foundation
 /// with it (stored in the session's own folder).
 struct CapturedTurn: Codable, Hashable {
     var text: String
+    var role: String?
     var imageFiles: [String]
+
+    var roleLabel: String? {
+        switch role {
+        case "user": return "You"
+        case "assistant": return "Assistant"
+        default: return nil
+        }
+    }
 }
 
 struct CapturedSession: Identifiable, Codable, Hashable {
@@ -25,6 +34,9 @@ struct CapturedSession: Identifiable, Codable, Hashable {
             ""
         ]
         for turn in turns {
+            if let label = turn.roleLabel {
+                parts.append("**\(label):**\n")
+            }
             parts.append(turn.text)
             for file in turn.imageFiles {
                 parts.append("\n![captured image](\(file))")
@@ -39,6 +51,7 @@ struct CapturedSession: Identifiable, Codable, Hashable {
 /// to disk.
 struct RawTurn {
     let text: String
+    let role: String?
     let imageDataURLs: [String]
 }
 
@@ -93,7 +106,7 @@ final class SessionStore: ObservableObject {
                     imageIndex += 1
                 }
             }
-            turns.append(CapturedTurn(text: raw.text, imageFiles: files))
+            turns.append(CapturedTurn(text: raw.text, role: raw.role, imageFiles: files))
         }
 
         let session = CapturedSession(
@@ -151,7 +164,11 @@ final class SessionStore: ObservableObject {
         Captured: \(Self.escape(session.capturedAt.formatted()))</p>
         """
         for turn in session.turns {
-            body += "<div class=\"turn\">\(Self.escape(turn.text))"
+            body += "<div class=\"turn\">"
+            if let label = turn.roleLabel {
+                body += "<p class=\"meta\"><strong>\(label)</strong></p>"
+            }
+            body += Self.escape(turn.text)
             for file in turn.imageFiles {
                 let url = Self.imageURL(sessionID: session.id, file: file)
                 if let data = try? Data(contentsOf: url) {

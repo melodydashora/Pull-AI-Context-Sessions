@@ -8,9 +8,10 @@ import WebKit
 final class WebViewModel: NSObject, ObservableObject {
     let webView: WKWebView
 
-    @Published var urlString: String = "https://claude.ai"
+    @Published var urlString: String = ""
     @Published var isLoading: Bool = false
     @Published var pageTitle: String = ""
+    @Published var hasLoadedPage: Bool = false
 
     override init() {
         let config = WKWebViewConfiguration()
@@ -49,6 +50,7 @@ final class WebViewModel: NSObject, ObservableObject {
                     let turns = items.map { item in
                         RawTurn(
                             text: item["text"] as? String ?? "",
+                            role: item["role"] as? String,
                             imageDataURLs: item["images"] as? [String] ?? []
                         )
                     }
@@ -64,6 +66,7 @@ final class WebViewModel: NSObject, ObservableObject {
 extension WebViewModel: WKNavigationDelegate {
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
         isLoading = true
+        hasLoadedPage = true
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {

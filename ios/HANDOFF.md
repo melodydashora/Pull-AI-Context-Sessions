@@ -3,8 +3,22 @@
 This briefing is for the Claude Code CLI running on the owner's Mac, which
 has Xcode and simulators this cloud session does not. The repo is the
 source of truth; design and capture-engine work happens here, build/test/
-submission happens on the Mac. Report compile errors or simulator issues
-back through the owner so they can be fixed in the repo.
+submission happens on the Mac.
+
+## FIRST RULE — report through the repo, not the terminal
+
+Terminal sessions on the Mac get closed and lose everything. Your findings
+must survive that, so as you work, and ALWAYS before you finish:
+
+1. Write `ios/BUILD_REPORT.md` with: build result (clean/errors), every
+   change you made and why, each test-checklist item as PASS/FAIL with
+   one line of detail, and anything the cloud session must fix.
+2. `git add -A && git commit -m "Mac build report + fixes" && git push`
+   on this same branch.
+
+Push even a partial report if you hit a blocker — a pushed failure is
+worth infinitely more than a lost success. The cloud-side architect reads
+this branch and will fix anything you flag at the source.
 
 ## State of the project
 

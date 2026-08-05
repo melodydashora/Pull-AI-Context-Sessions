@@ -33,8 +33,9 @@ final class WebViewModel: NSObject, ObservableObject {
         webView.load(URLRequest(url: url))
     }
 
-    /// Runs the capture script in the page and returns the transcript turns.
-    func captureTranscript() async throws -> [String] {
+    /// Runs the capture script in the page and returns the transcript turns
+    /// with their images as data URLs.
+    func captureTranscript() async throws -> [RawTurn] {
         try await withCheckedThrowingContinuation { continuation in
             webView.callAsyncJavaScript(
                 CaptureEngine.script,
@@ -44,7 +45,14 @@ final class WebViewModel: NSObject, ObservableObject {
             ) { result in
                 switch result {
                 case .success(let value):
-                    continuation.resume(returning: (value as? [String]) ?? [])
+                    let items = (value as? [[String: Any]]) ?? []
+                    let turns = items.map { item in
+                        RawTurn(
+                            text: item["text"] as? String ?? "",
+                            imageDataURLs: item["images"] as? [String] ?? []
+                        )
+                    }
+                    continuation.resume(returning: turns)
                 case .failure(let error):
                     continuation.resume(throwing: error)
                 }

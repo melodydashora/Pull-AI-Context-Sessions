@@ -1,11 +1,21 @@
 import Foundation
 
+/// One transcript turn: its text plus the filenames of any images captured
+/// with it (stored in the session's own folder).
+struct CapturedTurn: Codable, Hashable {
+    var text: String
+    var imageFiles: [String]
+}
+
 struct CapturedSession: Identifiable, Codable, Hashable {
     let id: UUID
     var title: String
     var sourceURL: String
     var capturedAt: Date
-    var turns: [String]
+    var project: String
+    var turns: [CapturedTurn]
+
+    var imageCount: Int { turns.reduce(0) { $0 + $1.imageFiles.count } }
 
     var markdown: String {
         var parts = [
@@ -15,59 +25,197 @@ struct CapturedSession: Identifiable, Codable, Hashable {
             ""
         ]
         for turn in turns {
-            parts.append(turn)
+            parts.append(turn.text)
+            for file in turn.imageFiles {
+                parts.append("\n![captured image](\(file))")
+            }
             parts.append("\n---\n")
         }
         return parts.joined(separator: "\n")
     }
+}
 
-    /// Writes the markdown to a shareable temporary file and returns its URL.
-    func writeMarkdownToTemporaryFile() -> URL? {
+/// A turn as it arrives from the capture script, before images are written
+/// to disk.
+struct RawTurn {
+    let text: String
+    let imageDataURLs: [String]
+}
+
+/// Persists captured sessions, one folder each under
+/// Documents/CapturedSessions: session.json plus its image files.
+@MainActor
+final class SessionStore: ObservableObject {
+    @Published private(set) var sessions: [CapturedSession] = []
+
+    static let defaultProject = "Inbox"
+
+    static var rootDirectory: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("CapturedSessions", isDirectory: true)
+    }
+
+    static func directory(for id: UUID) -> URL {
+        rootDirectory.appendingPathComponent(id.uuidString, isDirectory: true)
+    }
+
+    static func imageURL(sessionID: UUID, file: String) -> URL {
+        directory(for: sessionID).appendingPathComponent(file)
+    }
+
+    var projectNames: [String] {
+        var names = Array(Set(sessions.map(\.project))).sorted()
+        if !names.contains(Self.defaultProject) {
+            names.insert(Self.defaultProject, at: 0)
+        }
+        return names
+    }
+
+    init() {
+        try? FileManager.default.createDirectory(
+            at: Self.rootDirectory, withIntermediateDirectories: true)
+        load()
+    }
+
+    /// Builds a session from raw captured turns, writing images to disk.
+    func add(title: String, sourceURL: String, rawTurns: [RawTurn]) -> CapturedSession {
+        let id = UUID()
+        let dir = Self.directory(for: id)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+
+        var turns: [CapturedTurn] = []
+        var imageIndex = 0
+        for raw in rawTurns {
+            var files: [String] = []
+            for dataURL in raw.imageDataURLs {
+                if let file = Self.writeImage(dataURL: dataURL, index: imageIndex, in: dir) {
+                    files.append(file)
+                    imageIndex += 1
+                }
+            }
+            turns.append(CapturedTurn(text: raw.text, imageFiles: files))
+        }
+
+        let session = CapturedSession(
+            id: id,
+            title: title,
+            sourceURL: sourceURL,
+            capturedAt: Date(),
+            project: Self.defaultProject,
+            turns: turns
+        )
+        sessions.insert(session, at: 0)
+        persist(session)
+        return session
+    }
+
+    func move(_ session: CapturedSession, toProject project: String) {
+        guard let index = sessions.firstIndex(where: { $0.id == session.id }) else { return }
+        let name = project.trimmingCharacters(in: .whitespacesAndNewlines)
+        sessions[index].project = name.isEmpty ? Self.defaultProject : name
+        persist(sessions[index])
+    }
+
+    func delete(_ session: CapturedSession) {
+        sessions.removeAll { $0.id == session.id }
+        try? FileManager.default.removeItem(at: Self.directory(for: session.id))
+    }
+
+    /// Writes the markdown to a shareable temporary file.
+    func exportMarkdown(_ session: CapturedSession) -> URL? {
+        writeExport(session.markdown.data(using: .utf8), title: session.title, ext: "md")
+    }
+
+    /// Writes a self-contained HTML file with images embedded as data URIs —
+    /// one file that can be shared anywhere and opened without signing in.
+    func exportHTML(_ session: CapturedSession) -> URL? {
+        var body = """
+        <!DOCTYPE html>
+        <html><head><meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>\(Self.escape(session.title))</title>
+        <style>
+        body { font-family: -apple-system, system-ui, sans-serif; margin: 0 auto;
+               max-width: 44rem; padding: 1.5rem; line-height: 1.5; }
+        .turn { border: 1px solid #ddd; border-radius: 12px; padding: 1rem;
+                margin: 1rem 0; white-space: pre-wrap; overflow-wrap: break-word; }
+        .meta { color: #777; font-size: 0.85rem; }
+        img { max-width: 100%; border-radius: 8px; margin-top: 0.6rem; }
+        @media (prefers-color-scheme: dark) {
+            body { background: #1b1b1d; color: #eee; }
+            .turn { border-color: #3a3a3d; }
+        }
+        </style></head><body>
+        <h1>\(Self.escape(session.title))</h1>
+        <p class="meta">Source: \(Self.escape(session.sourceURL))<br>
+        Captured: \(Self.escape(session.capturedAt.formatted()))</p>
+        """
+        for turn in session.turns {
+            body += "<div class=\"turn\">\(Self.escape(turn.text))"
+            for file in turn.imageFiles {
+                let url = Self.imageURL(sessionID: session.id, file: file)
+                if let data = try? Data(contentsOf: url) {
+                    let mime = file.hasSuffix(".png") ? "image/png"
+                        : file.hasSuffix(".gif") ? "image/gif"
+                        : file.hasSuffix(".webp") ? "image/webp"
+                        : "image/jpeg"
+                    body += "<img src=\"data:\(mime);base64,\(data.base64EncodedString())\">"
+                }
+            }
+            body += "</div>\n"
+        }
+        body += "</body></html>"
+        return writeExport(body.data(using: .utf8), title: session.title, ext: "html")
+    }
+
+    // MARK: - Private
+
+    private func writeExport(_ data: Data?, title: String, ext: String) -> URL? {
+        guard let data else { return nil }
         let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: " -_"))
         var safe = String(title.unicodeScalars.filter { allowed.contains($0) })
             .trimmingCharacters(in: .whitespaces)
         if safe.isEmpty { safe = "session" }
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent(safe)
-            .appendingPathExtension("md")
+            .appendingPathExtension(ext)
         do {
-            try Data(markdown.utf8).write(to: url)
+            try data.write(to: url)
             return url
         } catch {
             return nil
         }
     }
-}
 
-/// Persists captured sessions as one JSON file each in
-/// Documents/CapturedSessions, newest first in memory.
-@MainActor
-final class SessionStore: ObservableObject {
-    @Published private(set) var sessions: [CapturedSession] = []
-
-    private let directory: URL
-
-    init() {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        directory = docs.appendingPathComponent("CapturedSessions", isDirectory: true)
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        load()
+    private static func escape(_ text: String) -> String {
+        text.replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
     }
 
-    func add(_ session: CapturedSession) {
-        sessions.insert(session, at: 0)
-        persist(session)
-    }
-
-    func delete(at offsets: IndexSet) {
-        for index in offsets {
-            try? FileManager.default.removeItem(at: fileURL(for: sessions[index]))
+    /// Decodes a data: URL and writes it into the session folder, returning
+    /// the filename.
+    private static func writeImage(dataURL: String, index: Int, in directory: URL) -> String? {
+        guard dataURL.hasPrefix("data:image/"),
+              let commaRange = dataURL.range(of: ","),
+              let data = Data(base64Encoded: String(dataURL[commaRange.upperBound...]))
+        else { return nil }
+        let header = dataURL[..<commaRange.lowerBound]
+        let ext = header.contains("image/png") ? "png"
+            : header.contains("image/gif") ? "gif"
+            : header.contains("image/webp") ? "webp"
+            : "jpg"
+        let file = "img\(index).\(ext)"
+        do {
+            try data.write(to: directory.appendingPathComponent(file))
+            return file
+        } catch {
+            return nil
         }
-        sessions.remove(atOffsets: offsets)
     }
 
     private func fileURL(for session: CapturedSession) -> URL {
-        directory.appendingPathComponent(session.id.uuidString).appendingPathExtension("json")
+        Self.directory(for: session.id).appendingPathComponent("session.json")
     }
 
     private func persist(_ session: CapturedSession) {
@@ -82,12 +230,12 @@ final class SessionStore: ObservableObject {
     private func load() {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        let files = (try? FileManager.default.contentsOfDirectory(
-            at: directory, includingPropertiesForKeys: nil)) ?? []
-        sessions = files
-            .filter { $0.pathExtension == "json" }
-            .compactMap { url in
-                guard let data = try? Data(contentsOf: url) else { return nil }
+        let dirs = (try? FileManager.default.contentsOfDirectory(
+            at: Self.rootDirectory, includingPropertiesForKeys: nil)) ?? []
+        sessions = dirs
+            .compactMap { dir -> CapturedSession? in
+                let file = dir.appendingPathComponent("session.json")
+                guard let data = try? Data(contentsOf: file) else { return nil }
                 return try? decoder.decode(CapturedSession.self, from: data)
             }
             .sorted { $0.capturedAt > $1.capturedAt }

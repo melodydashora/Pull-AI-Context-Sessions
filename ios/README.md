@@ -4,9 +4,11 @@ Native SwiftUI version of the desktop `pull_sessions.py` tool: a multi-model AI 
 
 ## How it works
 
-- **Browser tab** — a WKWebView with persistent cookies (your claude.ai login sticks across launches, like the desktop tool's profile directory). Paste a session or share link and tap Go.
-- **Capture** — injects the ported capture script: finds the transcript scroller, scrolls top to bottom, keeps the longest text per `data-index` turn group, and requires the bottom to hold for two passes before finishing. Pages without `data-index` turns (other vendors) fall back to full-page text, so capture always yields something.
-- **Library tab** — captured sessions stored as JSON in the app's Documents folder; open one to view the Markdown and export via the share sheet (AirDrop, Files, etc.).
+- **Browser tab** — a WKWebView with persistent cookies (your claude.ai login sticks across launches, like the desktop tool's profile directory). Paste a session or share link — there's a one-tap paste-and-go button — and tap Capture.
+- **Capture** — injects the ported capture script: finds the transcript scroller, scrolls top to bottom, keeps the longest text per `data-index` turn group, collects the images inside each turn (fetched with the page's own credentials, so signed-in content works), and requires the bottom to hold for two passes before finishing. Pages without `data-index` turns (other vendors) fall back to full-page text and images, so capture always yields something.
+- **Library tab** — sessions organized into projects (create and move via context menu), stored on-device as one folder per session (JSON + image files).
+- **Detail view** — the transcript as clean turn cards with inline images and selectable text.
+- **Export** — two formats from the share sheet: Markdown, or a single self-contained web page with every image embedded — the file to send someone research without making them sign in anywhere.
 
 ## Building (on your Mac)
 

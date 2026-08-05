@@ -4,9 +4,10 @@ import Foundation
 ///
 /// Chat transcripts on claude.ai are virtualized — only a handful of turn
 /// groups exist in the DOM at once — so the script walks the scroller from
-/// top to bottom and keeps the longest text seen for each data-index. Pages
-/// without data-index turns (other vendors' share pages) fall back to the
-/// full rendered page text, so capture always produces something.
+/// top to bottom and keeps the longest text seen for each data-index, along
+/// with the images that appear inside each turn. Pages without data-index
+/// turns (other vendors' share pages) fall back to the full rendered page
+/// text and its images, so capture always produces something.
 enum CaptureEngine {
     static let script = """
     const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -29,13 +30,22 @@ enum CaptureEngine {
         return best || document.scrollingElement || document.body;
     }
 
-    const turns = {};
+    const turnTexts = {};
+    const turnImages = {};
+    function noteImage(idx, img) {
+        const src = img.currentSrc || img.src;
+        if (!src) return;
+        if (src.startsWith("data:") && !src.startsWith("data:image/")) return;
+        if ((img.naturalWidth || 0) < 32 && (img.naturalHeight || 0) < 32) return;
+        (turnImages[idx] = turnImages[idx] || new Set()).add(src);
+    }
     function harvest() {
         for (const el of document.querySelectorAll("[data-index]")) {
             const idx = parseInt(el.getAttribute("data-index"), 10);
             if (isNaN(idx)) continue;
             const t = el.innerText || "";
-            if (!(idx in turns) || t.length > turns[idx].length) turns[idx] = t;
+            if (!(idx in turnTexts) || t.length > turnTexts[idx].length) turnTexts[idx] = t;
+            for (const img of el.querySelectorAll("img")) noteImage(idx, img);
         }
     }
 
@@ -59,8 +69,55 @@ enum CaptureEngine {
         await sleep(450);
     }
 
-    const keys = Object.keys(turns).map(Number).sort((a, b) => a - b);
-    if (keys.length > 0) return keys.map(k => turns[k]);
-    return [document.body.innerText || ""];
+    async function toDataURL(src) {
+        if (src.startsWith("data:image/")) {
+            return src.length <= 6 * 1024 * 1024 ? src : null;
+        }
+        try {
+            const resp = await fetch(src, { credentials: "include" });
+            if (!resp.ok) return null;
+            const blob = await resp.blob();
+            if (blob.size > 4 * 1024 * 1024 || !blob.type.startsWith("image/")) return null;
+            return await new Promise(resolve => {
+                const fr = new FileReader();
+                fr.onload = () => resolve(fr.result);
+                fr.onerror = () => resolve(null);
+                fr.readAsDataURL(blob);
+            });
+        } catch (e) {
+            return null;
+        }
+    }
+
+    const keys = Object.keys(turnTexts).map(Number).sort((a, b) => a - b);
+    if (keys.length > 0) {
+        const srcs = [];
+        for (const k of keys) {
+            for (const s of (turnImages[k] || [])) {
+                if (!srcs.includes(s)) srcs.push(s);
+            }
+        }
+        const dataBySrc = {};
+        for (const src of srcs.slice(0, 24)) {
+            const d = await toDataURL(src);
+            if (d) dataBySrc[src] = d;
+        }
+        return keys.map(k => ({
+            text: turnTexts[k],
+            images: [...(turnImages[k] || [])].map(s => dataBySrc[s]).filter(Boolean)
+        }));
+    }
+
+    const pageSrcs = [];
+    for (const img of document.querySelectorAll("img")) {
+        const src = img.currentSrc || img.src;
+        if (src && (img.naturalWidth || 0) >= 32 && !pageSrcs.includes(src)) pageSrcs.push(src);
+    }
+    const pageImages = [];
+    for (const src of pageSrcs.slice(0, 12)) {
+        const d = await toDataURL(src);
+        if (d) pageImages.push(d);
+    }
+    return [{ text: document.body.innerText || "", images: pageImages }];
     """
 }

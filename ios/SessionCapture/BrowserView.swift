@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct BrowserView: View {
     @EnvironmentObject private var browser: WebViewModel
@@ -16,10 +17,20 @@ struct BrowserView: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .onSubmit { browser.loadCurrent() }
+                    Button {
+                        if let pasted = UIPasteboard.general.string {
+                            browser.urlString = pasted
+                            browser.loadCurrent()
+                        }
+                    } label: {
+                        Image(systemName: "doc.on.clipboard")
+                    }
+                    .buttonStyle(.bordered)
+                    .help("Paste link and go")
                     Button("Go") { browser.loadCurrent() }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.borderedProminent)
                 }
-                .padding(8)
+                .padding(10)
 
                 Divider()
 
@@ -65,8 +76,11 @@ struct BrowserView: View {
         capturing = true
         defer { capturing = false }
         do {
-            let turns = try await browser.captureTranscript()
-            let nonEmpty = turns.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            let raw = try await browser.captureTranscript()
+            let nonEmpty = raw.filter {
+                !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    || !$0.imageDataURLs.isEmpty
+            }
             guard !nonEmpty.isEmpty else {
                 resultMessage = "Nothing to capture on this page yet — make sure the conversation is visible, then try again."
                 return
@@ -74,15 +88,18 @@ struct BrowserView: View {
             let title = browser.pageTitle.isEmpty
                 ? (browser.webView.url?.host ?? "Session")
                 : browser.pageTitle
-            let session = CapturedSession(
-                id: UUID(),
+            let session = store.add(
                 title: title,
                 sourceURL: browser.webView.url?.absoluteString ?? browser.urlString,
-                capturedAt: Date(),
-                turns: nonEmpty
+                rawTurns: nonEmpty
             )
-            store.add(session)
-            resultMessage = "Saved \(nonEmpty.count) turn group\(nonEmpty.count == 1 ? "" : "s") to Library."
+            let images = session.imageCount
+            var message = "Saved \(session.turns.count) turn group\(session.turns.count == 1 ? "" : "s")"
+            if images > 0 {
+                message += " and \(images) image\(images == 1 ? "" : "s")"
+            }
+            message += " to Library (\(SessionStore.defaultProject))."
+            resultMessage = message
         } catch {
             resultMessage = "Capture failed: \(error.localizedDescription)"
         }

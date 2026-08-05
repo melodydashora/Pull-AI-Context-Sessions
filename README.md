@@ -2,6 +2,11 @@
 
 This tool aims to improve how AI models handle context sessions, making it easier to copy and paste specific code snippets across different environments.
 
+Two implementations live here:
+
+- **`pull_sessions.py`** — the desktop tool (Python + Playwright), documented below.
+- **`ios/`** — **Session Capture**, the native SwiftUI iOS app version for the App Store: an in-app browser with persistent login and the same scroll-and-harvest capture engine, saving sessions to an on-device library with Markdown export. See [`ios/README.md`](ios/README.md) for building, Xcode Cloud setup, and the App Store submission checklist.
+
 `pull_sessions.py` pulls shared Claude Code sessions (`claude.ai/code/session_...` links) into local files by driving a real, logged-in Chromium via Playwright. Session pages are client-rendered behind auth, so this works for any link you can open in your own browser.
 
 ## Outputs

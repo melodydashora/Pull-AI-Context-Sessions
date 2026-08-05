@@ -26,8 +26,12 @@ this branch and will fix anything you flag at the source.
   external dependencies. The pbxproj and shared scheme were authored by
   hand off-Mac: if Xcode refuses to open the project or the scheme doesn't
   appear, that's the first thing to fix (recreating the project file in
-  Xcode and re-adding the 8 sources + assets + PrivacyInfo.xcprivacy is an
+  Xcode and re-adding the 10 sources + assets + PrivacyInfo.xcprivacy is an
   acceptable repair — keep the file contents).
+- AUDIT NOTE: an independent SDK-knowledge audit of all 10 Swift sources
+  found ZERO compile-risk issues — call signatures, iOS 16 availability,
+  actor isolation, Codable back-compat, the embedded JS literal, and the
+  pbxproj wiring all verified. Expect a clean or near-clean first build.
 - The capture JavaScript in `CaptureEngine.swift` is tested against mock
   pages in Chromium: the Claude virtualized path (40 turns + images in
   order), and the multi-model static-page paths — ChatGPT

@@ -166,7 +166,35 @@ enum SessionImporter {
         var result = turns[...]
         while let first = result.first, isChrome(first) { result = result.dropFirst() }
         while let last = result.last, isChrome(last) { result = result.dropLast() }
-        return Array(result)
+        var cleaned = Array(result)
+        if let first = cleaned.first {
+            cleaned[0] = stripLeadingHeaderLines(first)
+        }
+        return cleaned
+    }
+
+    /// The first harvested turn often starts with page-header residue ("Sign in",
+    /// the page title, "Created with…", "Conversation Transcript") before the
+    /// real content. Drop those leading lines — conservatively, max 12.
+    private static func stripLeadingHeaderLines(_ text: String) -> String {
+        let headerMarkers = [
+            "sign in", "log in", "created with", "conversation transcript",
+            "shared conversation", "ai overview",
+        ]
+        var lines = text.components(separatedBy: "\n")[...]
+        var dropped = 0
+        while let line = lines.first, dropped < 12 {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            let lowered = trimmed.lowercased()
+            let isHeaderish = trimmed.isEmpty
+                || (trimmed.count < 90 && headerMarkers.contains { lowered.contains($0) })
+            guard isHeaderish else { break }
+            lines = lines.dropFirst()
+            dropped += 1
+        }
+        // If everything matched, the heuristic misfired — keep the original.
+        let stripped = lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        return stripped.isEmpty ? text : stripped
     }
 
     /// Builds a session from turn blocks harvested live out of a shared-session web page.

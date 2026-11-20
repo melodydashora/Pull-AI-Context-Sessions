@@ -49,14 +49,41 @@ def sid_from(url: str) -> str:
     return re.sub(r"\W+", "_", url).strip("_")[-48:]
 
 
+def expand(name: str) -> Path:
+    """Expand a leading "~" ourselves: Command Prompt and PowerShell do not.
+
+    A name that only looks like a home reference is returned as given.
+    """
+    try:
+        return Path(name).expanduser()
+    except RuntimeError:
+        return Path(name)
+
+
+def read_text_file(p: Path) -> str:
+    """Decode a links file: UTF-8 with or without a byte-order mark, or UTF-16.
+
+    Notepad writes a byte-order mark, and "> file" in Windows PowerShell writes UTF-16.
+    """
+    data = p.read_bytes()
+    if data[:2] in (b"\xff\xfe", b"\xfe\xff"):
+        return data.decode("utf-16")
+    return data.decode("utf-8-sig")
+
+
 def read_links(inputs) -> list[str]:
     links = []
     for a in inputs:
-        p = Path(a)
+        p = expand(a)
         if p.is_file():
+            try:
+                text = read_text_file(p)
+            except UnicodeDecodeError:
+                print(f"!! skipping {a!r}: cannot read it; save it as UTF-8", file=sys.stderr)
+                continue
             links += [
                 line.strip()
-                for line in p.read_text().splitlines()
+                for line in text.splitlines()
                 if line.strip().startswith("http")
             ]
         elif a.startswith("http"):
@@ -182,16 +209,18 @@ def pull_one(page, url: str, out: Path):
             harvest()  # best effort if layout changed entirely
 
         # ---- write outputs ----
+        # Bytes are written directly: on Windows the text-mode writer turns "\n"
+        # into "\r\n", and SessionVault then imports the transcript as one message.
         for i, (u, body) in enumerate(captured):
-            (raw / f"{i:02d}.json").write_text(body, encoding="utf-8")
+            (raw / f"{i:02d}.json").write_bytes(body.encode("utf-8"))
         if captured:
             biggest = max(captured, key=lambda t: len(t[1]))
-            (out / f"{sid}.json").write_text(biggest[1], encoding="utf-8")
+            (out / f"{sid}.json").write_bytes(biggest[1].encode("utf-8"))
 
         md_parts = [f"# {sid}", f"Source: {url}", ""]
         for i in sorted(turns):
             md_parts += [turns[i], "", "---", ""]
-        (out / f"{sid}.md").write_text("\n".join(md_parts), encoding="utf-8")
+        (out / f"{sid}.md").write_bytes("\n".join(md_parts).encode("utf-8"))
 
         return sid, len(turns), len(captured)
     finally:
@@ -217,14 +246,16 @@ def main():
     )
     args = ap.parse_args()
 
-    out = Path(args.out)
+    out = expand(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
     with sync_playwright() as pw:
         launch_kw = {"headless": args.headless and not args.login}
         if args.browser_exe:
             launch_kw["executable_path"] = args.browser_exe
-        ctx = pw.chromium.launch_persistent_context(args.profile, **launch_kw)
+        # An empty --profile keeps its Playwright meaning: a temporary profile.
+        profile = str(expand(args.profile)) if args.profile else ""
+        ctx = pw.chromium.launch_persistent_context(profile, **launch_kw)
         page = ctx.pages[0] if ctx.pages else ctx.new_page()
 
         if args.login:
@@ -270,7 +301,7 @@ def main():
         combined = "\n\n".join(
             (out / f"{s}.md").read_text(encoding="utf-8") for s in done
         )
-        (out / "all_sessions.md").write_text(combined, encoding="utf-8")
+        (out / "all_sessions.md").write_bytes(combined.encode("utf-8"))
         print(f"Combined -> {out / 'all_sessions.md'}")
 
     print(f"Done. {len(done)}/{len(links)} sessions in {out}/")

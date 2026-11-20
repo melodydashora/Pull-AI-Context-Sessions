@@ -262,6 +262,7 @@ CLAUDE.local.md
 !/.gitattributes
 !/.editorconfig
 !/.replit
+!/.replitignore
 !/replit.nix
 !/README.md
 !/CLAUDE.md

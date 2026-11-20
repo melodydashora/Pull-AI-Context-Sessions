@@ -44,7 +44,7 @@ If `.md` files come out near-empty, either you aren't logged in (the script warn
 
 ## Using it on Replit
 
-The `Session login (VNC)` workflow opens Chromium in Replit's streamed desktop. Start it when you need to sign in to `claude.ai`, then close the browser window to finish login setup. The script stores the persistent browser profile in `~/.claude_session_pull_profile`; do not share that profile.
+The `Session login (VNC)` workflow opens Chromium in Replit's streamed desktop. Start it by name from the Workflows pane when you need to sign in to `claude.ai` (the Run button starts the web app, not the sign-in), then close the browser window to finish login setup. The script stores the persistent browser profile in `~/.claude_session_pull_profile`; do not share that profile.
 
 After logging in, export an authorized session from the Replit Shell, in the workspace's top folder, with:
 

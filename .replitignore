@@ -1,0 +1,33 @@
+# Files that must never be part of a published app.
+#
+# .gitignore keeps files out of git. It does not keep them out of what Replit
+# publishes: a published app is built from the files on disk. This file does.
+# Only the web app is published; everything below is either private or not part of it.
+
+# Private material that can be present in a workspace: the puller's output under
+# every name it uses, link lists, and browser profiles (a profile holds a sign-in).
+/sessions*/
+/puller/sessions*/
+/session_*
+/raw/
+/all_sessions.md
+/*links*.txt
+/*profile*/
+/*user-data*/
+/CLAUDE.local.md
+/.claude/
+/.config/
+/.local/
+/.cache/
+/.pythonlibs/
+/.upm/
+
+# Other components of this repository
+/apple/
+/puller/
+/reference/
+
+# The web app's documents, test fixtures and reference code
+/web/docs/
+/web/fixtures/
+/web/reference/

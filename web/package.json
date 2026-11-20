@@ -1,0 +1,31 @@
+{
+  "name": "sessionvault-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SessionVault for the web: shared core, server and browser app",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "workspaces": [
+    "core",
+    "server",
+    "app"
+  ],
+  "scripts": {
+    "dev": "node server/src/dev.ts",
+    "build": "npm run build --workspace @sessionvault/app",
+    "start": "node server/src/main.ts",
+    "test": "vitest run",
+    "typecheck": "tsc -p core && tsc -p server && tsc -p app",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "check": "npm run lint && npm run typecheck && npm run test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.8",
+    "@types/node": "^24.0.0",
+    "typescript": "6.0.3",
+    "vitest": "5.1.1"
+  }
+}

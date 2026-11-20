@@ -16,7 +16,7 @@
 
 | Mark | Meaning |
 |---|---|
-| `file:line` | Read in the code at commit `c227766`. Line numbers into Swift files are exact there; line numbers into `puller/pull_sessions.py` and into README files refer to those files as they were before commit `34e84d3`, which moved lines. Paths are relative to the repository root; `Importers.swift` means `apple/SessionVault/Importers.swift`, `Views/...` means `apple/SessionVault/Views/...`. |
+| `file:line` | Read in the code at commit `c227766` and brought up to commit `e81828a` on 2026-11-20: that commit moved lines in `Views/MessageView.swift` (a Copy button was added; the splitter itself did not change), and commit `34e84d3` had moved lines in `puller/pull_sessions.py`. Every line number in this document is exact at commit `e81828a`; a file that changed after it is cited as it was then (`git show e81828a:<path>`). Paths are relative to the repository root; `Importers.swift` means `apple/SessionVault/Importers.swift`, `Views/...` means `apple/SessionVault/Views/...`. |
 | (run) | Observed by running the real importer on synthetic input on 2026-11-19 and 2026-11-20. |
 | (fixture NN) | Recorded in `fixtures/import/NN-*`; the expected file holds the exact output. |
 | (inference) | My reasoning; the code does not show it and it was not run. |
@@ -209,7 +209,7 @@ if no session: not this format
 
 #### 2.5.2 Puller Markdown
 
-`parsePullSessionsMarkdown`, `Importers.swift:237-277`. The writer is `puller/pull_sessions.py:191-194`: the lines `# <id>`, `Source: <url>`, an empty line, then for each turn its text, an empty line, `---`, an empty line.
+`parsePullSessionsMarkdown`, `Importers.swift:237-277`. The writer is `puller/pull_sessions.py:220-223`: the lines `# <id>`, `Source: <url>`, an empty line, then for each turn its text, an empty line, `---`, an empty line.
 
 ```text
 lines = text split at "\n"
@@ -263,6 +263,7 @@ drop trailing "" entries
 - Boilerplate, exact line (case-sensitive): `Report`, `Copy`, `Retry`, `Share`, `Claude` (`Importers.swift:56-58`).
 - Boilerplate, line starts with (case-sensitive): `Shared by `, `This is a copy of a chat`, `Content may include unverified`, `Shared snapshot may contain`, `Ask Claude your own question`, `Claude can make mistakes` (`Importers.swift:47-54`).
 - Time line: the whole line matches `^\d{1,2}:\d{2}\s?(AM|PM)?$` (`Importers.swift:65-67`). Matches `10:42`, `10:42 AM`, `10:42AM`, `9:05 PM`, `24:99`; not `10:42 am`, `10:42:15`, `10:42  PM`, `at 10:42` (run). On the tested system `\d` also accepts non-ASCII numerals and `$` is the very end of the string (D18).
+  Measured again on 2026-11-20 (macOS 27.2.1), the same inputs through three calls. The call the app makes, `String.range(of:options:)` with `.regularExpression` on a Swift string: `10:42 PM` followed by CR or by LF is not a time line; circled digits and U+4E00 count as `\d`; the pattern syntax `(?P<x>a)b` is accepted. `NSRegularExpression`, and `range(of:options:)` on the same text as an `NSString`: `10:42 PM` followed by CR or by LF is a time line; circled digits and U+4E00 are not `\d`; that syntax is rejected. So on this system the app's call is not answered by the ICU engine that `NSRegularExpression` uses (which engine it is was not confirmed). A system that routes the app's call to ICU differs from the fixtures in exactly these two points: `$` also matches before one final line terminator, and `\d` is limited to decimal digits. `10:42` followed by CR is a time line on both, because `\s?` consumes the CR. The web rule (W7) does not depend on any of this.
 
 Observed (fixture 26; run): lower-case `shared by`, `report`, `Copy code`, `Claude is ...` survive; three equal lines separated by blank lines become one; a furniture line between two equal lines does not reset the comparison.
 
@@ -373,7 +374,7 @@ Every threshold was confirmed at its boundary (fixtures 55 and 56): 1199 charact
 
 ### 2.9 How a message is split for display
 
-Not part of import: `MessageSegment.parse` runs every time a message is drawn (`Views/MessageView.swift:46-93`). The stored text is never changed.
+Not part of import: `MessageSegment.parse` runs every time a message is drawn (`Views/MessageView.swift:79-126`). The stored text is never changed.
 
 ```text
 for each line of text (split at "\n"):
@@ -385,7 +386,7 @@ at the end: an open block is closed as code; otherwise flush prose
 flush prose: joined = lines joined with "\n"; emit it only if its full trim is not empty   // the emitted text is NOT trimmed
 ```
 
-Each prose segment is then cut at blank lines into paragraphs, each trimmed, and rendered with inline Markdown only (`Views/MessageView.swift:110-123`): bold, italic, inline code and links work; headings, lists, tables and quotes appear as typed. Results for 22 edge cases are in fixture 57.
+Each prose segment is then cut at blank lines into paragraphs, each trimmed, and rendered with inline Markdown only (`Views/MessageView.swift:143-156`): bold, italic, inline code and links work; headings, lists, tables and quotes appear as typed. Results for 22 edge cases are in fixture 57.
 
 ### 2.10 Limits and thresholds
 
@@ -407,7 +408,7 @@ Each row was confirmed by running the real importer. "Web rule" points to 3.2.
 
 | # | What the Apple app does | Evidence | Web rule |
 |---|---|---|---|
-| D1 | **CRLF and CR line endings break every parser.** Lines are split at LF and the inline trim keeps CR. Puller Markdown: no `---` is recognised, so all turns merge into ONE message; title and source URL end in CR. Generic text: markers without a colon are missed, CR stays inside the stored text. Share-page text: `Copy`, `Retry`, blank lines and `10:42 AM` are no longer recognised. Display: the language becomes `python` + CR and the block never closes. Text with CR only (no LF) is one line. | `Importers.swift:109`, `:238`, `:250`, `:360`; `Views/MessageView.swift:69-80`; fixtures 02, 14, 27, 57 | W1 |
+| D1 | **CRLF and CR line endings break every parser.** Lines are split at LF and the inline trim keeps CR. Puller Markdown: no `---` is recognised, so all turns merge into ONE message; title and source URL end in CR. Generic text: markers without a colon are missed, CR stays inside the stored text. Share-page text: `Copy`, `Retry`, blank lines and `10:42 AM` are no longer recognised. Display: the language becomes `python` + CR and the block never closes. Text with CR only (no LF) is one line. | `Importers.swift:109`, `:238`, `:250`, `:360`; `Views/MessageView.swift:102-113`; fixtures 02, 14, 27, 57 | W1 |
 | D2 | **A whole-page capture is stored unsplit and mislabelled.** Mechanism, from the code: (1) a page with no `[data-index]` element comes back as ONE string (`WebCapture.swift:175-180`); (2) one string goes to `parseText` (`Importers.swift:206-212`); (3) the share parser needs `You said:` with a colon, and the generic parser splits only at marker lines, so a page without such lines stays one message; (4) if the page's first line is a bare name such as `Gemini`, that line is a marker and the whole rest becomes ONE message of role assistant (`:409-414`); if the page has no marker at all the role is unknown; (5) the provider is the first keyword found in the entire text, `claude` before `gemini` (`:375-379`), and the URL is consulted only when the keyword scan found nothing, and then only for `claude.ai` (`:202`, `:210`). So a Gemini page that mentions Claude anywhere is one assistant message labelled Claude. None of the guards applies: the wall test never fires at 2500 characters or more, and chrome stripping and furniture cleaning do not run on the one-string path. Related: a pasted text the parser cannot identify gets the picker value, whose default is Claude. | fixtures 48, 49 (synthetic reproduction), 16, 12, 06, 40 | W9, W8, W6, W10 |
 | D3 | **The sign-in-wall test is wrong in both directions and a dead end.** A page with one marker passes and is saved (run: a sign-in form with only `Sign in`). A page of 6 characters is saved (run: `Gemini` becomes a session). Nothing is ever a wall at 2500 characters or more. A real conversation under 1200 characters that contains two marker substrings is refused with no override (fixture 45). Matching is by substring: `design in`, `blog in`, `cookies` count. The test exists only on the capture path: pasted wall text is saved (fixture 36). On a phone the message is cut off after a few words. | `Importers.swift:144-151`; `Views/LinkCaptureView.swift:32-36`, `:50-53`; fixtures 36, 44, 45, 55 | W10, W11 |
 | D4 | **Chrome stripping deletes real turns, silently.** Any first or last turn under 700 characters that contains the letters `sign in` (`The new design integrates ...`), `can make mistakes`, `ai overview`, or two markers is dropped; the loop can remove several turns or all of them. It runs before the header-line stripper, so a short first turn that starts with page-header residue is dropped together with the user's question. | `Importers.swift:156-173`; fixtures 42, 43, 56 | W10 |
@@ -417,14 +418,14 @@ Each row was confirmed by running the real importer. "Web rule" points to 3.2.
 | D8 | **Empty results are saved.** A white-space-only file becomes a session with one empty message (fixture 17). Puller Markdown with a header and no turns becomes a session with zero messages, reported as a success (fixture 04). A block or captured turn that is only a label (`Assistant`, `User:`) becomes a message with empty text (fixture 52; run for puller blocks). | `Importers.swift:371-373`, `:264-265`, `:220-221`; fixtures 04, 17, 52 | W12 |
 | D9 | **JSON handling.** Any `.json` file that is not a ChatGPT export is imported as one note holding the raw JSON, labelled by keyword scan (fixture 12); so is malformed JSON, an empty array, an export whose conversations are all empty, and a ChatGPT export with a different file extension (run). One entry without a `mapping` rejects the whole export (fixture 09). A `current_node` that is not in the mapping gives no messages, hence the raw-text fallback (run). A cycle in `parent` links never terminates and grows memory without bound (fixture 10; watchdog run). Without `current_node`, messages with equal or missing times come out in a different order from run to run (fixture 11). Content that is not a string in `parts` is dropped silently. | `Importers.swift:26-33`, `:281-343`; fixtures 09 to 12 | W3, W4 |
 | D10 | **Only UTF-8 is read.** UTF-16 with a byte-order mark and windows-1252 give `No sessions found in the selected files.` (fixtures 24, 25). UTF-16 without a byte-order mark is "valid UTF-8" and is imported as one message with a NUL after every letter (run). NUL characters inside text are kept (run). | `Importers.swift:31`; fixtures 24, 25 | W2, W1 |
-| D11 | **Puller Markdown edge cases.** A `--combine` file (`all_sessions.md`, several transcripts joined) is read as one session; the second header and its first turn become one note (fixture 05). Blank lines or a byte-order mark character in front of the header (possible in pasted text) defeat detection (fixture 35; run). The title can be empty. The provider is Other for every source that is not claude.ai (fixture 06). | `Importers.swift:237-277`; `puller/pull_sessions.py:269-274`; fixtures 05, 06, 35 | W5, W9 |
+| D11 | **Puller Markdown edge cases.** A `--combine` file (`all_sessions.md`, several transcripts joined) is read as one session; the second header and its first turn become one note (fixture 05). Blank lines or a byte-order mark character in front of the header (possible in pasted text) defeat detection (fixture 35; run). The title can be empty. The provider is Other for every source that is not claude.ai (fixture 06). | `Importers.swift:237-277`; `puller/pull_sessions.py:300-305`; fixtures 05, 06, 35 | W5, W9 |
 | D12 | **Clipboard link test.** Any single token under 500 characters that contains a dot is "a link": `Thanks.`, `3.14`, `file.txt`, `v1.2.3`, an e-mail address (fixture 32; run). Two links separated by CR LF are opened as one URL with `%0D%0A` in the middle, because the newline test does not see CR LF (run). | `Views/ImportSheet.swift:208-216`; fixture 32 | W11 |
 | D13 | **Titles.** A capture of `https://host/` with no other title is called `/` (run). A typed name is ignored when the page text happens to start like puller Markdown (run). Every paste is called `Pasted session`. Titles can be empty or all spaces on the share-page and capture paths (run). | `Views/ImportSheet.swift:134-138`, `:218`; `Importers.swift:207`, `:126` | W10, W6 |
 | D14 | **Dates.** Only a ChatGPT conversation carries its date. Everything else gets the import time as "original date", so the timeline shows when things were imported, not when they happened. | `Importers.swift:296`, `:443` | none: keep; the date stays editable. Optionally keep ChatGPT message times (data-model.md has a message `created_at`). |
 | D15 | **The app cannot read its own export.** A pasted context pack becomes: one note with the header block, messages that each end in `---`, and a `**Note:**` turn glued to the turn before it; title, link, tags and summary are lost (fixture 38). | `ContextPack.swift:7-43`; fixture 38 | W14 (optional) |
-| D16 | **Display splitter.** Besides D1: a line that starts with three backticks always opens a block, so a one-line code span swallows the rest of the message; fences are exactly three backticks, so a four-backtick fence around a three-backtick fence is mis-split; `~~~` fences are not recognised. | `Views/MessageView.swift:69-91`; fixture 57 | W13 |
+| D16 | **Display splitter.** Besides D1: a line that starts with three backticks always opens a block, so a one-line code span swallows the rest of the message; fences are exactly three backticks, so a four-backtick fence around a three-backtick fence is mis-split; `~~~` fences are not recognised. | `Views/MessageView.swift:102-124`; fixture 57 | W13 |
 | D17 | **No safety net around import.** Importing a file twice makes two sessions. An unreadable file is skipped without a word. One status line covers a batch. The drop target accepts any URL and would read a dropped web link over the network on the main thread (inference from `Views/RootView.swift:72-74` and `Importers.swift:461`; not run). The capture status says `Captured 1 turns`. | as cited | section 4 |
-| D18 | **Accidents of the string library.** The time-line rule is evaluated by the system's regular-expression engine: on the tested system `\d` accepts every Unicode numeric character (run: Arabic-Indic digits, full-width digits, circled digits, U+4E00), and `\s` can swallow a CR. Marker tests ignore a match that is followed by a combining mark. None of this is intended. | `Importers.swift:66`; run | W7: ASCII digits. Ignore the rest. |
+| D18 | **Accidents of the string library.** The time-line rule is evaluated by the system's regular-expression engine: on the tested system `\d` accepts every Unicode numeric character (run: Arabic-Indic digits, full-width digits, circled digits, U+4E00), and `\s` can swallow a CR. Which engine answers depends on the system and on the call: 2.5.3 has the measurement. Marker tests ignore a match that is followed by a combining mark. None of this is intended. | `Importers.swift:66`; run | W7: ASCII digits. Ignore the rest. |
 
 ### 3.2 What the web app does instead
 
@@ -448,7 +449,7 @@ then W1; if only white space is left      -> rejected, empty_input
 
 A flag means "tell the user which encoding was assumed". Never use `File.text()`, `Blob.text()` or a non-fatal `TextDecoder` for import: they replace invalid bytes with U+FFFD without telling anyone. `JSON.parse` rejects a leading U+FEFF, so W1 has to run before it (fixture 08). Fixtures 03, 08, 18, 24, 25.
 
-**W3. JSON files.** For a file whose extension is `json` (any letter case): parse the decoded text. A document with `"format": "sessionvault-interchange"` goes to the interchange import of data-model.md section 6.7 and never reaches the rules below. Otherwise try the ChatGPT export (2.5.1 with W4). Not that either, or not valid JSON: rejected with `unrecognised_json`. A recognised export without any message: rejected with `no_messages`. The raw JSON text is never imported silently; the user interface may offer "keep as a plain-text note", which then calls the text path on purpose. Fixture 12. The puller's `<id>.json` (the largest JSON response seen while the page loaded, `puller/pull_sessions.py:185-189`) has no schema documented anywhere in the repository; it falls under this rule until someone documents the schema from a real file.
+**W3. JSON files.** For a file whose extension is `json` (any letter case): parse the decoded text. A document with `"format": "sessionvault-interchange"` goes to the interchange import of data-model.md section 6.7 and never reaches the rules below. Otherwise try the ChatGPT export (2.5.1 with W4). Not that either, or not valid JSON: rejected with `unrecognised_json`. A recognised export without any message: rejected with `no_messages`. The raw JSON text is never imported silently; the user interface may offer "keep as a plain-text note", which then calls the text path on purpose. Fixture 12. The puller's `<id>.json` (the largest JSON response seen while the page loaded, `puller/pull_sessions.py:214-218`) has no schema documented anywhere in the repository; it falls under this rule until someone documents the schema from a real file.
 
 **W4. ChatGPT export, robust.** As 2.5.1 with these changes: a top-level array may contain anything; entries that are not objects with a `mapping` object are skipped, and the file is this format if at least one entry qualifies (fixture 09). Keep a set of visited ids while walking `parent`; stop at the first repeat (fixture 10). If the walk from `current_node` collects nothing, use the time order. Time order = stable sort by `message.create_time` (a number, else 0), ties in the order of the keys in the JSON text (fixture 11; JavaScript keeps that order for keys that are not integers). Title: trim, then the fallback. `create_time` counts only when it is a finite number; keep milliseconds. Apply W1 to the joined parts before the full trim. Sessions are returned in file order.
 
@@ -521,12 +522,12 @@ title = full trim(title), or "Imported session" if empty
 
 Fixtures 13 to 16, 19 to 23. For lines without `**` the web marker is identical to the Apple one. The dialogue condition for bare names belongs to this parser only: the first line of a puller block or of a captured turn is tested with the marker function alone, and a bare name counts there (fixtures 01, 52).
 
-**W9. Provider.** Decide in this order and stop at the first that applies: (1) the host of a URL the input comes with: the capture URL, the link given with a paste, the `Source:` line of puller Markdown; (2) speaker labels: among the markers or share headers actually used, count `claude...` labels as Claude, `chatgpt...` and `gpt` as ChatGPT, `gemini...` as Gemini; the most frequent wins, the first seen wins a tie; (3) `other`. On the paste path the picker then replaces `other`. Words in the content are never used. Hosts (a host matches a domain if it equals it or ends with a dot plus it): `claude.ai` -> claude; `chatgpt.com`, `chat.openai.com` -> chatgpt; `gemini.google.com`, `gemini.google` (covers `share.gemini.google`, named in `apple/BUILD_REPORT.md:17-18`), `bard.google.com`, and `g.co` with a path starting `/gemini` -> gemini. Apart from `claude.ai` these hosts are not in the Apple code (inference from general knowledge). capture.md section 7.1 owns the host list if its data file is built; use that one list everywhere. The provider stays editable by the user. Fixtures 06, 16, 37, 40, 48.
+**W9. Provider.** Decide in this order and stop at the first that applies: (1) the host of a URL the input comes with: the capture URL, the link given with a paste, the `Source:` line of puller Markdown; (2) speaker labels: among the markers or share headers actually used, count `claude...` labels as Claude, `chatgpt...` and `gpt` as ChatGPT, `gemini...` as Gemini; the most frequent wins, the first seen wins a tie; (3) `other`. On the paste path the picker then replaces `other`. Words in the content are never used. Hosts (a host matches a domain if it equals it or ends with a dot plus it): `claude.ai` -> claude; `chatgpt.com`, `chat.openai.com` -> chatgpt; `gemini.google.com`, `gemini.google` (covers `share.gemini.google`, named in `apple/BUILD_REPORT.md:19-20`), `bard.google.com`, and `g.co` with a path starting `/gemini` -> gemini. Apart from `claude.ai` these hosts are not in the Apple code (inference from general knowledge). capture.md section 7.1 owns the host list if its data file is built; use that one list everywhere. The provider stays editable by the user. Fixtures 06, 16, 37, 40, 48.
 
 **W10. Capture results.** capture.md section 7.3 owns this step for results that carry roles from markup. For role-less strings (what the Apple app produces) the rule is:
 
 ```text
-importCapture({ source_url, detected_title, typed_name, kind, turns, allow_wall }):
+importCapture({ source_url, detected_title, typed_name, kind, turns, allow_wall, keep_dropped }):
     turns = W1 on each; none -> rejected, no_conversation_found
     kind is stated by the capture layer: "page-text" (one string, the whole page) or "turns"; do not guess it from the count
     if kind is "page-text" and looksLikeSignInWall(turns) and not allow_wall -> rejected, sign_in_suspected
@@ -534,7 +535,7 @@ importCapture({ source_url, detected_title, typed_name, kind, turns, allow_wall 
             last non-empty path segment of source_url (percent-decoded), source_url
     page-text: sessions = parseText(the text, title); none -> rejected, no_conversation_found
                take the first; its title = title (always); source_url; provider = host provider if known
-    turns:     (kept, dropped) = stripChromeTurns(turns), web form below
+    turns:     (kept, dropped) = stripChromeTurns(turns, keep_dropped), web form below
                each kept block through the W7 cleaner, full trim, skip if empty, leading marker as 2.4/W8;
                a block that is only a label gives no message (W12)
                provider = W9; no message -> rejected, no_conversation_found
@@ -544,9 +545,31 @@ stripChromeTurns, web form:
     from the front: stripped = stripLeadingHeaderLines(turn); if isChrome(stripped) drop the turn and go on;
                     else keep stripped as the first turn and stop
     from the end:   drop while isChrome(turn), never the first kept turn
+    restore:        keep_dropped is a list of input indexes, empty when absent. It does not change the two scans.
+                    Afterwards every dropped turn whose index is in the list goes back to its place in input order:
+                    one dropped from the front as stripLeadingHeaderLines left it, one dropped from the end as it is.
+                    An index that names no dropped turn is ignored. `dropped` then holds only the turns that stay dropped.
 ```
 
-`looksLikeSignInWall`, `isChrome` and `stripLeadingHeaderLines` are ported unchanged (fixtures 55, 56). What changes is how they are used: the wall test is a warning with "import anyway" (`allow_wall`), applied to whole-page text only as capture.md section 7.4 decides; header lines are stripped before the chrome test; dropped turns are never silent. capture.md adds checks that are outside this module (page text under 200 characters, URL and DOM signals). Fixtures 39 to 54.
+`looksLikeSignInWall`, `isChrome` and `stripLeadingHeaderLines` are ported unchanged (fixtures 55, 56). What changes is how they are used: the wall test is a warning with "import anyway" (`allow_wall`), applied to whole-page text only as capture.md section 7.4 decides; header lines are stripped before the chrome test; dropped turns are never silent, and the user can restore them: the interface shows `dropped_turns` and repeats the import with `keep_dropped` (design.md 4.15.9; for a capture made by the server, capture.md 8.3c). A restored turn is then treated like any kept turn (cleaner, full trim, leading marker), so a turn that holds nothing but furniture lines still gives no message. `keep_dropped` applies to `kind` "turns" only. capture.md adds checks that are outside this module (page text under 200 characters, URL and DOM signals). Fixtures 39 to 54.
+
+Restoring, worked example (run with the reference port in `../reference/import-port/`; there is no fixture file for it yet, so turn these lines into tests):
+
+```text
+the four turns of fixture 43; the chrome test drops the real turns at indexes 0 and 3
+keep_dropped absent or []  -> messages: assistant, user                      dropped_turns: leading 0, trailing 3   (this is fixture 43)
+keep_dropped [0]           -> messages: unknown (turn 0), assistant, user     dropped_turns: trailing 3
+keep_dropped [3]           -> messages: assistant, user, unknown (turn 3)     dropped_turns: leading 0
+keep_dropped [0, 3]        -> messages: unknown, assistant, user, unknown     dropped_turns: none
+keep_dropped [1] or [99]   -> as without it: these indexes name no dropped turn
+
+the two turns of fixture 50; both are chrome, so the result is rejected with no_conversation_found
+keep_dropped [0]           -> outcome imported, one message: unknown, "AI Overview"     dropped_turns: leading 1
+keep_dropped [0, 1]        -> outcome imported, two messages, both unknown             dropped_turns: none
+
+the three turns of fixture 41; the first turn loses its header lines, the last one is dropped
+keep_dropped [2]           -> messages: user, assistant, unknown ("This assistant can make mistakes.")   dropped_turns: none
+```
 
 **W11. Paste.**
 
@@ -632,9 +655,9 @@ parseText(text: string, title: string): ParsedSession[]                        /
 parseChatGPTExport(json: unknown): ParsedSession[] | null                      // null = not this format, [] = no messages
 importFile(bytes: Uint8Array, filename: string): ImportResult                  // W2, W3
 importPaste(text: string, options: { title: string; pickerProvider: Provider; sourceUrl?: string; allowWall?: boolean }): ImportResult   // W11
-importCapture(input: { sourceUrl: string; detectedTitle: string | null; typedName: string; kind: "page-text" | "turns"; turns: string[]; allowWall?: boolean }): ImportResult   // W10
+importCapture(input: { sourceUrl: string; detectedTitle: string | null; typedName: string; kind: "page-text" | "turns"; turns: string[]; allowWall?: boolean; keepDropped?: number[] }): ImportResult   // W10
 looksLikeSignInWall(turns: string[]): boolean
-stripChromeTurns(turns: string[]): { kept: string[]; dropped: DroppedTurn[] }
+stripChromeTurns(turns: string[], keepDropped?: readonly number[]): { kept: string[]; dropped: DroppedTurn[] }
 ```
 
 `ParsedSession` = title, provider (`claude`, `chatgpt`, `gemini`, `other`), model, source URL, original date or none, messages of role and text. It is what data-model.md section 8.6 takes. `ImportResult` = outcome (`imported`, `rejected`, `link`), reason, flags, sessions, and for captures the dropped turns.
@@ -676,3 +699,5 @@ Decisions for the owner:
 4. Should the web app save immediately, as the Apple app does, or always show the preview of C8 first?
 5. The split rule for Gemini pages (the whole-line labels in W6) rests on an earlier description, not on a page anyone has looked at for this document. One look at a real page is needed to confirm or correct the rule. Until then it is a guess that fails safe.
 6. Is importing the puller's `<id>.json` files wanted? If so, one real file is needed to document its structure (W3); none is in the repository and none was read.
+
+Decided on 2026-11-20 and not yet written into the sections above: ten points on rules W1, W2, W4, W8 and W10 and on the result of `importFile`, two corrections to C4 and C10, and the answer to decision 6 (importing the puller's JSON is wanted). They are in `corrections.md`, sections 1.6 and 3, and they win where they differ from the text above. None of them has a fixture yet; they and the worked example for `keep_dropped` in W10 should become fixture files. `corrections.md` 1.4.1 also replaces a sentence of W9: the provider label follows W9, not the host list of capture.md 7.1.

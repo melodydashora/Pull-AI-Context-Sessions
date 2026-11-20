@@ -26,3 +26,17 @@ python3 web/reference/import-port/compare.py . /tmp/out-web.json web
 - `compare.py <repository> <results file> <apple|web>` maps the results to the fixture shape and compares them with the expected files.
 
 Checked on 2026-11-20: `web` mode gives "equal 57 different 0", `apple` mode gives "equal 55 different 0 skipped 2" (fixtures 10 and 11 have no recorded Apple result).
+
+Added on 2026-11-20: the capture entry takes `keepDropped`, the list of dropped turns that a user restored (`import-rules.md` W10). No fixture covers it; the worked example in W10 was produced with this port. Without `keepDropped` the port behaves as before, and both checks above were run again after the change.
+
+## Known defects
+
+Found on 2026-11-20 by the session that builds the web app, and not fixed yet. None of them changes the result of a fixture. `../../docs/corrections.md`, section 3, points 11 to 15, has the detail:
+
+- Ties in the time order of a ChatGPT export follow `Object.keys`, so keys that look like integers come first; the rule asks for the order of the keys in the JSON text.
+- Role lines of a context pack are looked up in a plain object, so a line `constructor` is taken for a role line.
+- Two patterns use `.`, which does not match U+2028 or U+2029.
+- The trim expressions are quadratic on a long run of blanks inside one line.
+- It is not written for a strict compiler, and its text normalisation skips lone surrogates where `String.prototype.toWellFormed` does not exist.
+
+Do not adopt the port as product code without fixing these.

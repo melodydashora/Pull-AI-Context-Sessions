@@ -1013,7 +1013,7 @@ function stripLeadingHeaderLines(text: string): string {
 
 export interface ChromeResult { kept: string[]; dropped: { position: "leading" | "trailing"; index: number; text: string }[] }
 
-export function stripChromeTurns(turns: string[], mode: Mode): ChromeResult {
+export function stripChromeTurns(turns: string[], mode: Mode, keepDropped: readonly number[] = []): ChromeResult {
   const dropped: ChromeResult["dropped"] = [];
   let lead = 0;
   let firstStripped: string | null = null;
@@ -1033,6 +1033,19 @@ export function stripChromeTurns(turns: string[], mode: Mode): ChromeResult {
     if (mode === "web" && end - 1 === lead) break; // the first kept turn was already judged
     end--;
   }
+  if (mode === "web" && keepDropped.length > 0) {
+    // import-rules.md W10, "restore": the two scans above are unchanged. A dropped turn whose input index is
+    // named goes back to its place: one dropped from the front in the form the scan judged (header lines
+    // stripped), one dropped from the end as it is. An index that names no dropped turn is ignored.
+    const restore = new Set(keepDropped);
+    const keptAfterRestore: string[] = [];
+    for (let i = 0; i < turns.length; i++) {
+      if (i >= lead && i < end) keptAfterRestore.push(i === lead ? (firstStripped ?? stripLeadingHeaderLines(turns[i])) : turns[i]);
+      else if (restore.has(i)) keptAfterRestore.push(i < lead ? stripLeadingHeaderLines(turns[i]) : turns[i]);
+      else dropped.push({ position: i < lead ? "leading" : "trailing", index: i, text: turns[i] });
+    }
+    return { kept: keptAfterRestore, dropped };
+  }
   for (let i = 0; i < lead; i++) dropped.push({ position: "leading", index: i, text: turns[i] });
   for (let i = end; i < turns.length; i++) dropped.push({ position: "trailing", index: i, text: turns[i] });
   const kept = turns.slice(lead, end);
@@ -1051,6 +1064,7 @@ export interface CaptureInput {
   kind?: "turns" | "page-text"; // web: stated by the capture layer. Apple infers it from turns.length === 1.
   turns: string[];
   allowWall?: boolean; // web: the user chose "import anyway" after the sign-in-wall warning
+  keepDropped?: number[]; // web: input indexes of dropped turns that the user restored (import-rules.md W10)
 }
 
 function fromCapturedTurnsApple(turns: string[], title: string, sourceURL: string): ImportedSession {
@@ -1131,7 +1145,7 @@ export function importCapture(input: CaptureInput, mode: Mode): ImportResult {
       if (urlProvider) session.provider = urlProvider; // the link decides, not the words on the page
     }
   } else {
-    const chrome = stripChromeTurns(turns, "web");
+    const chrome = stripChromeTurns(turns, "web", input.keepDropped ?? []);
     droppedTurns = chrome.dropped;
     const messages: ImportedMessage[] = [];
     const labels: string[] = [];
@@ -1155,7 +1169,7 @@ export function importCapture(input: CaptureInput, mode: Mode): ImportResult {
 }
 
 // ---------------------------------------------------------------------------
-// Display splitter (Views/MessageView.swift:46-93). Not part of import: it runs when a message is shown.
+// Display splitter (Views/MessageView.swift:79-126). Not part of import: it runs when a message is shown.
 // ---------------------------------------------------------------------------
 
 export type DisplaySegment = { type: "prose"; text: string } | { type: "code"; language: string | null; code: string };

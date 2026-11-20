@@ -32,6 +32,10 @@ Fixtures 10 and 11 have no recorded Apple result and are not run: on fixture 10 
 - A line `CHANGED <path>` at the top only says that a Swift file differs from the one the manifest names. If the comparison still ends with "equal 59 different 0", behaviour did not change: record the new commit and the new SHA-256 values in `manifest.json` under `apple_side`, in a commit of its own.
 - A `DIFF` line means the Apple app now behaves differently on that fixture. Do not edit the expected file to make it pass. Find out which change in the Swift source caused it, decide whether the web target (`*.expected.web.json`) is affected, and record the evidence in the commit.
 
+## A date that cannot be printed
+
+The harness prints a session's original date as text. A date that is not finite, or further from 1970 than 8.64e12 seconds, is printed as `unprintable date (<seconds> s since 1970)`. Before 2026-11-20 the harness stopped on such a date and printed nothing for the whole run. The real importer accepts such values: a conversation `create_time` of `1e308` or `-1e999` in a ChatGPT export gives a session with that date (`../../docs/corrections.md`, section 3, point 5). Dates before 1582-10-15 are printed in the Julian calendar, as Foundation's formatter gives them.
+
 ## What this is not
 
 It is not a test of the web app, and it is not needed to build the web app. The web targets are the `*.expected.web.json` and `*.expected.json` files; `../import-port/` checks those without a Mac.

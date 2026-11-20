@@ -19,7 +19,14 @@ import Foundation
 // MARK: - JSON helpers
 
 func isoString(_ date: Date) -> String {
-    let ms = (date.timeIntervalSince1970 * 1000).rounded(.down)
+    // A date that is not finite, or lies further from 1970 than 8.64e12 seconds (the range of a
+    // JavaScript Date), cannot go through the conversion to whole milliseconds below: the program
+    // would stop. Such a date is reported as its number of seconds instead.
+    let seconds = date.timeIntervalSince1970
+    guard seconds.isFinite, abs(seconds) <= 8.64e12 else {
+        return "unprintable date (\(seconds) s since 1970)"
+    }
+    let ms = (seconds * 1000).rounded(.down)
     let f = DateFormatter()
     f.locale = Locale(identifier: "en_US_POSIX")
     f.timeZone = TimeZone(identifier: "UTC")

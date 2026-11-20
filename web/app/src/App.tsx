@@ -6,7 +6,7 @@
 
 import { APP_NAME, emptyVault, formatBuildLabel, listSessions, type Vault } from "@sessionvault/core";
 import { Info, MessagesSquare, TriangleAlert } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { BUILD } from "./build.ts";
 import { EmptyState } from "./components/controls.tsx";
 import { type ImportActions, ImportPanel } from "./components/ImportPanel.tsx";
@@ -78,14 +78,51 @@ export function App({ initialPath }: { initialPath?: string }) {
   const selected =
     selectedId === null ? undefined : vault.sessions.find((session) => session.id === selectedId);
 
+  // The session that is open, or the one that was open last. The list is windowed, and the row of
+  // this session stays in the page wherever the list is scrolled to.
+  const [lastOpened, setLastOpened] = useState<string | null>(null);
+  if (selectedId !== null && selectedId !== lastOpened) setLastOpened(selectedId);
+
+  // On a small window the list and the open session are one screen at a time and share the
+  // scroll position of the page (app.css). A session opens at its top, and the list comes back
+  // where it was (design.md 4.4). The browser's own restoring is switched off: it would run after
+  // the screen has changed, on a page of another height.
+  const shell = useRef<HTMLDivElement>(null);
+  const detailPane = useRef<HTMLElement>(null);
+  const listScroll = useRef(0);
+  const shownScreen = useRef(location.screen.name);
+  useEffect(() => {
+    window.history.scrollRestoration = "manual";
+    const remember = (): void => {
+      if (shownScreen.current === "list") listScroll.current = window.scrollY;
+    };
+    window.addEventListener("scroll", remember, { passive: true });
+    return () => window.removeEventListener("scroll", remember);
+  }, []);
+
   // Leaving a session for the list: the focus goes to the row of that session, or to the title
   // of the list if the row is not there, instead of being lost on the page.
   const left = useRef<string | null>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const before = left.current;
     left.current = selectedId;
-    if (before === null || selectedId !== null) return;
-    const row = [...document.querySelectorAll<HTMLElement>("a[href]")].find(
+    shownScreen.current = selectedId === null ? "list" : "detail";
+    if (before === selectedId) return;
+    const oneScreen = shell.current !== null && window.getComputedStyle(shell.current).display === "block";
+    if (selectedId !== null) {
+      // Another session: it is shown from its top.
+      if (oneScreen) window.scrollTo(0, 0);
+      else detailPane.current?.scrollTo(0, 0);
+      return;
+    }
+    if (oneScreen) {
+      window.scrollTo(0, listScroll.current);
+      // The list hears of it now, not a frame later, and draws the rows of that place before the
+      // browser paints.
+      document.dispatchEvent(new Event("scroll"));
+    }
+    if (before === null) return;
+    const row = [...document.querySelectorAll<HTMLElement>("a.row")].find(
       (link) => link.getAttribute("href") === `/sessions/${before}`,
     );
     (row ?? document.querySelector<HTMLElement>(".list-header__title"))?.focus();
@@ -159,13 +196,14 @@ export function App({ initialPath }: { initialPath?: string }) {
   ) : null;
 
   return (
-    <div className="shell" data-screen={location.screen.name}>
+    <div ref={shell} className="shell" data-screen={location.screen.name}>
       <SessionList
         sessions={listed}
         total={vault.sessions.length}
         query={query}
         onQuery={setQuery}
         selectedId={selectedId}
+        keepId={selectedId ?? lastOpened}
         now={now}
         onOpen={openSession}
         onImport={openImport}
@@ -185,7 +223,7 @@ export function App({ initialPath }: { initialPath?: string }) {
           </p>
         }
       />
-      <main className="detail-pane">
+      <main ref={detailPane} className="detail-pane">
         {selected !== undefined ? (
           <SessionDetail key={selected.id} session={selected} onBack={showList} onCopyFailed={copyFailed} />
         ) : selectedId !== null ? (

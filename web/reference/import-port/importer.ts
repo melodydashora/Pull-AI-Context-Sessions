@@ -304,6 +304,19 @@ const SHARE_BARE_HEADERS: { line: string; role: Role; provider: Provider | null 
   { line: "Gemini said", role: "assistant", provider: "Gemini" },
 ];
 
+// W6: the text after a speaker header is a preview exactly when the first non-blank line of the
+// turn begins with it, after one trailing U+2026 or "..." and the white space before it have been
+// cut from it. Equality is the special case. What is dropped therefore always stands at the start
+// of the next line: a dropped preview never loses text.
+function isPreviewOf(label: string, body: string[]): boolean {
+  let stem = label;
+  if (stem.endsWith("\u2026")) stem = stem.slice(0, -1);
+  else if (stem.endsWith("...")) stem = stem.slice(0, -3);
+  stem = trimInline(stem);
+  const first = body.find((line) => trimInline(line) !== "");
+  return first !== undefined && trimInline(first).startsWith(stem);
+}
+
 function parseShareTextWeb(text: string, title: string): ImportedSession | null {
   const lines = text.split("\n");
   const trimmedLines = lines.map(trimInline);
@@ -316,7 +329,13 @@ function parseShareTextWeb(text: string, title: string): ImportedSession | null 
   let headerRemainder = "";
   let currentLines: string[] = [];
   const flush = () => {
-    let cleaned = trimAll(cleanTranscriptLinesWeb(currentLines).join("\n"));
+    let kept = cleanTranscriptLinesWeb(currentLines);
+    // W6 (defect D19): the text on a speaker line is the first line of its turn, unless it is a
+    // preview of what follows. Apple drops it whenever more text follows.
+    if (headerRemainder !== "" && !isPreviewOf(headerRemainder, kept)) {
+      kept = cleanTranscriptLinesWeb([headerRemainder, ...currentLines]);
+    }
+    let cleaned = trimAll(kept.join("\n"));
     // A turn whose only text sits on its header line is kept instead of vanishing.
     if (cleaned === "") cleaned = headerRemainder;
     if (currentRole !== null && cleaned !== "") messages.push({ role: currentRole, text: cleaned });

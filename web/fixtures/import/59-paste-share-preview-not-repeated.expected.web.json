@@ -1,0 +1,49 @@
+{
+  "fixture": "59-paste-share-preview-not-repeated",
+  "source": "web-target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "notes": [
+    "Share-page text whose speaker lines end in an ellipsis like a preview, while the text after them does not repeat it.",
+    "Apple discards the text after the header as a preview. Here the next line does not begin with it, so the words exist nowhere else and are lost. The web app drops such text only when the first non-blank line after it begins with it, after one trailing ellipsis has been cut for the comparison; otherwise it keeps the text as the first line of the turn, ellipsis included."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "My starter smells\u2026\nIt has been in the fridge for two weeks.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "My starter smells\u2026\nIt has been in the fridge for two weeks."
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "That smell\u2026\nFeed it twice a day for two days.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "That smell\u2026\nFeed it twice a day for two days."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

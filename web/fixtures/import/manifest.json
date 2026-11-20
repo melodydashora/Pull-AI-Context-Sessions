@@ -1393,6 +1393,60 @@
         "W13"
       ],
       "difference": "Only the four cases whose name starts with DIFFERENT differ. Apple: CR breaks every fence; a line that starts with three backticks always opens a block, even when it is a one-line code span; fences are exactly three backticks, so a four-backtick fence is mis-split. The web app normalises line endings and follows the CommonMark fence rules for backtick fences."
+    },
+    {
+      "id": "58-paste-share-text-on-header-line",
+      "kind": "defect-fix",
+      "entry": "paste",
+      "input": "58-paste-share-text-on-header-line.input.txt",
+      "input_bytes": 176,
+      "input_sha256": "d40dfc4b6747b9d35cbc34ea96553141e1163886931bf59e6fbdd282dd1a79a2",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "apple": "58-paste-share-text-on-header-line.expected.apple.json",
+        "web": "58-paste-share-text-on-header-line.expected.web.json"
+      },
+      "summary": "Text in the share-page shape as a person types it: a sentence on each speaker line, a blank line, more text.",
+      "covers": [
+        "text on a speaker line is the first line of the turn",
+        "the blank line after it is kept"
+      ],
+      "rules": [
+        "D19",
+        "W6"
+      ],
+      "difference": "Apple discards the text after 'You said:' and 'Claude responded:' whenever more text follows: the first sentence of both turns is lost. The web app keeps it as the first line of the turn, because the line after it does not begin with it."
+    },
+    {
+      "id": "59-paste-share-preview-not-repeated",
+      "kind": "defect-fix",
+      "entry": "paste",
+      "input": "59-paste-share-preview-not-repeated.input.txt",
+      "input_bytes": 138,
+      "input_sha256": "777f2437210e662aedf2267d43e504fd3d6a80440a779241fb429418df31d9a7",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "apple": "59-paste-share-preview-not-repeated.expected.apple.json",
+        "web": "59-paste-share-preview-not-repeated.expected.web.json"
+      },
+      "summary": "Share-page text whose speaker lines end in an ellipsis like a preview, while the text after them does not repeat it.",
+      "covers": [
+        "a preview that the next line does not begin with is kept",
+        "the ellipsis is cut for the comparison only"
+      ],
+      "rules": [
+        "D19",
+        "W6"
+      ],
+      "difference": "Apple discards the text after the header as a preview. Here the next line does not begin with it, so the words exist nowhere else and are lost. The web app drops such text only when the first non-blank line after it begins with it, after one trailing ellipsis has been cut for the comparison; otherwise it keeps the text as the first line of the turn, ellipsis included."
     }
   ]
 }

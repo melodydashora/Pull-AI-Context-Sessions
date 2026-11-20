@@ -42,6 +42,6 @@ python3 "$HERE/select_cases.py" "$REPO" "$WORK/cases-all.json" "$WORK/cases-appl
 sandbox-exec -p '(version 1)(allow default)(deny file-write*)' \
   "$WORK/importer-harness" "$WORK/cases-apple.json" --watchdog-ms 60000 > "$WORK/out-apple.json"
 
-# 6. Compare with the expected files. The last line should read: apple equal 55 different 0 skipped 2
+# 6. Compare with the expected files. The last line should read: apple equal 57 different 0 skipped 2
 python3 "$HERE/select_cases.py" --pad "$WORK/out-apple.json" "$WORK/skipped.json" "$WORK/out-padded.json"
 python3 "$PORT/compare.py" "$REPO" "$WORK/out-padded.json" apple

@@ -22,18 +22,18 @@ If `xcrun` reports that it requires Xcode, set `DEVELOPER_DIR` as the README at 
 Expected last line:
 
 ```text
-apple equal 55 different 0 skipped 2
+apple equal 57 different 0 skipped 2
 ```
 
 Fixtures 10 and 11 have no recorded Apple result and are not run: on fixture 10 the real importer never returns, and on fixture 11 the order of its result changes from run to run (`../../fixtures/import/README.md`).
 
 ## When the result differs
 
-- A line `CHANGED <path>` at the top only says that a Swift file differs from the one the manifest names. If the comparison still ends with "equal 55 different 0", behaviour did not change: record the new commit and the new SHA-256 values in `manifest.json` under `apple_side`, in a commit of its own.
+- A line `CHANGED <path>` at the top only says that a Swift file differs from the one the manifest names. If the comparison still ends with "equal 57 different 0", behaviour did not change: record the new commit and the new SHA-256 values in `manifest.json` under `apple_side`, in a commit of its own.
 - A `DIFF` line means the Apple app now behaves differently on that fixture. Do not edit the expected file to make it pass. Find out which change in the Swift source caused it, decide whether the web target (`*.expected.web.json`) is affected, and record the evidence in the commit.
 
 ## What this is not
 
 It is not a test of the web app, and it is not needed to build the web app. The web targets are the `*.expected.web.json` and `*.expected.json` files; `../import-port/` checks those without a Mac.
 
-History: first run at commit `c227766` (2026-11-19). Run again at commit `ca37361` (2026-11-20) after a Copy button had been added to `MessageView.swift`: the raw output for the 55 cases was byte-identical to the first run.
+History: first run at commit `c227766` (2026-11-19). Run again at commit `ca37361` (2026-11-20) after a Copy button had been added to `MessageView.swift`: the raw output for the 55 cases was byte-identical to the first run. On 2026-11-20 ten further inputs were run at commit `cefc9ef`; two of them became fixtures 58 and 59, so 57 cases have an Apple result from then on.

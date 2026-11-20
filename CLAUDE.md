@@ -42,7 +42,9 @@ Instructions for Claude Code sessions, and a fair summary for people. `README.md
 - A browser profile that holds a sign-in is a credential, and the puller's output is private. Neither belongs in a place other people can read; `.gitignore` only keeps them out of git.
 - A server started there serves the app's own build output only, never the workspace folder.
 - Secrets live in Replit's secret store, never in `.replit` or in a file. The shell can read them and cannot set them: setting one is a step for the owner.
-- Replit adds a `[[ports]]` entry to `.replit` by itself when a process opens a port, also for a port bound to localhost. Read `git diff .replit` before committing that file, and do not treat a localhost port as private.
+- Replit adds a `[[ports]]` entry to `.replit` by itself when a process opens a port, also for a port bound to localhost. Read `git diff .replit` before committing that file, and do not treat a localhost port as private. That section is Replit's own: it can replace a hand-written entry, so expect it to differ from git.
+- A Claude Code session that has run for hours can lose the ability to push: Replit's git sign-in helper depends on a session of the shell it was started from, and GitHub then answers "Invalid username or token". A newly opened Shell pushes. Start the session again from a new Shell, or push from one.
+- `npm install` on Replit writes the platform's own package proxy into `package-lock.json`. Rewrite new `resolved` addresses to `https://registry.npmjs.org/`, or the file installs nowhere else; `npm ci` on Replit works with them (`web/docs/web-platform.md` 10.11, M16).
 - A published app is built from the files on disk. `.replitignore` decides what it contains; `.gitignore` does not (reported by the session in the workspace, not confirmed by the platform's public documentation: `web/docs/web-platform.md` 10.12, P7).
 - A Chromium that crashes writes a dump that contains its whole environment (by default under `.config/chromium/Crash Reports/` in the workspace). Start browsers with a minimal environment and with their configuration and cache folders outside the workspace, and delete such dumps.
 

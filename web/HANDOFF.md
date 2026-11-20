@@ -12,7 +12,11 @@ The Apple app does this for one person on Mac, iPhone and iPad. The web app does
 
 **What matters most.** The owner depends above all on the context pipeline: getting a conversation in (capture and import), and getting its context out again in a form another model can use (the context pack). Accounts, sync and the Claude features exist to serve that pipeline. When priorities conflict, the pipeline wins, and it is the part that must be tested most thoroughly.
 
-**How it is used.** The owner asks free-form questions about a saved session, of a model of her choosing, and takes the answer elsewhere. So: no preset questions and no forced output formats; the model list is the user's choice, not a fixed menu; and every message and every reply can be copied whole with one action, not only code blocks.
+**How it is used.** A person asks free-form questions about a saved session, of a model of their choosing, and takes the answer elsewhere. That gives three rules:
+
+- No preset questions and no forced output formats. Summarize stays as the one built-in action; nothing else rewrites or wraps what the user asks.
+- The model is the user's choice. Inside the app that means Claude models: the server offers the models it knows, and also accepts any other model id that the user's own key can use (with conservative settings for an id it does not know). Models of other providers are reached by pasting a context pack; calling other providers' APIs is not in scope.
+- Every message and every reply can be copied whole with one action, at every width. Code blocks keep their own copy action.
 
 ## 2. Decisions already made by the owner
 
@@ -34,12 +38,12 @@ Recommended unless the builder finds a concrete reason against it in the Replit 
 - **TypeScript end to end.** A React + Vite single-page app, installable as a PWA and usable at phone width; a small Node server; PostgreSQL.
 - **One shared core module** with no DOM and no Node dependencies: the interchange types, the import parsers and the context-pack builder. It runs in the browser and on the server and is tested against the golden files in `fixtures/`.
 - **The server is the source of truth for the vault.** Every row belongs to one user. The browser keeps a copy in IndexedDB for offline reading and queues changes made offline (phase 5).
-- **Claude is called by the server with the signed-in user's own key.** Anthropic's documentation says to call the API from a back end, not from code in the browser, and refuses direct browser calls for some organisations. So each user's key is stored on the server, encrypted with a key that lives in the platform's secret store, used only for that user's requests, never sent back to the browser, and removable by the user at any time. `docs/claude-api.md` describes the server side in detail for a single key; the per-user variant is one of the revisions listed in section 5.
+- **Claude is called by the server with the signed-in user's own key.** Anthropic's documentation says to call the API from a back end, not from code in the browser, and refuses direct browser calls for some organisations. So each user's key is stored in the database, encrypted with a key that lives in the platform's secret store, used only for that user's requests, never sent back to the browser, and removable by the user at any time. `docs/claude-api.md` describes the server side in detail for a single key; the per-user variant is one of the revisions listed in section 5.
 
 Open choices, each with a default the builder may take without asking:
 
 1. **Sign-in method.** Default: e-mail sign-in through a maintained library or hosted provider; never hand-written password storage. `docs/web-platform.md` compares what the platform offers, and notes which options only Replit Agent can set up.
-2. **Who may sign up at first.** Default: invitation only (an allow-list of e-mail addresses or invitation codes held in configuration) until the owner opens sign-up. The app must be safe for strangers before that switch is flipped (phase 6).
+2. **Who may sign up at first.** Default: invitation only, until the owner opens sign-up. The list of invited addresses or codes is held in the database or in the platform's secret store, never in the repository. The app must be safe for strangers before that switch is flipped (phase 6).
 3. **How link capture runs in deployment** (phase 3). Capture of public share links is part of the product, not an extra. The workspace can launch a headless Chromium today; whether a deployed app can is not yet known. If it cannot, keep the capture code behind one interface and say so, so that it can run somewhere that can.
 
 Facts about the Replit workspace, measured on 2026-11-20 by the session working there:
@@ -56,7 +60,7 @@ Facts about the Replit workspace, measured on 2026-11-20 by the session working 
 |---|---|
 | `docs/import-rules.md` | Every import path and parser rule of the Apple app, the guards against importing a sign-in page, 18 defects that the web app must not copy, and the rules it follows instead. |
 | `fixtures/import/` | 57 synthetic inputs with the outputs the real Apple importer produces for them, and the corrected outputs where the Apple behaviour is a defect. `manifest.json` drives the suite; `README.md` explains the format. These are the acceptance tests of the parser port. |
-| `reference/import-port/` | A TypeScript port of the importer written from `import-rules.md`. In its "apple" mode it equals the real Swift importer on every fixture and on 30,000 random inputs; its "web" mode generated the corrected outputs. It is a verification instrument, not reviewed product code: adopt it, rewrite it or ignore it. The fixtures are the contract. |
+| `reference/import-port/` | A TypeScript port of the importer written from `import-rules.md`, with two small scripts that feed it the manifest and compare its output with the expected files. In its "web" mode it equals all 57 targets; in its "apple" mode it equals the real Swift importer on every fixture and on 30,000 random inputs. It is a verification instrument, not reviewed product code: adopt it, rewrite it or ignore it. The fixtures are the contract. |
 | `docs/data-model.md` | Every entity and field of the Apple app, search and sort rules, the context-pack template, the interchange JSON (version 1) and a PostgreSQL schema draft. |
 | `docs/interchange-schema-v1.json`, `docs/example-vault-export.json` | The interchange format as a JSON Schema, and a synthetic example that validates against it. |
 | `docs/capture.md`, `docs/capture-scripts/` | How the Apple app captures a conversation from a link; the page scripts lifted verbatim out of the app, the puller and the reference app; 13 synthetic pages with observed results; a draft selectors file and a prototype extractor; and the tiered plan for the web. |
@@ -66,25 +70,32 @@ Facts about the Replit workspace, measured on 2026-11-20 by the session working 
 | `../apple/SessionVault/` | The Swift source. When a document and the code disagree, the code is right about what the Apple app does; say so in a commit that fixes the document. |
 | `../apple/screenshots/` | Three screenshots of the app on an iPhone simulator. |
 
-Section, rule and fixture numbers are cited across the documents (for example `import-rules.md` C8 or W13, `data-model.md` 9.3). Do not renumber them.
+Section, rule and fixture numbers are cited across the documents (for example `import-rules.md` C8 or W13, `data-model.md` 9.3). Do not renumber them. Line numbers that the documents cite into Swift files are exact; line numbers into `puller/pull_sessions.py` and into README files refer to those files as they were before commit `34e84d3`, which moved lines.
 
 ## 5. Status of the documents
 
-The documents were extracted from the Swift source before the owner's decisions in section 2 were final. They were written for one owner and one server-side API key. Each document has three parts: what the Apple app does, which of its defects not to copy, and what the web must do differently. The first two parts do not depend on the decisions and are ready to build from. The third part is being revised where the decisions change it.
+The documents were extracted from the Swift source before the owner's decisions in section 2 were final. They were written for one owner and one server-side API key. Each document has three parts: what the Apple app does, which of its defects not to copy, and what the web must do differently.
+
+- What the Apple app does, and what is wrong with it, does not depend on the decisions and is ready to build from.
+- The "do instead" side of three defect rows was written for a single server key and is superseded by section 3: `claude-api.md` B11, `web-platform.md` B4 and `design.md` B28. Each user enters, replaces and removes their own key.
+- The web-design parts are being revised where the decisions change them. Until the revised documents land, an opening summary or a "do instead" cell that speaks of one owner, of one server key, or of capture as the last and optional step is out of date.
 
 | Needed for | Ready now | Being revised (do not build from these parts yet) |
 |---|---|---|
-| Phases 0 and 1 | `import-rules.md`, `fixtures/import/`, `reference/import-port/`; in `data-model.md` the interchange format, the context pack and the shared pure functions; in `design.md` the message rendering rules | nothing |
-| Phase 2 | In every document, the parts about the Apple app and its defects | `data-model.md`: user accounts and the fields that sync needs. `web-platform.md`: the sign-in and security baseline assume a single owner. `design.md`: sign-up and invitation screens. |
-| Phase 3 | `capture.md` sections on the Apple pipeline and its defects; `capture-scripts/` | `capture.md`: eight further defects proven on mock pages by the Replit session are being added; the tier order follows section 7 of this file, not the document's own recommendation. |
-| Phase 4 | `claude-api.md` parts A and B, the prompt module, the outcome rules and the test plan | `claude-api.md` part C: one stored key per user instead of one server key. |
-| Phase 5 | `web-platform.md` on installability, share target and browser storage | The sync protocol for the offline copy: a new document, `docs/sync.md`, is to come. |
+| Phases 0 and 1 | `import-rules.md`, `fixtures/import/`, `reference/import-port/`; in `data-model.md` the interchange format (section 6), the shared pure functions (section 8), the test vectors (section 9) and the context pack; in `design.md` the message rendering rules | nothing |
+| Phase 2 | In every document, the parts about the Apple app and its defects | `data-model.md` section 7: user accounts, mandatory protection between users, the fields that sync needs. `web-platform.md` section 11: the sign-in and security baseline assume a single owner. `design.md`: sign-in, invitation, account deletion and settings screens; a copy action on every message. |
+| Phase 3 | `capture.md` sections on the Apple pipeline and its defects; `capture-scripts/` | `capture.md`: eight further defects proven on mock pages by the Replit session are being added; the tier order is the one in section 7 of this file (paste and file in phase 2, server capture in phase 3, share target in phase 5, extension out of scope), not the document's own. |
+| Phase 4 | `claude-api.md` parts A and B, and in part C the prompt module (C3), the turn lifecycle (C5), the outcome rules (C7) and the test plan (C11) | `claude-api.md`: every section of part C that assumes one key or one owner, in particular C1, C2, C13 and the C14 row on who pays. `design.md`: the key screen and the model chooser. |
+| Phase 5 | `web-platform.md` on installability, share target and browser storage limits | `web-platform.md` 7.3 items 3 and 4 (an opt-in, read-only offline copy) are superseded by section 2: the offline copy covers the vault and accepts changes. The sync protocol is a new document, `docs/sync.md`, to come. |
 
-Known disagreements between the documents, until the revision lands:
+Known disagreements between the documents, until the revision lands. Follow the one named:
 
-- `web-platform.md` 6.1 keeps the Apple rule for recognising a link on the clipboard; `capture.md` 8.1 (`looksLikeLink`), `design.md` and fixture 32 replace it. Follow `capture.md` 8.1.
-- `web-platform.md` 9.4 stores the user's chat message before the reply arrives; `claude-api.md` C5 commits the user message and the reply together. Follow `claude-api.md` C5.
-- `data-model.md` and `claude-api.md` differ on when a session's model label is filled. Follow `claude-api.md`.
+- A link on the clipboard: `web-platform.md` 6.1 keeps the Apple rule; `capture.md` 8.1 (`looksLikeLink`), `design.md` and fixture 32 replace it. Follow `capture.md` 8.1. Known gap: that rule still accepts a bare file name such as `notes.md` and an e-mail address as a link; it will be tightened with its own fixtures.
+- A chat turn: `web-platform.md` 9.4 stores the user's message before the reply arrives; `claude-api.md` C5 commits the user message and the reply together. Follow `claude-api.md` C5.
+- The session's model label: `data-model.md` and `claude-api.md` differ on when it is filled. Follow `claude-api.md`.
+- Rendering prose: `data-model.md` 5 mentions a CommonMark library; `design.md` specifies a small renderer with golden cases. Follow `design.md`.
+- Reading files: `web-platform.md` 6 uses `file.text()` and detects the format from extension and content; `import-rules.md` forbids `File.text()` (bytes are decoded explicitly) and decides by extension. Follow `import-rules.md`.
+- The key under which Claude details are kept in a message's extra data: `claude-api.md` writes `claude`, `data-model.md` writes `x_claude`. Follow `data-model.md`.
 
 ### A gap seen on a real page (2026-11-20)
 
@@ -93,7 +104,7 @@ The owner captured a Claude Code session share link with the Apple app and built
 - Tool activity is collapsed on the page into one-line summaries (for example "Used a tool 5 times" or "Ran a command"). What the tools read and returned is not in the captured text, so the context pack lacks most of the substance of the session.
 - The first sentence of each message is captured twice: once as the page's preview line and once in the full text.
 - Housekeeping lines (session initialised, messages from subagents) are captured as separate notes, and the title is the link id.
-- This link form needs a signed-in viewer. The server-side capture of phase 3 is for public pages only, so it cannot fetch such a link. For Claude Code sessions the capture route stays the puller, which drives a signed-in browser on the user's own machine, until the product has a signed-in path of its own.
+- This link form needs a signed-in viewer. The server-side capture of phase 3 is for public pages only, so it cannot fetch such a link. For Claude Code sessions the capture route stays the puller, run by the owner on a Mac, on a Windows PC or in the Replit workspace, until the owner asks for a capture that runs in the user's own browser. The server never signs in to a provider.
 
 What this means for the build:
 
@@ -108,8 +119,8 @@ In scope:
 - Accounts and a private vault per user.
 - Import by paste and by file; capture of public share links; export and import of the interchange JSON; whole-vault export.
 - Session list, detail view, projects, tags, pinning, timeline, search.
-- Context pack: copy, download, share.
-- Continue with Claude and Summarize, with the user's own key.
+- Context pack: copy, download, share. A copy action on every message.
+- Continue with Claude and Summarize, with the user's own key and a model of the user's choice.
 - Installable app; offline copy; receiving shared text and links on Android.
 - Account deletion that removes the user's data.
 
@@ -118,8 +129,8 @@ Out of scope until the owner asks:
 - Payments, plans, usage metering.
 - Shared or team vaults; any way for one user to see another's sessions.
 - End-to-end encryption of transcripts.
-- A browser extension or bookmarklet; capture of private (signed-in) conversations.
-- Stored page snapshots ("View Original" PDFs) and images inside transcripts.
+- A browser extension or bookmarklet; capture of private (signed-in) conversations; calling the APIs of providers other than Anthropic.
+- Creating page snapshots ("View Original" PDFs) and capturing images inside transcripts. Attachment bytes that arrive in an interchange import are still stored and exported again unchanged, so that a session can travel from the Apple app to the web and back without losing them.
 - Any change to the Apple app.
 
 ## 7. Phases
@@ -128,72 +139,80 @@ Each phase ends with something that runs and with tests that pass. Do not start 
 
 ### Phase 0: workspace
 
-- Folder layout inside `web/`: `core/` (shared module), `server/`, `app/` (browser), plus the existing `docs/`, `fixtures/` and `reference/`.
-- Add the Node module to `.replit`. TypeScript in strict mode, one formatter, one linter, one test runner, a single command that runs all tests.
-- A second workflow in `.replit` that starts the web app in development. The existing "Session login (VNC)" workflow of the puller must keep working.
-- The database connection string and every other secret come only from the platform's secret store, never from a file.
+- Folder layout inside `web/`: `core/` (shared module), `server/`, `app/` (browser), plus the existing `docs/`, `fixtures/` and `reference/`. The package files (`package.json` and the like) live inside `web/`: the top level of the repository is an allow-list, and a file placed there is invisible to git until its name is added at the end of `.gitignore`.
+- Add the Node module to `.replit`; use a current long-term-support version. TypeScript in strict mode, one formatter, one linter, one test runner, a single command that runs all tests. The formatter and the linter skip `docs/`, `fixtures/` and `reference/`, and `reference/` is not part of the strict TypeScript project.
+- A second workflow in `.replit` that starts the web app in development. Whether it joins the "Project" run group is the builder's choice. The "Session login (VNC)" workflow of the puller stays as it is.
+- The database connection string and every other secret of the app come only from the platform's secret store, never from a file.
 
-Done when: the test command passes on a clean checkout; the development workflow serves a page that shows the app name and build version; the puller workflow still starts.
+Done when: the test command passes on a clean checkout; the development workflow serves a page that shows the app name and build version; the "Session login (VNC)" block in `.replit` is unchanged.
 
 ### Phase 1: core module (the context pipeline without a server)
 
-- Interchange types generated from or checked against `docs/interchange-schema-v1.json`.
+- Interchange types generated from or checked against `docs/interchange-schema-v1.json`; the reader (the rules R1 to R12 of `docs/data-model.md` 6.6 and the import algorithm of 6.7) and the writer (the export algorithm of 6.8).
 - Import parsers ported from `docs/import-rules.md`, driven by `fixtures/import/manifest.json`.
-- Context-pack builder ported from `docs/data-model.md`.
+- The shared pure functions of `docs/data-model.md` section 8 (context-pack builder, search and ordering helpers) with the test vectors of section 9.
+- Two entry points for files: a `.json` file whose `format` is `"sessionvault-interchange"` goes to the interchange reader; every other file goes to the transcript importer of `import-rules.md`.
 
-Done when: the test runner first verifies the SHA-256 of every fixture input against the manifest; every fixture passes against its target (`.expected.web.json` where one exists, otherwise `.expected.json`; never `.expected.apple.json`); `docs/example-vault-export.json` round-trips through parse and serialise without loss, including its unknown properties; the context packs for the example sessions match the hashes in `docs/data-model.md` section 9.3 byte for byte.
+Done when:
+
+- The test runner first verifies the SHA-256 of every fixture input against the manifest.
+- Every fixture passes against its target: `.expected.web.json` where one exists, otherwise `.expected.json`; never `.expected.apple.json`. Fixtures 37, 38 and 46 cover optional extensions and may be skipped if the extension is not built; say so in the test output.
+- `docs/example-vault-export.json` round-trips as the first test vector of `data-model.md` section 9 describes: imported, exported, and equal to the original after sorting arrays by id and ignoring `exported_at`, `generator` and the document-level `x_note` (top-level unknown properties describe the file and are not stored, 6.5). Every other unknown property survives.
+- The context packs for the example sessions match the sizes and hashes in `docs/data-model.md` section 9.3 byte for byte.
 
 ### Phase 2: accounts and the online vault
 
 - Sign-in, sign-out, session cookies, invitation gate.
 - Database schema and migrations; an API for sessions, messages, projects and tags; every query scoped to the signed-in user.
 - Import by paste and by file with the per-file report and warnings of `import-rules.md` section 4; JSON export and import; whole-vault export; account deletion.
-- The screens in `docs/design.md`: list, detail, import, organise, search, context pack, settings.
+- The screens in `docs/design.md`: list, detail, import, organise, search, context pack, settings. Every message has a copy action.
 
-Done when: the isolation tests pass (section 8); a new user can sign in, import each fixture by paste and by file, find it by search, organise it, copy its context pack, export it, and delete the account, at phone width and at desktop width.
+Done when: the isolation tests pass (section 8); and an invited new user can sign in, import each file fixture through the file picker and each paste fixture through the paste field with the outcome its web target states (sessions, a rejection with its reason, or a link), find an imported session by a word of its title, organise it, copy a whole message and its context pack, export it, and delete the account, at phone width and at desktop width.
 
 ### Phase 3: link capture
 
-As `docs/capture.md`, tier T3: the server opens a public share link in a headless browser, runs the extraction, and hands the result to the same import path as a paste. Public share links only, allow-listed hosts only, never a sign-in.
+As `docs/capture.md`, tier T3: the server opens a public share link in a headless browser, runs the extraction, and hands the result to the capture entry of the importer (`importCapture` in `import-rules.md`; whole-page text then goes the same way as a paste). Public share links only, allow-listed hosts only, never a sign-in.
 
-- Every provider is switched off in configuration until two things are true: its selectors have been checked against one real public page, and the owner has agreed to automated capture for that provider after reading its terms (section 9).
-- Fix, do not copy, the defects listed in `capture.md` and the eight proven on mock pages: a stray `data-index` element hijacking the capture, the wrong scroll container, image-only turns dropped, cross-origin images lost, silent limits on images, a scroll walk on static pages, content that arrives late, and nested articles returned twice.
-- The Replit session contributes its mock pages and harness as `fixtures/capture/`.
+- Every provider is switched off until two things have happened, in this order: the owner has agreed to automated capture for that provider after reading its terms (section 9); then its selectors are checked against one real public page. That check is made by the owner, or on the published app with nothing stored or committed. It is never made in the workspace.
+- Fix, do not copy, the defects listed in `capture.md` and the eight proven on mock pages: a stray `data-index` element hijacking the capture, the wrong scroll container, image-only turns dropped, cross-origin images lost, silent limits on images, a scroll walk on static pages, content that arrives late, and nested articles returned twice. Images themselves stay out of scope: "fix" means that a turn is never dropped silently. It is kept with a placeholder and a warning.
+- The builder's own Chromium mock pages and harness, kept outside git until now, go into `fixtures/capture/`. The pages under `docs/capture-scripts/fixtures/` were recorded in WebKit only; compare after the normalisation that `capture.md` describes and expect small differences between engines.
 
-Done when: every page under `fixtures/capture/` and `docs/capture-scripts/fixtures/` produces the documented turns and roles; the protections in `capture.md` are covered by tests, including refused hosts, refused redirects and refused private addresses; a sign-in page gives the documented warning or refusal; and, for each provider the owner has switched on, the owner has captured one real public share link. That last check is made by the owner on the published app, never in the workspace or the development database.
+Done when: every page under `fixtures/capture/` and `docs/capture-scripts/fixtures/` produces the documented turns and roles; the protections in `capture.md` are covered by tests, including refused hosts, refused redirects and refused private addresses; a sign-in page gives the documented warning or refusal; and, for each provider the owner has switched on, the owner has captured one real public share link on the published app.
 
 ### Phase 4: Claude features
 
 - Each user enters their own key in settings; it is validated, stored encrypted, and can be replaced or removed.
-- Continue with Claude (streaming) and Summarize; refusals, truncation, errors and Stop handled as `docs/claude-api.md` specifies.
-- The model list comes from server configuration, not from client code, and uses the current model ids given in `docs/claude-api.md`, not the Apple app's list.
+- Continue with Claude (streaming) and Summarize; refusals, truncation, errors and Stop handled as `docs/claude-api.md` specifies. Every reply has a copy action.
+- The model chooser offers the models the server knows (a server-side registry with each model's properties, using the current model ids given in `docs/claude-api.md`, not the Apple app's list) and accepts any other model id the user's key can use.
 
-Done when: with a scripted fake upstream, the cases in `docs/claude-api.md` C11 pass; no response of this server ever contains a key and keys are unreadable in a database dump (tests assert both); one user's key is never used for another user's request (a test asserts it); the owner has made one real exchange with a real key, on the published app, never in the workspace.
+Done when: with a scripted fake upstream, the cases in `docs/claude-api.md` C11 pass; no response of this server ever contains a key and keys are unreadable in a database dump (tests assert both); one user's key is never used for another user's request (a test asserts it); a reply can be copied whole; and the owner has made one real exchange with a real key on the published app, never in the workspace.
 
 ### Phase 5: installable, offline, share target
 
 - Web app manifest and service worker; the app shell loads without a network.
 - An IndexedDB copy of the user's vault, filled by a "changes since" request; reading works offline.
-- Changes made offline are queued and replayed in order; each carries an identifier so that a replay is harmless.
+- Changes made offline are queued and replayed in order; each carries an identifier so that a replay is harmless. Signing out with unsent changes warns first or sends them first; it never drops them silently.
 - Android share target: text, links and files shared from another app open the import screen with the content filled in.
 
-Done when: with the network off, an installed app opens, lists and shows sessions synced earlier, and accepts an import that appears on a second device after reconnecting; signing out removes the local copy.
+Done when: the automated checks pass (the manifest is valid and installable by the browser's own criteria, the service worker serves the shell offline and never handles `/api/` requests except the share target, the protocol tests of `docs/sync.md` pass with two simulated devices); and the owner has confirmed on real devices that an installed app opens offline, lists and shows sessions synced earlier, accepts an import that appears on a second device after reconnecting, receives a share from another Android app, and that signing out removes the local copy.
 
 ### Phase 6: ready for strangers
 
-Before the invitation gate is opened: rate limits, per-user storage limits, the security baseline in `docs/web-platform.md` verified item by item, backups tested by a restore, and a privacy policy and terms supplied by the owner (do not write legal text on your own; ask).
+Before the invitation gate is opened: rate limits, per-user storage limits (the value is an owner decision), the revised security baseline in `docs/web-platform.md` verified item by item, and a privacy policy and terms supplied by the owner (do not write legal text on your own; ask).
+
+Done when: each item of the baseline has a test or a recorded manual check; a restore from backup has been carried out by the owner in the platform's interface and the restored data verified; the owner has supplied the policy and terms and has said in writing that sign-up may open.
 
 ## 8. Rules that hold in every phase
 
 Privacy and security:
 
-- **Isolation.** No request may read or change another user's data. Every endpoint has a test in which user A asks for user B's record and is refused.
+- **Isolation.** No request may read or change another user's data. Every endpoint has a test in which user A asks for user B's record and is refused. This is mandatory from the first migration, not later hardening.
 - **No transcript text, titles, API keys, cookies or e-mail addresses in logs, error reports or analytics.** Log identifiers and sizes only.
 - **Transcripts are untrusted text.** Render them as text or through the rendering rules in `docs/design.md`. Never inject them as HTML, never fetch anything a transcript names, and link only `http`, `https` and `mailto`. Set a content security policy that forbids inline and third-party scripts.
-- **Secrets** only in the platform's secret store. Nothing secret in the repository, in `.replit`, in client code or in a URL.
-- **The server opens a URL only for link capture** (phase 3), and only under the rules in `docs/capture.md`.
+- **Secrets.** The app's own secrets live only in the platform's secret store: nothing secret in the repository, in `.replit`, in client code or in a URL. Users' API keys are stored in the database, encrypted with a key from the secret store.
+- **The server opens a user-supplied URL only for link capture** (phase 3), and only under the rules in `docs/capture.md`.
 - **Never serve the workspace folder.** A development or production server serves the app's own build output and nothing else. A static server started at the top of the workspace would publish every file there, including ignored ones such as puller output and local notes.
-- **No real data in the workspace or the development database**: no real transcripts, exports or database dumps. Use the fixtures. Never ask for, load or keep a real session file there, not even to learn a format: the session on the Mac documents formats and writes the fixture by hand.
+- **No real data in the workspace or the development database**: no real transcripts, exports or database dumps. Use the fixtures. Never ask for, load or keep a real session file there, not even to learn a format: the session on the Mac documents formats and writes the fixture by hand. The one exception is the puller's own output when the owner runs the puller in the workspace; it stays outside `web/`, is ignored by git and is never served.
 - **No assistant or agent is pointed at production data.** Do not ask Replit Agent or any other tool to look into the production database or its logs: with other people's vaults that hands their transcripts to a third party. This also goes into the privacy policy of phase 6.
 - **Deleting means deleting**: account deletion removes rows, stored keys and files, and the local copies on a device are removed at sign-out.
 
@@ -207,20 +226,23 @@ Working in this repository (also in `../CLAUDE.md`):
 
 - Work only under `web/`, plus `.replit` and the web rules in `.gitignore` when needed. `puller/` belongs to the same Replit session by separate agreement; leave `apple/` and `reference/` alone.
 - The top level of the repository is an allow-list (see the end of `.gitignore`): a new top-level file or folder is ignored until its name is added there.
-- All test data must be synthetic. Never commit a real conversation, a real link or anything exported from a real vault.
+- All test data must be synthetic. Never commit a real conversation, a real link, an invited person's address or anything exported from a real vault.
 - Add files by name, read `git status` before every commit, never force a push. The workspace's Git panel commits every file that is not ignored: keep the working folder clean and use the command line.
 - Use the GitHub no-reply address as the commit identity.
-- Another session works on this repository from a Mac. Pull with `--ff-only` before you start, and announce a push to `main` to the other session first.
+- Another session works on this repository from a Mac. Pull with `--ff-only` before you start, and announce a push to `main` to the other session first, through the channel the owner has set up between the sessions.
 
 ## 9. What to ask the owner
 
-Only these need the owner. `import-rules.md` (section 7), `data-model.md` (section 12) and `claude-api.md` (C14) end with a list of smaller decisions and the default to build until they are answered; take those defaults without asking. In `capture.md`, `design.md` and `web-platform.md` such decisions are inline, marked "owner decision" or "open question"; where no default is given, ask.
+Only these need the owner.
 
 - The sign-in method, if none of the platform's options is clearly best, and the hosting plan and address (`docs/web-platform.md`).
 - For each provider (Claude, ChatGPT, Gemini): whether automated capture of public share links may be switched on, after reading that provider's terms.
-- When to open sign-up beyond invitations.
-- Privacy policy and terms, before phase 6.
 - How transcript text is stored at rest: the platform's encryption only, or encryption of the text fields by the app as well (`docs/web-platform.md` 11.6, `docs/data-model.md` 11.4). With other people's vaults this decides who can read them, so it is settled before the phase 2 schema is fixed.
+- The storage limit per user, and when to open sign-up beyond invitations.
+- Privacy policy and terms, before phase 6.
 - Any wish to add something from "out of scope".
 
-One default that is not the owner's to revisit per import: the original input (pasted text, file bytes, captured strings) is not kept beside the imported session. It would store more private text than the product needs.
+Smaller decisions are listed in the documents. `import-rules.md` (section 7), `data-model.md` (section 12) and `claude-api.md` (C14) end with such a list; in `capture.md`, `design.md` and `web-platform.md` they are inline, marked "owner decision" or "open question". For those:
+
+- A default stated in a document applies unless it contradicts section 2 of this file. One does: the row "Which Anthropic account pays" in `claude-api.md` C14 is void, because each user brings their own key.
+- Where no default is stated, choose the option that is easiest to reverse and record the choice in the commit message. Two are fixed here: the original input (pasted text, file bytes, captured strings) is not kept beside the imported session, because it would store more private text than the product needs; and an import that carries a warning shows a review step before it is saved.

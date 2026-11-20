@@ -15,10 +15,10 @@ Instructions for Claude Code sessions, and a fair summary for people. `README.md
 
 ## Rules
 
-1. **Everything pushed is public and permanent.** Never commit session transcripts or any puller output, real share links or session links, browser profiles, app data from `~/Library`, API keys or tokens, `.env` files, screenshots of real conversations, or private notes. Test data is always synthetic. The `Claude-Session` trailer in commit messages is the only exception to the rule about session links.
+1. **Everything pushed is public and permanent.** Never commit session transcripts or any puller output, real share links or session links, browser profiles, app data from `~/Library`, API keys or tokens, `.env` files, screenshots of real conversations, private notes, or other people's e-mail addresses (for example an invitation list). Test data is always synthetic. The `Claude-Session` trailer in commit messages is the only exception to the rule about session links.
 2. **Add files by name.** Never `git add -A`, `git add .` or `git commit -a`. Read `git status` before every commit. `.gitignore` is a safety net, not a guarantee.
 3. **Never force a push and never rewrite pushed history.** Run `git pull --ff-only` before starting. `main` is the only working branch; the two older branches on GitHub are history.
-4. **More than one session works here** (a Mac, a Replit workspace, sometimes a Windows PC). Tell the other session before pushing to `main`, and push with an explicit refspec.
+4. **More than one session works here** (a Mac, a Replit workspace, sometimes a Windows PC). Tell the other session before pushing to `main`, through the channel the owner has set up between the sessions, and push with an explicit refspec.
 5. **Commit identity is the repository owner's GitHub no-reply address**, set explicitly in each clone (`git config user.email ...`). Do not rely on a machine's global git identity.
 6. **Stay in your component.** A change under one of `apple/`, `puller/`, `web/` does not touch the others unless the task says so. `web/docs/` and `web/fixtures/` change only in a commit of their own that explains why.
 7. **LF line endings everywhere, except fixture folders.** `.gitattributes` enforces it; leave it in place. Files under a `fixtures/` folder are stored byte for byte (some contain CRLF, a byte-order mark or UTF-16 on purpose): never normalise them.
@@ -50,4 +50,4 @@ Only the puller runs there. Setup is in `README.md`.
 
 - `apple/` changed: both `xcodebuild` commands in `README.md` succeed.
 - `puller/` changed: `python puller/pull_sessions.py --help` runs, and the script still parses on Python 3.9.
-- `web/` changed: the test command described in `web/HANDOFF.md` passes.
+- `web/` changed: the test command of the web app passes (it exists once phase 0 of `web/HANDOFF.md` is done).

@@ -1,7 +1,7 @@
 {
   "schema": "sessionvault.capture-selectors/1",
   "version": "2026-11-19-draft",
-  "status": "DRAFT. No entry has been checked against a live provider page. Selectors come from the three extractors in this repository, which were themselves tested on mock pages at most. Share-link path shapes and the gemini-share strategy come from general knowledge and from one earlier review of cached page code. Verify every entry against a real page, add a fixture, and record the date in `verified` before relying on it.",
+  "status": "DRAFT. No entry has been checked against a live provider page. Selectors come from the three extractors in this repository, which were themselves tested on mock pages at most. Share-link path shapes and the gemini-share strategy come from general knowledge and from one earlier review. Verify every entry against a real page, add a fixture, and record the date in `verified` before relying on it.",
   "defaults": {
     "excludeInTurn": [
       "button",

@@ -51,7 +51,7 @@
         "apple": "02-puller-markdown-crlf.expected.apple.json",
         "web": "02-puller-markdown-crlf.expected.web.json"
       },
-      "summary": "The same transcript with CRLF line endings (what the puller writes on Windows).",
+      "summary": "The same transcript with CRLF line endings (what a text-mode writer produces on Windows; the puller wrote such files before commit 34e84d3).",
       "covers": [
         "CRLF"
       ],
@@ -1185,7 +1185,7 @@
         "W8",
         "W9"
       ],
-      "difference": "This reproduces the mechanism behind the real one-message captures. Apple: the first line is a bare-name marker, so the whole page becomes ONE message of role assistant, and the keyword scan finds 'claude' before 'gemini', so the session is labelled Claude although the link is a Gemini link. The web app takes the provider from the link host, does not honour a lone bare name, and keeps the page as one message of role unknown for the user to review. Nothing in this text allows a split."
+      "difference": "This reproduces how a whole page becomes one mislabelled message. Apple: the first line is a bare-name marker, so the whole page becomes ONE message of role assistant, and the keyword scan finds 'claude' before 'gemini', so the session is labelled Claude although the link is a Gemini link. The web app takes the provider from the link host, does not honour a lone bare name, and keeps the page as one message of role unknown for the user to review. Nothing in this text allows a split."
     },
     {
       "id": "49-capture-page-text-gemini-labels",

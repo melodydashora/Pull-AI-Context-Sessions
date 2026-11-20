@@ -9,7 +9,7 @@
 - The web app keeps the structure and the wording. At phone widths (below 600 px) the three columns become a stack of three routes; from 600 px there are two panes, from 1024 px three.
 - Four things cannot be carried over and are redesigned: the in-app capture browser (a web page cannot embed and read another site, so the link section offers "open, copy, paste" and, where the server supports it, a server-side capture), the Keychain key-entry screen (the key is a server secret), the PDF sheet (the original opens in a new browser tab) and system alerts, sheets and share sheets (accessible dialogs, the Web Share API and downloads).
 - Do not copy the Apple colours as text colours: measured on the screenshots, provider chip text has a contrast of 1.95:1 to 3.30:1 and secondary text 3.4:1. Section 4.2 gives tokens whose pairs were all checked against WCAG AA.
-- Some sessions are very long (hundreds of turns, and single messages of several hundred thousand characters). The Apple app renders everything eagerly. Sections 4.7.4 and 4.7.5 say how to render giant messages and where windowing is required.
+- Sessions can be very long (hundreds of turns, and single messages of several hundred thousand characters). The Apple app renders everything eagerly. Sections 4.7.4 and 4.7.5 say how to render giant messages and where windowing is required.
 - Transcripts are untrusted text. The renderer must build elements, never HTML strings, and must filter link schemes (section 4.7.3). Appendix 5.4 has a tested reference implementation of the text rules.
 - Web-only additions are specified in section 4.11: sign-in, install prompt, share-target landing screen, offline indicator and settings.
 

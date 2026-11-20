@@ -16,7 +16,7 @@
 
 | Mark | Meaning |
 |---|---|
-| `file:line` | Read in the code at the commit being published (`c227766`). Paths are relative to the repository root; `Importers.swift` means `apple/SessionVault/Importers.swift`, `Views/...` means `apple/SessionVault/Views/...`. |
+| `file:line` | Read in the code at commit `c227766`. Line numbers into Swift files are exact there; line numbers into `puller/pull_sessions.py` and into README files refer to those files as they were before commit `34e84d3`, which moved lines. Paths are relative to the repository root; `Importers.swift` means `apple/SessionVault/Importers.swift`, `Views/...` means `apple/SessionVault/Views/...`. |
 | (run) | Observed by running the real importer on synthetic input on 2026-11-19 and 2026-11-20. |
 | (fixture NN) | Recorded in `fixtures/import/NN-*`; the expected file holds the exact output. |
 | (inference) | My reasoning; the code does not show it and it was not run. |

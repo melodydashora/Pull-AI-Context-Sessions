@@ -1,0 +1,19 @@
+{
+  "fixture": "36-paste-sign-in-wall",
+  "source": "web-target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "notes": [
+    "The text of a signed-out landing page, pasted.",
+    "In the Apple app the sign-in-wall guard exists only on the capture path: pasted wall text is saved as a session. The web app applies the same test to pasted text and answers `sign_in_suspected`; the user may then choose to import anyway."
+  ],
+  "result": {
+    "outcome": "rejected",
+    "reason": "sign_in_suspected",
+    "flags": [],
+    "sessions": []
+  }
+}

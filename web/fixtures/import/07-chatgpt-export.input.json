@@ -1,0 +1,296 @@
+[
+  {
+    "title": "Sourdough starter schedule",
+    "create_time": 1700000000.5,
+    "update_time": 1700000600.0,
+    "current_node": "node-5",
+    "mapping": {
+      "root": {
+        "id": "root",
+        "parent": null,
+        "children": [
+          "node-1"
+        ],
+        "message": null
+      },
+      "node-1": {
+        "id": "node-1",
+        "parent": "root",
+        "children": [],
+        "message": {
+          "id": "node-1",
+          "author": {
+            "role": "system"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              ""
+            ]
+          },
+          "create_time": 1700000000.0
+        }
+      },
+      "node-2": {
+        "id": "node-2",
+        "parent": "node-1",
+        "children": [],
+        "message": {
+          "id": "node-2",
+          "author": {
+            "role": "user"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "When should I feed the starter?"
+            ]
+          },
+          "create_time": 1700000001.0
+        }
+      },
+      "node-3": {
+        "id": "node-3",
+        "parent": "node-2",
+        "children": [],
+        "message": {
+          "id": "node-3",
+          "author": {
+            "role": "assistant"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Abandoned branch: feed it once a week."
+            ]
+          },
+          "create_time": 1700000002.0
+        }
+      },
+      "node-3b": {
+        "id": "node-3b",
+        "parent": "node-2",
+        "children": [],
+        "message": {
+          "id": "node-3b",
+          "author": {
+            "role": "assistant"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Feed it every twelve hours.",
+              "Keep it at room temperature."
+            ]
+          },
+          "create_time": 1700000003.0
+        }
+      },
+      "node-4": {
+        "id": "node-4",
+        "parent": "node-3b",
+        "children": [],
+        "message": {
+          "id": "node-4",
+          "author": {
+            "role": "tool"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "timer set: 12h"
+            ]
+          },
+          "create_time": 1700000004.0
+        }
+      },
+      "node-4b": {
+        "id": "node-4b",
+        "parent": "node-4",
+        "children": [],
+        "message": {
+          "id": "node-4b",
+          "author": {
+            "role": "user"
+          },
+          "content": {
+            "content_type": "multimodal_text",
+            "parts": [
+              {
+                "content_type": "image_asset_pointer",
+                "asset_pointer": "file-service://file-EXAMPLE"
+              },
+              "Does this photo look right?"
+            ]
+          },
+          "create_time": 1700000004.5
+        }
+      },
+      "node-5": {
+        "id": "node-5",
+        "parent": "node-4b",
+        "children": [],
+        "message": {
+          "id": "node-5",
+          "author": {
+            "role": "assistant"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "   It looks active and ready.  \n"
+            ]
+          },
+          "create_time": 1700000005.0
+        }
+      }
+    }
+  },
+  {
+    "title": "",
+    "mapping": {
+      "a": {
+        "id": "a",
+        "parent": null,
+        "children": [],
+        "message": {
+          "id": "a",
+          "author": {
+            "role": "user"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Second by time."
+            ]
+          },
+          "create_time": 20.0
+        }
+      },
+      "b": {
+        "id": "b",
+        "parent": "a",
+        "children": [],
+        "message": {
+          "id": "b",
+          "author": {
+            "role": "assistant"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Third by time."
+            ]
+          },
+          "create_time": 30.0
+        }
+      },
+      "c": {
+        "id": "c",
+        "parent": null,
+        "children": [],
+        "message": {
+          "id": "c",
+          "author": {
+            "role": "user"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "First by time, although it comes third in the file."
+            ]
+          },
+          "create_time": 10.0
+        }
+      },
+      "d": {
+        "id": "d",
+        "parent": "b",
+        "children": [],
+        "message": {
+          "id": "d",
+          "author": {
+            "role": "assistant"
+          },
+          "content": {
+            "content_type": "code",
+            "language": "python",
+            "text": "print('no parts: dropped')"
+          },
+          "create_time": 40.0
+        }
+      },
+      "e": {
+        "id": "e",
+        "parent": "d",
+        "children": [],
+        "message": {
+          "id": "e",
+          "author": {
+            "role": "system"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Hidden system text."
+            ]
+          },
+          "create_time": 50.0
+        }
+      },
+      "f": {
+        "id": "f",
+        "parent": "e",
+        "children": []
+      },
+      "g": {
+        "id": "g",
+        "parent": "f",
+        "children": [],
+        "message": {
+          "id": "g",
+          "author": {
+            "role": "critic"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "A role the app does not know."
+            ]
+          },
+          "create_time": 60.0
+        }
+      },
+      "h": {
+        "id": "h",
+        "parent": "g",
+        "children": [],
+        "message": {
+          "id": "h",
+          "author": {
+            "role": "assistant"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "   "
+            ]
+          },
+          "create_time": 70.0
+        }
+      }
+    }
+  },
+  {
+    "title": "Empty conversation",
+    "create_time": 5,
+    "mapping": {
+      "x": {
+        "id": "x",
+        "parent": null,
+        "children": [],
+        "message": null
+      }
+    }
+  }
+]

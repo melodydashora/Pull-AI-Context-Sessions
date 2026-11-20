@@ -1,0 +1,48 @@
+{
+  "fixture": "47-capture-page-text-claude-share",
+  "source": "apple-importer; the web app must return the same result",
+  "call": {
+    "entry": "capture"
+  },
+  "apple_status_message": "Captured 2 turns from claude.ai.",
+  "notes": [
+    "A whole-page capture (one block) of a claude.ai share page; the user typed a name."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Bread notes",
+        "provider": "claude",
+        "model": "",
+        "source_url": "https://claude.ai/share/EXAMPLE-0000-BREAD",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "How long should I prove sourdough at room temperature?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "How long should I prove sourdough at room temperature?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "About four hours at 24 degrees Celsius.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "About four hours at 24 degrees Celsius."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "dropped_turns": []
+  }
+}

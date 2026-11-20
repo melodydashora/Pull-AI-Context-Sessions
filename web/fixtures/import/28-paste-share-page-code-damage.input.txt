@@ -1,0 +1,19 @@
+You said: Show me a function that totals a list…
+Show me a function that totals a list.
+Claude responded: Here is a version with a guard…
+Here is a version with a guard:
+def total(values):
+    result = 0
+    for value in values:
+        if value is None:
+            continue
+        result += value
+        result += value
+    return result
+print(total([1, 2]))
+print(total([1, 2]))
+Share
+The schedule is:
+10:30
+watering
+Copy

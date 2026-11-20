@@ -1,0 +1,29 @@
+{
+  "fixture": "50-capture-all-chrome",
+  "source": "apple-importer; the web app must return the same result",
+  "call": {
+    "entry": "capture"
+  },
+  "apple_status_message": "No conversation content captured from the page.",
+  "notes": [
+    "Every harvested block is page chrome."
+  ],
+  "result": {
+    "outcome": "rejected",
+    "reason": "no_conversation_found",
+    "flags": [],
+    "sessions": [],
+    "dropped_turns": [
+      {
+        "position": "leading",
+        "index": 0,
+        "text": "AI Overview"
+      },
+      {
+        "position": "leading",
+        "index": 1,
+        "text": "This assistant can make mistakes."
+      }
+    ]
+  }
+}

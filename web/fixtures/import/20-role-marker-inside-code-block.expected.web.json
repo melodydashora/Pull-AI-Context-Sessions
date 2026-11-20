@@ -1,0 +1,57 @@
+{
+  "fixture": "20-role-marker-inside-code-block",
+  "source": "web-target",
+  "call": {
+    "entry": "file",
+    "filename": "deploy-notes.md"
+  },
+  "notes": [
+    "A code block whose lines look like speaker markers.",
+    "Apple splits the assistant's message at `user:`, `system:` and `ai:` inside the code block, producing five messages and a broken block. The web app does not look for markers inside a closed fenced block."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "deploy-notes",
+        "provider": "other",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Show me a minimal service config.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Show me a minimal service config."
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Here is one:\n\n```yaml\nuser: deploy\nsystem: linux\nai: false\n```\n\nKeep the file next to the binary.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Here is one:\n"
+              },
+              {
+                "type": "code",
+                "language": "yaml",
+                "code": "user: deploy\nsystem: linux\nai: false"
+              },
+              {
+                "type": "prose",
+                "text": "\nKeep the file next to the binary."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

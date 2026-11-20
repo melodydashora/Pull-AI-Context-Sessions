@@ -1,0 +1,48 @@
+{
+  "fixture": "40-capture-turns-chatgpt-url",
+  "source": "web-target",
+  "call": {
+    "entry": "capture"
+  },
+  "notes": [
+    "Two harvested turn blocks from a chatgpt.com link, no title detected and none typed.",
+    "Apple labels every multi-turn capture that is not from claude.ai as Other. The web app maps the link host to a provider."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "EXAMPLE-0000-RYE",
+        "provider": "chatgpt",
+        "model": "",
+        "source_url": "https://chatgpt.com/share/EXAMPLE-0000-RYE",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Is rye flour good for a starter?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Is rye flour good for a starter?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Yes. Rye ferments quickly.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Yes. Rye ferments quickly."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "dropped_turns": []
+  }
+}

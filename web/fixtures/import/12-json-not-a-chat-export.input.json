@@ -1,0 +1,14 @@
+{
+  "uuid": "EXAMPLE-0000-0000",
+  "model": "claude-example-model",
+  "events": [
+    {
+      "type": "user",
+      "text": "How do I oil a bicycle chain?"
+    },
+    {
+      "type": "assistant",
+      "text": "Wipe it clean, then put one drop on each link."
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "fixture": "12-json-not-a-chat-export",
+  "source": "web-target",
+  "call": {
+    "entry": "file",
+    "filename": "session_EXAMPLEPAYLOAD.json"
+  },
+  "notes": [
+    "A .json file that is not a ChatGPT export. Stand-in for the puller's <id>.json payload, whose real schema is not documented in the repository.",
+    "Apple imports the raw JSON text as one message of role unknown and labels it Claude because the text contains that word. The web app refuses it with a clear reason and lets the user choose to keep it as a plain-text note."
+  ],
+  "result": {
+    "outcome": "rejected",
+    "reason": "unrecognised_json",
+    "flags": [],
+    "sessions": []
+  }
+}

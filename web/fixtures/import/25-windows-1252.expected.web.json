@@ -1,0 +1,50 @@
+{
+  "fixture": "25-windows-1252",
+  "source": "web-target",
+  "call": {
+    "entry": "file",
+    "filename": "cafe-hours-ansi.txt"
+  },
+  "notes": [
+    "Windows-1252 (ANSI) text with an accented letter, an en dash and curly quotes.",
+    "Not valid UTF-8, so Apple imports nothing. The web app falls back to windows-1252 for text that is not UTF-8 and flags it."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [
+      "decoded_as_windows_1252"
+    ],
+    "sessions": [
+      {
+        "title": "cafe-hours-ansi",
+        "provider": "other",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Is the caf\u00e9 open?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Is the caf\u00e9 open?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Yes \u2013 \u201cfrom nine\u201d.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Yes \u2013 \u201cfrom nine\u201d."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

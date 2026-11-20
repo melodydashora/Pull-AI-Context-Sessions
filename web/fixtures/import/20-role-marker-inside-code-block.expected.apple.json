@@ -1,0 +1,89 @@
+{
+  "fixture": "20-role-marker-inside-code-block",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "file",
+    "filename": "deploy-notes.md"
+  },
+  "apple_status_message": "Imported 1 session.",
+  "notes": [
+    "A code block whose lines look like speaker markers.",
+    "Apple splits the assistant's message at `user:`, `system:` and `ai:` inside the code block, producing five messages and a broken block. The web app does not look for markers inside a closed fenced block."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "deploy-notes",
+        "provider": "other",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Show me a minimal service config.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Show me a minimal service config."
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Here is one:\n\n```yaml",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Here is one:\n"
+              },
+              {
+                "type": "code",
+                "language": "yaml",
+                "code": ""
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "deploy",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "deploy"
+              }
+            ]
+          },
+          {
+            "role": "system",
+            "text": "linux",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "linux"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "false\n```\n\nKeep the file next to the binary.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "false"
+              },
+              {
+                "type": "code",
+                "language": null,
+                "code": "\nKeep the file next to the binary."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "fixture": "17-whitespace-only-file",
+  "source": "web-target",
+  "call": {
+    "entry": "file",
+    "filename": "blank.txt"
+  },
+  "notes": [
+    "A file that contains only spaces, a tab and newlines.",
+    "Apple saves a session that holds one empty message. The web app rejects the file as empty."
+  ],
+  "result": {
+    "outcome": "rejected",
+    "reason": "empty_input",
+    "flags": [],
+    "sessions": []
+  }
+}

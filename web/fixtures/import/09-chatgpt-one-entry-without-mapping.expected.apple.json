@@ -1,0 +1,39 @@
+{
+  "fixture": "09-chatgpt-one-entry-without-mapping",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "file",
+    "filename": "conversations.json"
+  },
+  "apple_status_message": "Imported 1 session.",
+  "notes": [
+    "An export array in which one entry has no mapping.",
+    "Apple rejects the whole array as a ChatGPT export and then imports the raw JSON text as one Note. The web app imports the valid conversations and skips the others."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "conversations",
+        "provider": "other",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "unknown",
+            "text": "[\n  {\n    \"title\": \"Kettle descaling\",\n    \"current_node\": \"n2\",\n    \"mapping\": {\n      \"n1\": {\n        \"id\": \"n1\",\n        \"parent\": null,\n        \"children\": [],\n        \"message\": {\n          \"id\": \"n1\",\n          \"author\": {\n            \"role\": \"user\"\n          },\n          \"content\": {\n            \"content_type\": \"text\",\n            \"parts\": [\n              \"How do I descale a kettle?\"\n            ]\n          }\n        }\n      },\n      \"n2\": {\n        \"id\": \"n2\",\n        \"parent\": \"n1\",\n        \"children\": [],\n        \"message\": {\n          \"id\": \"n2\",\n          \"author\": {\n            \"role\": \"assistant\"\n          },\n          \"content\": {\n            \"content_type\": \"text\",\n            \"parts\": [\n              \"Boil water with a little citric acid, then rinse.\"\n            ]\n          }\n        }\n      }\n    }\n  },\n  {\n    \"title\": \"An entry without a mapping\"\n  }\n]",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "[\n  {\n    \"title\": \"Kettle descaling\",\n    \"current_node\": \"n2\",\n    \"mapping\": {\n      \"n1\": {\n        \"id\": \"n1\",\n        \"parent\": null,\n        \"children\": [],\n        \"message\": {\n          \"id\": \"n1\",\n          \"author\": {\n            \"role\": \"user\"\n          },\n          \"content\": {\n            \"content_type\": \"text\",\n            \"parts\": [\n              \"How do I descale a kettle?\"\n            ]\n          }\n        }\n      },\n      \"n2\": {\n        \"id\": \"n2\",\n        \"parent\": \"n1\",\n        \"children\": [],\n        \"message\": {\n          \"id\": \"n2\",\n          \"author\": {\n            \"role\": \"assistant\"\n          },\n          \"content\": {\n            \"content_type\": \"text\",\n            \"parts\": [\n              \"Boil water with a little citric acid, then rinse.\"\n            ]\n          }\n        }\n      }\n    }\n  },\n  {\n    \"title\": \"An entry without a mapping\"\n  }\n]"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

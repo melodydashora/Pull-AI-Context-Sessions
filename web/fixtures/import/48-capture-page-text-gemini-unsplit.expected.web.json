@@ -1,0 +1,38 @@
+{
+  "fixture": "48-capture-page-text-gemini-unsplit",
+  "source": "web-target",
+  "call": {
+    "entry": "capture"
+  },
+  "notes": [
+    "A whole-page capture from a Gemini link: no speaker labels at all, the first line is the word 'Gemini', and the conversation mentions Claude.",
+    "This reproduces the mechanism behind the real one-message captures. Apple: the first line is a bare-name marker, so the whole page becomes ONE message of role assistant, and the keyword scan finds 'claude' before 'gemini', so the session is labelled Claude although the link is a Gemini link. The web app takes the provider from the link host, does not honour a lone bare name, and keeps the page as one message of role unknown for the user to review. Nothing in this text allows a split."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "EXAMPLESEEDLINGS",
+        "provider": "gemini",
+        "model": "",
+        "source_url": "https://gemini.google.com/share/EXAMPLESEEDLINGS",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "unknown",
+            "text": "Gemini\nConversation with Gemini\nHow often should I water tomato seedlings?\nWater when the top centimetre of soil is dry. Check it with a fingertip every morning.\nA neighbour says Claude told her to mist them instead.\nMisting alone is rarely enough for seedlings. Water the soil, not the leaves.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Gemini\nConversation with Gemini\nHow often should I water tomato seedlings?\nWater when the top centimetre of soil is dry. Check it with a fingertip every morning.\nA neighbour says Claude told her to mist them instead.\nMisting alone is rarely enough for seedlings. Water the soil, not the leaves."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "dropped_turns": []
+  }
+}

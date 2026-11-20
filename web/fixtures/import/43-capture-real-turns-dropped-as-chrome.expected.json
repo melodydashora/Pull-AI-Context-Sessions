@@ -1,0 +1,60 @@
+{
+  "fixture": "43-capture-real-turns-dropped-as-chrome",
+  "source": "apple-importer; the web app must return the same result",
+  "call": {
+    "entry": "capture"
+  },
+  "apple_status_message": "Captured 2 turns from claude.ai.",
+  "notes": [
+    "A conversation whose first and last turns are short and happen to contain the letters 'sign in'.",
+    "Both real turns are classified as chrome and dropped, in the Apple app and by the same test in the web app. This weakness of the heuristic is kept on purpose (see import-rules.md, defect D4). What must change is outside this result: the Apple app drops silently, the web app must show `dropped_turns` to the user and let them be restored before saving."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "EXAMPLE-0000-RACK",
+        "provider": "claude",
+        "model": "",
+        "source_url": "https://claude.ai/share/EXAMPLE-0000-RACK",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "assistant",
+            "text": "Yes, if the bolts are steel.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Yes, if the bolts are steel."
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "Good.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Good."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "dropped_turns": [
+      {
+        "position": "leading",
+        "index": 0,
+        "text": "The new design integrates a rear rack mount. Is it strong enough?"
+      },
+      {
+        "position": "trailing",
+        "index": 3,
+        "text": "How do I sign in to the forum to post it?"
+      }
+    ]
+  }
+}

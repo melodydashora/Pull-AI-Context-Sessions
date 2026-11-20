@@ -1,0 +1,2 @@
+User: Is the café open?
+Assistant: Yes – “from nine”.

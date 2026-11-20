@@ -1,0 +1,109 @@
+[
+  {
+    "title": "Order without timestamps",
+    "mapping": {
+      "k1": {
+        "id": "k1",
+        "parent": null,
+        "children": [],
+        "message": {
+          "id": "k1",
+          "author": {
+            "role": "user"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "First in the file."
+            ]
+          }
+        }
+      },
+      "k2": {
+        "id": "k2",
+        "parent": "k1",
+        "children": [],
+        "message": {
+          "id": "k2",
+          "author": {
+            "role": "assistant"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Second in the file."
+            ]
+          }
+        }
+      },
+      "k3": {
+        "id": "k3",
+        "parent": "k2",
+        "children": [],
+        "message": {
+          "id": "k3",
+          "author": {
+            "role": "user"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Third in the file."
+            ]
+          }
+        }
+      },
+      "k4": {
+        "id": "k4",
+        "parent": "k3",
+        "children": [],
+        "message": {
+          "id": "k4",
+          "author": {
+            "role": "assistant"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Fourth in the file."
+            ]
+          }
+        }
+      },
+      "k5": {
+        "id": "k5",
+        "parent": "k4",
+        "children": [],
+        "message": {
+          "id": "k5",
+          "author": {
+            "role": "user"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Fifth in the file."
+            ]
+          }
+        }
+      },
+      "k6": {
+        "id": "k6",
+        "parent": "k5",
+        "children": [],
+        "message": {
+          "id": "k6",
+          "author": {
+            "role": "assistant"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Sixth in the file."
+            ]
+          }
+        }
+      }
+    }
+  }
+]

@@ -1,0 +1,50 @@
+{
+  "fixture": "24-utf16le-with-bom",
+  "source": "web-target",
+  "call": {
+    "entry": "file",
+    "filename": "cafe-hours-utf16.txt"
+  },
+  "notes": [
+    "UTF-16 little-endian text with a byte-order mark and CRLF (what Windows PowerShell 5 writes with `>`).",
+    "Apple decodes files as UTF-8 only; this file yields no session and the message 'No sessions found in the selected files.' The web app detects the byte-order mark, decodes UTF-16 and imports the transcript, flagging the encoding it used."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [
+      "decoded_as_utf_16le"
+    ],
+    "sessions": [
+      {
+        "title": "cafe-hours-utf16",
+        "provider": "other",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Is the caf\u00e9 open on Sunday?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Is the caf\u00e9 open on Sunday?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Yes \u2014 from nine to five.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Yes \u2014 from nine to five."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

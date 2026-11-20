@@ -1,0 +1,48 @@
+{
+  "fixture": "08-chatgpt-single-conversation",
+  "source": "apple-importer; the web app must return the same result",
+  "call": {
+    "entry": "file",
+    "filename": "chat-EXAMPLE.json"
+  },
+  "apple_status_message": "Imported 1 session.",
+  "notes": [
+    "A single conversation object (not wrapped in an array) with a mapping; the file starts with a UTF-8 byte-order mark."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Chain wax or oil",
+        "provider": "chatgpt",
+        "model": "",
+        "source_url": "",
+        "created_at": "2023-11-14T22:13:20.000Z",
+        "messages": [
+          {
+            "role": "user",
+            "text": "Wax or oil for a commuter bike chain?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Wax or oil for a commuter bike chain?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Oil is easier. Wax stays cleaner.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Oil is easier. Wax stays cleaner."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

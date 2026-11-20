@@ -1,0 +1,48 @@
+{
+  "fixture": "10-chatgpt-parent-cycle",
+  "source": "web-target",
+  "call": {
+    "entry": "file",
+    "filename": "conversations.json"
+  },
+  "notes": [
+    "A malformed export in which two nodes name each other as parent.",
+    "Apple follows `parent` links with no cycle check: the importer never returns and its node list grows without bound (confirmed with a watchdog: no result after 400 ms, while the same data without the cycle returns in about 20 ms). The web app stops at the first node it has already visited."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Looping parents",
+        "provider": "chatgpt",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Which way do I turn a spoke nipple?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Which way do I turn a spoke nipple?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Anticlockwise, seen from the tyre side, to tighten.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Anticlockwise, seen from the tyre side, to tighten."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

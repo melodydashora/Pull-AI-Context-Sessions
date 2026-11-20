@@ -1,0 +1,39 @@
+{
+  "fixture": "12-json-not-a-chat-export",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "file",
+    "filename": "session_EXAMPLEPAYLOAD.json"
+  },
+  "apple_status_message": "Imported 1 session.",
+  "notes": [
+    "A .json file that is not a ChatGPT export. Stand-in for the puller's <id>.json payload, whose real schema is not documented in the repository.",
+    "Apple imports the raw JSON text as one message of role unknown and labels it Claude because the text contains that word. The web app refuses it with a clear reason and lets the user choose to keep it as a plain-text note."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "session_EXAMPLEPAYLOAD",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "unknown",
+            "text": "{\n  \"uuid\": \"EXAMPLE-0000-0000\",\n  \"model\": \"claude-example-model\",\n  \"events\": [\n    {\n      \"type\": \"user\",\n      \"text\": \"How do I oil a bicycle chain?\"\n    },\n    {\n      \"type\": \"assistant\",\n      \"text\": \"Wipe it clean, then put one drop on each link.\"\n    }\n  ]\n}",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "{\n  \"uuid\": \"EXAMPLE-0000-0000\",\n  \"model\": \"claude-example-model\",\n  \"events\": [\n    {\n      \"type\": \"user\",\n      \"text\": \"How do I oil a bicycle chain?\"\n    },\n    {\n      \"type\": \"assistant\",\n      \"text\": \"Wipe it clean, then put one drop on each link.\"\n    }\n  ]\n}"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

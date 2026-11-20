@@ -1,0 +1,18 @@
+{
+  "fixture": "04-puller-markdown-header-only",
+  "source": "web-target",
+  "call": {
+    "entry": "file",
+    "filename": "session_EXAMPLEEMPTY.md"
+  },
+  "notes": [
+    "What the puller writes when it harvested no turns: the two header lines and nothing else.",
+    "Apple saves a session with zero messages and reports success. The web app must not save it."
+  ],
+  "result": {
+    "outcome": "rejected",
+    "reason": "no_messages",
+    "flags": [],
+    "sessions": []
+  }
+}

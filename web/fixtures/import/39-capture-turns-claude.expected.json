@@ -1,0 +1,68 @@
+{
+  "fixture": "39-capture-turns-claude",
+  "source": "apple-importer; the web app must return the same result",
+  "call": {
+    "entry": "capture"
+  },
+  "apple_status_message": "Captured 4 turns from claude.ai.",
+  "notes": [
+    "Four harvested turn blocks from a claude.ai page, with a title detected on the page."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Chain maintenance",
+        "provider": "claude",
+        "model": "",
+        "source_url": "https://claude.ai/code/session_EXAMPLECHAIN",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "How often should I oil my chain?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "How often should I oil my chain?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Every 150 km in dry weather.\nWipe off the excess.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Every 150 km in dry weather.\nWipe off the excess."
+              }
+            ]
+          },
+          {
+            "role": "unknown",
+            "text": "Searched the web\nA wet lube lasts longer in rain.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Searched the web\nA wet lube lasts longer in rain."
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "Thanks.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Thanks."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "dropped_turns": []
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "fixture": "36-paste-sign-in-wall",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "apple_status_message": "Imported 1 session from clipboard.",
+  "notes": [
+    "The text of a signed-out landing page, pasted.",
+    "In the Apple app the sign-in-wall guard exists only on the capture path: pasted wall text is saved as a session. The web app applies the same test to pasted text and answers `sign_in_suspected`; the user may then choose to import anyway."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "gemini",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "unknown",
+            "text": "Sign in",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Sign in"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Meet Gemini, your personal AI assistant\nAsk Gemini\nGoogle Terms and the Google Privacy Policy apply. Gemini is AI and can make mistakes.\nAbout\nHelp\nSign in to keep your chats and pick up where you left off.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Meet Gemini, your personal AI assistant\nAsk Gemini\nGoogle Terms and the Google Privacy Policy apply. Gemini is AI and can make mistakes.\nAbout\nHelp\nSign in to keep your chats and pick up where you left off."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+Exported chat about a wobbling wheel.
+
+User: My rear wheel wobbles. What should I check first?
+
+**Assistant:** Check the spoke tension first.
+Spin the wheel and watch the gap at the brake pads.
+
+## Human
+The gap changes near the valve.
+
+### Claude
+Tighten the two spokes opposite the wobble by a quarter turn:
+
+```sh
+spoke-key --turn 0.25 --spokes 7,9
+```
+
+Me: Done. It runs true now.
+AI: Good. Check it again after the first ride.
+System: End of conversation.

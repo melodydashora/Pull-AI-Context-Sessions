@@ -1,0 +1,48 @@
+{
+  "fixture": "06-puller-markdown-other-host",
+  "source": "web-target",
+  "call": {
+    "entry": "file",
+    "filename": "tea-notes.md"
+  },
+  "notes": [
+    "Puller-shaped markdown whose Source line is not a claude.ai link.",
+    "Apple knows one host only (claude.ai) and labels everything else Other. The web app maps the link host to a provider."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Tea notes EXAMPLE",
+        "provider": "gemini",
+        "model": "",
+        "source_url": "https://gemini.google.com/share/EXAMPLEGREENTEA",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Does green tea need cooler water?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Does green tea need cooler water?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Yes. Use water at about 80 degrees Celsius.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Yes. Use water at about 80 degrees Celsius."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

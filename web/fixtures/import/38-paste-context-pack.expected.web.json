@@ -1,0 +1,64 @@
+{
+  "fixture": "38-paste-context-pack",
+  "source": "web-target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "notes": [
+    "A context pack, the Apple app's own export (ContextPack.swift), pasted back in. One message contains a '---' line of its own.",
+    "Apple has no parser for its own export: the header block becomes a Note, every message keeps a trailing '---', the '**Note:**' turn is glued to the previous message, and title, link, tags and summary are lost. OPTIONAL for the web app (data-model.md prefers the interchange format for transfers): a parser that reads the format back into title, provider, model, link, tags, summary and clean messages."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Rose pruning plan",
+        "provider": "gemini",
+        "model": "gemini-example-model",
+        "source_url": "https://gemini.google.com/share/EXAMPLEROSES",
+        "created_at": null,
+        "summary": "Prune in late winter; cut above outward-facing buds.",
+        "tags": [
+          "garden",
+          "roses"
+        ],
+        "messages": [
+          {
+            "role": "user",
+            "text": "When should I prune roses?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "When should I prune roses?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "In late winter, just as the buds swell.\n\nA rule of thumb:\n\n---\n\ncut above an outward-facing bud.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "In late winter, just as the buds swell.\n\nA rule of thumb:\n\n---\n\ncut above an outward-facing bud."
+              }
+            ]
+          },
+          {
+            "role": "unknown",
+            "text": "Checked the shears on 2 March.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Checked the shears on 2 March."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

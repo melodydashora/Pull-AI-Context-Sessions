@@ -1,0 +1,18 @@
+{
+  "fixture": "51-capture-nothing",
+  "source": "apple-importer; the web app must return the same result",
+  "call": {
+    "entry": "capture"
+  },
+  "apple_status_message": "Nothing captured \u2014 is the transcript visible in the page?",
+  "notes": [
+    "The capture returned no text at all."
+  ],
+  "result": {
+    "outcome": "rejected",
+    "reason": "no_conversation_found",
+    "flags": [],
+    "sessions": [],
+    "dropped_turns": []
+  }
+}

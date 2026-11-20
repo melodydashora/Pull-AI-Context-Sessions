@@ -1,0 +1,21 @@
+{
+  "fixture": "31-paste-link",
+  "source": "apple-importer; the web app must return the same result",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "apple_status_message": "That's a link \u2014 opening it in the capture browser.",
+  "notes": [
+    "The clipboard holds a single link.",
+    "Nothing is imported. The Apple app opens its capture browser at `link_url`; the web app shows the link help of capture.md section 8.1 (and offers server capture where that tier exists)."
+  ],
+  "result": {
+    "outcome": "link",
+    "reason": null,
+    "link_url": "https://claude.ai/share/EXAMPLE-0000-0000-0000",
+    "flags": [],
+    "sessions": []
+  }
+}

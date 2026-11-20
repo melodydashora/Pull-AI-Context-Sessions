@@ -1,0 +1,68 @@
+{
+  "fixture": "49-capture-page-text-gemini-labels",
+  "source": "web-target",
+  "call": {
+    "entry": "capture"
+  },
+  "notes": [
+    "The same conversation with the label lines 'You said' and 'Gemini said' (no colon) that an earlier review reported for Gemini chat pages. Unverified against a live page.",
+    "Apple knows these labels only with a colon, so the result is the same single assistant message labelled Claude. The web app accepts the two whole-line labels when BOTH occur in the text and splits the page into turns. The rule is built on a reported page layout, not on an observed one; if real pages differ it simply does not fire and the previous fixture applies."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "EXAMPLESEEDLINGS",
+        "provider": "gemini",
+        "model": "",
+        "source_url": "https://gemini.google.com/share/EXAMPLESEEDLINGS",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "How often should I water tomato seedlings?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "How often should I water tomato seedlings?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Water when the top centimetre of soil is dry.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Water when the top centimetre of soil is dry."
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "A neighbour says Claude told her to mist them instead.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "A neighbour says Claude told her to mist them instead."
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Misting alone is rarely enough for seedlings.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Misting alone is rarely enough for seedlings."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "dropped_turns": []
+  }
+}

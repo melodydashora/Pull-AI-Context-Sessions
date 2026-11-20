@@ -1,0 +1,39 @@
+{
+  "fixture": "49-capture-page-text-gemini-labels",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "capture"
+  },
+  "apple_status_message": "Captured 1 turns from gemini.google.com.",
+  "notes": [
+    "The same conversation with the label lines 'You said' and 'Gemini said' (no colon) that an earlier review reported for Gemini chat pages. Unverified against a live page.",
+    "Apple knows these labels only with a colon, so the result is the same single assistant message labelled Claude. The web app accepts the two whole-line labels when BOTH occur in the text and splits the page into turns. The rule is built on a reported page layout, not on an observed one; if real pages differ it simply does not fire and the previous fixture applies."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "EXAMPLESEEDLINGS",
+        "provider": "claude",
+        "model": "",
+        "source_url": "https://gemini.google.com/share/EXAMPLESEEDLINGS",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "assistant",
+            "text": "Conversation with Gemini\nYou said\nHow often should I water tomato seedlings?\nGemini said\nWater when the top centimetre of soil is dry.\nYou said\nA neighbour says Claude told her to mist them instead.\nGemini said\nMisting alone is rarely enough for seedlings.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Conversation with Gemini\nYou said\nHow often should I water tomato seedlings?\nGemini said\nWater when the top centimetre of soil is dry.\nYou said\nA neighbour says Claude told her to mist them instead.\nGemini said\nMisting alone is rarely enough for seedlings."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "dropped_turns": []
+  }
+}

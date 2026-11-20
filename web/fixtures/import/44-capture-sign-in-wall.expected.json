@@ -1,0 +1,19 @@
+{
+  "fixture": "44-capture-sign-in-wall",
+  "source": "apple-importer; the web app must return the same result",
+  "call": {
+    "entry": "capture"
+  },
+  "apple_status_message": "That looks like a sign-in or landing page \u2014 log in below (or wait for the conversation to appear), then press Capture again.",
+  "notes": [
+    "The whole-page text of a signed-out landing page.",
+    "The guard function must give the same answer. In the Apple app nothing is saved and a one-line status asks the user to log in and capture again. The web app reports `sign_in_suspected` as a warning and must also offer 'import anyway' (allow_wall)."
+  ],
+  "result": {
+    "outcome": "rejected",
+    "reason": "sign_in_suspected",
+    "flags": [],
+    "sessions": [],
+    "dropped_turns": []
+  }
+}

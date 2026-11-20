@@ -1,0 +1,236 @@
+{
+  "fixture": "56-guards-chrome-turns-table",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "guards"
+  },
+  "notes": [
+    "Unit cases for stripChromeTurns: the 700-character limit, each chrome condition, the header-line rules (90 characters, 12 lines), and the order of the two steps.",
+    "Only the two cases whose name starts with ORDER differ. Apple judges the raw first turn, so header residue condemns the whole turn. The web app strips header lines first. The second ORDER case shows the price: a page name that used to be dropped with its 'Sign in' line now survives as a short turn."
+  ],
+  "result": {
+    "results": [
+      {
+        "name": "699-character turn containing 'sign in' is chrome",
+        "kept": [
+          "KEEP"
+        ],
+        "dropped_turns": [
+          {
+            "position": "leading",
+            "index": 0,
+            "text": "Sign in. seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed "
+          }
+        ]
+      },
+      {
+        "name": "700-character turn containing 'sign in' is kept",
+        "kept": [
+          "Sign in. seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed seed s",
+          "KEEP"
+        ],
+        "dropped_turns": []
+      },
+      {
+        "name": "'ai overview' is chrome",
+        "kept": [
+          "KEEP ONE",
+          "KEEP TWO"
+        ],
+        "dropped_turns": [
+          {
+            "position": "leading",
+            "index": 0,
+            "text": "AI Overview"
+          }
+        ]
+      },
+      {
+        "name": "'can make mistakes' is chrome",
+        "kept": [
+          "KEEP ONE",
+          "KEEP TWO"
+        ],
+        "dropped_turns": [
+          {
+            "position": "trailing",
+            "index": 2,
+            "text": "This assistant can make mistakes."
+          }
+        ]
+      },
+      {
+        "name": "one marker other than 'sign in' is not chrome",
+        "kept": [
+          "We use a cookie here",
+          "KEEP"
+        ],
+        "dropped_turns": []
+      },
+      {
+        "name": "two markers are chrome",
+        "kept": [
+          "KEEP"
+        ],
+        "dropped_turns": [
+          {
+            "position": "leading",
+            "index": 0,
+            "text": "cookie and privacy policy"
+          }
+        ]
+      },
+      {
+        "name": "'log in' alone is not chrome",
+        "kept": [
+          "Please log in",
+          "KEEP"
+        ],
+        "dropped_turns": []
+      },
+      {
+        "name": "several leading and trailing chrome turns",
+        "kept": [
+          "KEEP"
+        ],
+        "dropped_turns": [
+          {
+            "position": "leading",
+            "index": 0,
+            "text": "Sign in"
+          },
+          {
+            "position": "leading",
+            "index": 1,
+            "text": "AI overview"
+          },
+          {
+            "position": "trailing",
+            "index": 3,
+            "text": "can make mistakes"
+          },
+          {
+            "position": "trailing",
+            "index": 4,
+            "text": "sign in"
+          }
+        ]
+      },
+      {
+        "name": "chrome in the middle is kept",
+        "kept": [
+          "KEEP ONE",
+          "Sign in",
+          "KEEP TWO"
+        ],
+        "dropped_turns": []
+      },
+      {
+        "name": "all chrome",
+        "kept": [],
+        "dropped_turns": [
+          {
+            "position": "leading",
+            "index": 0,
+            "text": "Sign in"
+          },
+          {
+            "position": "leading",
+            "index": 1,
+            "text": "can make mistakes"
+          }
+        ]
+      },
+      {
+        "name": "header: every marker, then stop at the first other line",
+        "kept": [
+          "Not a header line\nReal first line about pruning roses. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist.",
+          "KEEP"
+        ],
+        "dropped_turns": []
+      },
+      {
+        "name": "header: at most 12 lines are removed",
+        "kept": [
+          "Created with example 12\nReal first line about pruning roses. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist.",
+          "KEEP"
+        ],
+        "dropped_turns": []
+      },
+      {
+        "name": "header: blank lines count toward the 12",
+        "kept": [
+          "Created with example\nReal first line about pruning roses. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist.",
+          "KEEP"
+        ],
+        "dropped_turns": []
+      },
+      {
+        "name": "header: an 89-character marker line is removed",
+        "kept": [
+          "Real first line about pruning roses. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist.",
+          "KEEP"
+        ],
+        "dropped_turns": []
+      },
+      {
+        "name": "header: a 90-character marker line is kept",
+        "kept": [
+          "Created with xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nReal first line about pruning roses. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist.",
+          "KEEP"
+        ],
+        "dropped_turns": []
+      },
+      {
+        "name": "header: when every line matches, the turn is left alone",
+        "kept": [
+          "Created with xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nCreated with xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nCreated with xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nCreated with xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nCreated with xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nCreated with xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nCreated with xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nCreated with xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nCreated with xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "KEEP"
+        ],
+        "dropped_turns": []
+      },
+      {
+        "name": "header: the first kept turn is trimmed even when nothing is removed",
+        "kept": [
+          "Real first line about pruning roses. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist.",
+          "KEEP"
+        ],
+        "dropped_turns": []
+      },
+      {
+        "name": "header: only the first kept turn is touched",
+        "kept": [
+          "KEEP",
+          "Created with example\nReal first line about pruning roses. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. Mulch keeps the soil moist. "
+        ],
+        "dropped_turns": []
+      },
+      {
+        "name": "ORDER: short first turn with header lines and a real question",
+        "kept": [
+          "KEEP"
+        ],
+        "dropped_turns": [
+          {
+            "position": "leading",
+            "index": 0,
+            "text": "Sign in\nShared conversation\n\nUser: Is a steel frame fine for touring?"
+          }
+        ]
+      },
+      {
+        "name": "ORDER: short first turn that is 'Sign in' plus a page name",
+        "kept": [
+          "KEEP"
+        ],
+        "dropped_turns": [
+          {
+            "position": "leading",
+            "index": 0,
+            "text": "Sign in\nGemini"
+          }
+        ]
+      }
+    ]
+  }
+}

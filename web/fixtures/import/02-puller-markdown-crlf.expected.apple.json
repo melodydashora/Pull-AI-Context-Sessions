@@ -1,0 +1,44 @@
+{
+  "fixture": "02-puller-markdown-crlf",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "file",
+    "filename": "session_EXAMPLEGARDEN.md"
+  },
+  "apple_status_message": "Imported 1 session.",
+  "notes": [
+    "The same transcript with CRLF line endings (what the puller writes on Windows).",
+    "Apple splits on LF only and its inline trim does not remove CR: no separator is recognised, all turns merge into one message, the title and the source URL end in a carriage return, and the code block never closes. The web app normalises line endings first and must return exactly the result of the LF fixture."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "session_EXAMPLEGARDEN\r",
+        "provider": "claude",
+        "model": "",
+        "source_url": "https://claude.ai/code/session_EXAMPLEGARDEN\r",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "How deep should I plant tulip bulbs?\r\n\r\n---\r\n\r\nAssistant: About three times the height of the bulb.\r\n```text\r\ndepth_cm = bulb_height_cm * 3\r\n```\r\nWater once after planting.\r\n\r\n---\r\n\r\nPlanted 24 bulbs along the north fence.\r\n\r\n---\r\n\r\n**Human:** And daffodils?\r\nIs it the same rule?\r\n\r\n---\r\n\r\n## Assistant\r\nYes, the same rule works for daffodils.\r\n\r\n---",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "How deep should I plant tulip bulbs?\r\n\r\n---\r\n\r\nAssistant: About three times the height of the bulb.\r"
+              },
+              {
+                "type": "code",
+                "language": "text\r",
+                "code": "depth_cm = bulb_height_cm * 3\r\n```\r\nWater once after planting.\r\n\r\n---\r\n\r\nPlanted 24 bulbs along the north fence.\r\n\r\n---\r\n\r\n**Human:** And daffodils?\r\nIs it the same rule?\r\n\r\n---\r\n\r\n## Assistant\r\nYes, the same rule works for daffodils.\r\n\r\n---"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

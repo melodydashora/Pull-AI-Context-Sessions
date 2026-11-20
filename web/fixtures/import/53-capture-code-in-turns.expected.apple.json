@@ -1,0 +1,49 @@
+{
+  "fixture": "53-capture-code-in-turns",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "capture"
+  },
+  "apple_status_message": "Captured 2 turns from claude.ai.",
+  "notes": [
+    "A harvested turn that contains indented code with a repeated line.",
+    "Every captured turn goes through the share-page cleaner. Apple flattens the indentation and deletes the repeated call. The web app keeps indented lines exactly."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "session_EXAMPLETRUING",
+        "provider": "claude",
+        "model": "",
+        "source_url": "https://claude.ai/code/session_EXAMPLETRUING",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Show me the truing loop.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Show me the truing loop."
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Here it is:\nfor spoke in wheel:\nif spoke.loose:\nspoke.tighten()\ncheck(spoke)\nDone.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Here it is:\nfor spoke in wheel:\nif spoke.loose:\nspoke.tighten()\ncheck(spoke)\nDone."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "dropped_turns": []
+  }
+}

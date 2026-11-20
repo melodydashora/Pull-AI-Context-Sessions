@@ -1,0 +1,1398 @@
+{
+  "format": "sessionvault-import-fixtures",
+  "version": 1,
+  "apple_side": {
+    "repository_commit": "c227766b51985be46fab022a2d5a7959956b9467",
+    "sources_sha256": {
+      "apple/SessionVault/Importers.swift": "4ca4cb680c3380f1b296b96fb14377c2f0acd21198fd3746ac3e3fe29505b5e9",
+      "apple/SessionVault/Models.swift": "6e16495d756d8170bc066fe637572d5c65e0bd490ebef80f7cf590a0975af76f",
+      "apple/SessionVault/Views/MessageView.swift": "efa812f2b40372d826bbf91c7db55a9212ccfd5e0d0171c1f26de9216361c443"
+    },
+    "toolchain": "Apple Swift 6.4 (Xcode 27 beta), macOS 27.2.1, arm64"
+  },
+  "cases": [
+    {
+      "id": "01-puller-markdown-lf",
+      "kind": "parity",
+      "entry": "file",
+      "input": "01-puller-markdown-lf.input.md",
+      "input_bytes": 412,
+      "input_sha256": "1f7f175ef5c4bfe6f54ce84338573c49e3437cd692a2adde040202bf3fe10416",
+      "call": {
+        "entry": "file",
+        "filename": "session_EXAMPLEGARDEN.md"
+      },
+      "expected": {
+        "both": "01-puller-markdown-lf.expected.json"
+      },
+      "summary": "A transcript exactly as puller/pull_sessions.py writes it, LF line endings.",
+      "covers": [
+        "puller markdown detection",
+        "--- separators",
+        "role from the first line of a block",
+        "unlabelled block becomes role unknown",
+        "bold and heading markers",
+        "provider from the Source line",
+        "title from the # line"
+      ]
+    },
+    {
+      "id": "02-puller-markdown-crlf",
+      "kind": "defect-fix",
+      "entry": "file",
+      "input": "02-puller-markdown-crlf.input.md",
+      "input_bytes": 440,
+      "input_sha256": "324fcbff912eac87728b1bb1101b064da326ae85f758861f43a7072fe8196c0f",
+      "call": {
+        "entry": "file",
+        "filename": "session_EXAMPLEGARDEN.md"
+      },
+      "expected": {
+        "apple": "02-puller-markdown-crlf.expected.apple.json",
+        "web": "02-puller-markdown-crlf.expected.web.json"
+      },
+      "summary": "The same transcript with CRLF line endings (what the puller writes on Windows).",
+      "covers": [
+        "CRLF"
+      ],
+      "rules": [
+        "D1",
+        "W1"
+      ],
+      "difference": "Apple splits on LF only and its inline trim does not remove CR: no separator is recognised, all turns merge into one message, the title and the source URL end in a carriage return, and the code block never closes. The web app normalises line endings first and must return exactly the result of the LF fixture."
+    },
+    {
+      "id": "03-puller-markdown-bom",
+      "kind": "parity",
+      "entry": "file",
+      "input": "03-puller-markdown-bom.input.md",
+      "input_bytes": 415,
+      "input_sha256": "a8d7c9141dae4dadaee1337145ecf739fd10b47a31c2d41465501ffdb249fc6a",
+      "call": {
+        "entry": "file",
+        "filename": "session_EXAMPLEGARDEN.md"
+      },
+      "expected": {
+        "both": "03-puller-markdown-bom.expected.json"
+      },
+      "summary": "The same transcript with a UTF-8 byte-order mark in front.",
+      "covers": [
+        "byte-order mark"
+      ]
+    },
+    {
+      "id": "04-puller-markdown-header-only",
+      "kind": "defect-fix",
+      "entry": "file",
+      "input": "04-puller-markdown-header-only.input.md",
+      "input_bytes": 75,
+      "input_sha256": "483f2b95b28e32dfec6998b3b54fc025e671c8b1e3dd238b1f60a6c127ebcad8",
+      "call": {
+        "entry": "file",
+        "filename": "session_EXAMPLEEMPTY.md"
+      },
+      "expected": {
+        "apple": "04-puller-markdown-header-only.expected.apple.json",
+        "web": "04-puller-markdown-header-only.expected.web.json"
+      },
+      "summary": "What the puller writes when it harvested no turns: the two header lines and nothing else.",
+      "covers": [
+        "zero messages"
+      ],
+      "rules": [
+        "D8",
+        "W5",
+        "W12"
+      ],
+      "difference": "Apple saves a session with zero messages and reports success. The web app must not save it."
+    },
+    {
+      "id": "05-puller-markdown-combined",
+      "kind": "defect-fix",
+      "entry": "file",
+      "input": "05-puller-markdown-combined.input.md",
+      "input_bytes": 383,
+      "input_sha256": "c51182a035658302cd9ebedcd488fed8ef1dff276cfb75cbca67549e883dd83b",
+      "call": {
+        "entry": "file",
+        "filename": "all_sessions.md"
+      },
+      "expected": {
+        "apple": "05-puller-markdown-combined.expected.apple.json",
+        "web": "05-puller-markdown-combined.expected.web.json"
+      },
+      "summary": "Two sessions in one file, as written by the puller's --combine option (files joined by a blank line).",
+      "covers": [
+        "all_sessions.md",
+        "several sessions in one file"
+      ],
+      "rules": [
+        "D11",
+        "W5"
+      ],
+      "difference": "Apple reads the file as one session: the second header and its first turn become a single message of role unknown. The web app starts a new session at every header pair that begins a block."
+    },
+    {
+      "id": "06-puller-markdown-other-host",
+      "kind": "defect-fix",
+      "entry": "file",
+      "input": "06-puller-markdown-other-host.input.md",
+      "input_bytes": 180,
+      "input_sha256": "03d61a2a264740a7bd91d7c3bf057b9f7a71cc796d78938e2b825997b409fe93",
+      "call": {
+        "entry": "file",
+        "filename": "tea-notes.md"
+      },
+      "expected": {
+        "apple": "06-puller-markdown-other-host.expected.apple.json",
+        "web": "06-puller-markdown-other-host.expected.web.json"
+      },
+      "summary": "Puller-shaped markdown whose Source line is not a claude.ai link.",
+      "covers": [
+        "provider from the link host"
+      ],
+      "rules": [
+        "D2",
+        "D11",
+        "W9"
+      ],
+      "difference": "Apple knows one host only (claude.ai) and labels everything else Other. The web app maps the link host to a provider."
+    },
+    {
+      "id": "07-chatgpt-export",
+      "kind": "parity",
+      "entry": "file",
+      "input": "07-chatgpt-export.input.json",
+      "input_bytes": 6446,
+      "input_sha256": "63f8a6413b808891ea24c6c7939e850ce716d53211e9ca186600c3367a7d59d7",
+      "call": {
+        "entry": "file",
+        "filename": "conversations.json"
+      },
+      "expected": {
+        "both": "07-chatgpt-export.expected.json"
+      },
+      "summary": "A ChatGPT data export (conversations.json) with three conversations.",
+      "covers": [
+        "current_node branch walk",
+        "abandoned branch left out",
+        "system messages skipped",
+        "unknown author role kept as role unknown",
+        "non-string parts dropped",
+        "parts joined with a newline and trimmed",
+        "create_time becomes the session date",
+        "fallback order by message create_time",
+        "empty title fallback",
+        "conversation without messages skipped"
+      ]
+    },
+    {
+      "id": "08-chatgpt-single-conversation",
+      "kind": "parity",
+      "entry": "file",
+      "input": "08-chatgpt-single-conversation.input.json",
+      "input_bytes": 778,
+      "input_sha256": "7f59c62b19a85320f4cbb876233fd469e7dac4f398790624e89cfb97c61558bc",
+      "call": {
+        "entry": "file",
+        "filename": "chat-EXAMPLE.json"
+      },
+      "expected": {
+        "both": "08-chatgpt-single-conversation.expected.json"
+      },
+      "summary": "A single conversation object (not wrapped in an array) with a mapping; the file starts with a UTF-8 byte-order mark.",
+      "covers": [
+        "single-object JSON shape",
+        "integer create_time",
+        "byte-order mark in front of JSON (JSON.parse rejects it unless it is removed)"
+      ]
+    },
+    {
+      "id": "09-chatgpt-one-entry-without-mapping",
+      "kind": "defect-fix",
+      "entry": "file",
+      "input": "09-chatgpt-one-entry-without-mapping.input.json",
+      "input_bytes": 886,
+      "input_sha256": "a5fa29615bb7458ec364d532c657d318f0bb2e1cd307e222b7e5c6eb03b52880",
+      "call": {
+        "entry": "file",
+        "filename": "conversations.json"
+      },
+      "expected": {
+        "apple": "09-chatgpt-one-entry-without-mapping.expected.apple.json",
+        "web": "09-chatgpt-one-entry-without-mapping.expected.web.json"
+      },
+      "summary": "An export array in which one entry has no mapping.",
+      "covers": [
+        "all-or-nothing detection"
+      ],
+      "rules": [
+        "D9",
+        "W4"
+      ],
+      "difference": "Apple rejects the whole array as a ChatGPT export and then imports the raw JSON text as one Note. The web app imports the valid conversations and skips the others."
+    },
+    {
+      "id": "10-chatgpt-parent-cycle",
+      "kind": "defect-fix",
+      "entry": "file",
+      "input": "10-chatgpt-parent-cycle.input.json",
+      "input_bytes": 845,
+      "input_sha256": "cfdd7165429a2fc5d7e09a5170ac4275b043a0460ece88a1ddbcf32481a699eb",
+      "call": {
+        "entry": "file",
+        "filename": "conversations.json"
+      },
+      "expected": {
+        "apple": "10-chatgpt-parent-cycle.expected.apple.json",
+        "web": "10-chatgpt-parent-cycle.expected.web.json"
+      },
+      "summary": "A malformed export in which two nodes name each other as parent.",
+      "covers": [
+        "parent cycle",
+        "the importer must terminate"
+      ],
+      "rules": [
+        "D9",
+        "W4"
+      ],
+      "difference": "Apple follows `parent` links with no cycle check: the importer never returns and its node list grows without bound (confirmed with a watchdog: no result after 400 ms, while the same data without the cycle returns in about 20 ms). The web app stops at the first node it has already visited."
+    },
+    {
+      "id": "11-chatgpt-no-current-node-no-times",
+      "kind": "defect-fix",
+      "entry": "file",
+      "input": "11-chatgpt-no-current-node-no-times.input.json",
+      "input_bytes": 2186,
+      "input_sha256": "e7fd954788c8447d1b482401d9e57daf0aaeb9994669e20799d89073f063a9e1",
+      "call": {
+        "entry": "file",
+        "filename": "conversations.json"
+      },
+      "expected": {
+        "apple": "11-chatgpt-no-current-node-no-times.expected.apple.json",
+        "web": "11-chatgpt-no-current-node-no-times.expected.web.json"
+      },
+      "summary": "A conversation with no current_node and no message timestamps.",
+      "covers": [
+        "fallback order with equal timestamps"
+      ],
+      "rules": [
+        "D9",
+        "W4"
+      ],
+      "difference": "Without current_node Apple sorts the mapping's values by message create_time. The values come from a dictionary with no defined order and the sort is not stable, so messages with equal or missing times come out in a different order on every run. The web app uses a stable sort and keeps the order of the keys in the JSON text for ties."
+    },
+    {
+      "id": "12-json-not-a-chat-export",
+      "kind": "defect-fix",
+      "entry": "file",
+      "input": "12-json-not-a-chat-export.input.json",
+      "input_bytes": 271,
+      "input_sha256": "a94dea9d6855edb650e1230cb2a6f380eb63c7023c98b16f514b6880802b0259",
+      "call": {
+        "entry": "file",
+        "filename": "session_EXAMPLEPAYLOAD.json"
+      },
+      "expected": {
+        "apple": "12-json-not-a-chat-export.expected.apple.json",
+        "web": "12-json-not-a-chat-export.expected.web.json"
+      },
+      "summary": "A .json file that is not a ChatGPT export. Stand-in for the puller's <id>.json payload, whose real schema is not documented in the repository.",
+      "covers": [
+        "puller JSON",
+        "unknown JSON"
+      ],
+      "rules": [
+        "D9",
+        "W3"
+      ],
+      "difference": "Apple imports the raw JSON text as one message of role unknown and labels it Claude because the text contains that word. The web app refuses it with a clear reason and lets the user choose to keep it as a plain-text note."
+    },
+    {
+      "id": "13-generic-markers-lf",
+      "kind": "parity",
+      "entry": "file",
+      "input": "13-generic-markers-lf.input.txt",
+      "input_bytes": 461,
+      "input_sha256": "c110849b1934c4f4843bddeac97b842b4c15ee606fa731aa50307afb2b00ada7",
+      "call": {
+        "entry": "file",
+        "filename": "bike-repair-chat.txt"
+      },
+      "expected": {
+        "both": "13-generic-markers-lf.expected.json"
+      },
+      "summary": "Plain text with every kind of speaker marker, LF line endings.",
+      "covers": [
+        "text before the first marker",
+        "Name: markers with text on the same line",
+        "**bold** markers",
+        "heading markers",
+        "bare-name markers",
+        "Me / AI / System markers",
+        "code block inside a message",
+        "provider from a speaker label"
+      ]
+    },
+    {
+      "id": "14-generic-markers-crlf",
+      "kind": "defect-fix",
+      "entry": "file",
+      "input": "14-generic-markers-crlf.input.txt",
+      "input_bytes": 481,
+      "input_sha256": "a5c983da0e36c0d952331bb49345a57e9a081519acca9aa2e5c9285abaa0c4e1",
+      "call": {
+        "entry": "file",
+        "filename": "bike-repair-chat.txt"
+      },
+      "expected": {
+        "apple": "14-generic-markers-crlf.expected.apple.json",
+        "web": "14-generic-markers-crlf.expected.web.json"
+      },
+      "summary": "The same text with CRLF line endings (a file saved by Windows Notepad).",
+      "covers": [
+        "CRLF"
+      ],
+      "rules": [
+        "D1",
+        "W1"
+      ],
+      "difference": "Apple misses every marker that has no colon (the line ends in a carriage return), leaves CR characters inside the stored text, and the code block never closes when the message is displayed. The web app must return exactly the result of the LF fixture."
+    },
+    {
+      "id": "15-plain-text-single-speaker",
+      "kind": "parity",
+      "entry": "file",
+      "input": "15-plain-text-single-speaker.input.txt",
+      "input_bytes": 118,
+      "input_sha256": "42f8ed5d6ad405ffed093ff3352b4e4027f13462b40452e5fa57430accbd689e",
+      "call": {
+        "entry": "file",
+        "filename": "birdwatching-notes.txt"
+      },
+      "expected": {
+        "both": "15-plain-text-single-speaker.expected.json"
+      },
+      "summary": "Plain notes with no speaker markers at all.",
+      "covers": [
+        "single-speaker text",
+        "one message of role unknown",
+        "title from the file name",
+        "provider other"
+      ]
+    },
+    {
+      "id": "16-text-that-mentions-assistants",
+      "kind": "defect-fix",
+      "entry": "file",
+      "input": "16-text-that-mentions-assistants.input.md",
+      "input_bytes": 188,
+      "input_sha256": "f505c3480213db31a4629cbc7d0aa0aef388a2e1b8016858d80892937e8428a8",
+      "call": {
+        "entry": "file",
+        "filename": "assistant-comparison.md"
+      },
+      "expected": {
+        "apple": "16-text-that-mentions-assistants.expected.apple.json",
+        "web": "16-text-that-mentions-assistants.expected.web.json"
+      },
+      "summary": "A note that names assistants, each on its own line, but is not a dialogue.",
+      "covers": [
+        "provider keyword scan",
+        "bare-name markers in prose"
+      ],
+      "rules": [
+        "D2",
+        "D7",
+        "W8",
+        "W9"
+      ],
+      "difference": "Apple treats the three name lines as speaker markers (the last paragraph becomes an assistant message) and labels the session Claude because the word occurs in the text. The web app ignores bare names unless the text has both a user and an assistant marker, and never guesses the provider from words in the content."
+    },
+    {
+      "id": "17-whitespace-only-file",
+      "kind": "defect-fix",
+      "entry": "file",
+      "input": "17-whitespace-only-file.input.txt",
+      "input_bytes": 7,
+      "input_sha256": "6ba402f5968bed579963005f0b9968689b02e98b56113c632df1a6ecc7bd4422",
+      "call": {
+        "entry": "file",
+        "filename": "blank.txt"
+      },
+      "expected": {
+        "apple": "17-whitespace-only-file.expected.apple.json",
+        "web": "17-whitespace-only-file.expected.web.json"
+      },
+      "summary": "A file that contains only spaces, a tab and newlines.",
+      "covers": [
+        "whitespace-only input"
+      ],
+      "rules": [
+        "D8",
+        "W2",
+        "W12"
+      ],
+      "difference": "Apple saves a session that holds one empty message. The web app rejects the file as empty."
+    },
+    {
+      "id": "18-empty-file",
+      "kind": "parity",
+      "entry": "file",
+      "input": "18-empty-file.input.txt",
+      "input_bytes": 0,
+      "input_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "call": {
+        "entry": "file",
+        "filename": "empty.txt"
+      },
+      "expected": {
+        "both": "18-empty-file.expected.json"
+      },
+      "summary": "A zero-byte file.",
+      "covers": [
+        "empty input"
+      ]
+    },
+    {
+      "id": "19-code-blocks",
+      "kind": "parity",
+      "entry": "file",
+      "input": "19-code-blocks.input.md",
+      "input_bytes": 488,
+      "input_sha256": "32091875e5dce8c075509198733b46295c245fbb1fd83a2b4c0375bf5029776f",
+      "call": {
+        "entry": "file",
+        "filename": "knots.md"
+      },
+      "expected": {
+        "both": "19-code-blocks.expected.json"
+      },
+      "summary": "Fenced code blocks in every shape the display splitter handles: language, no language, indented fence, empty block, unterminated block.",
+      "covers": [
+        "code blocks",
+        "display segments",
+        "indentation kept inside code",
+        "unterminated fence"
+      ]
+    },
+    {
+      "id": "20-role-marker-inside-code-block",
+      "kind": "defect-fix",
+      "entry": "file",
+      "input": "20-role-marker-inside-code-block.input.md",
+      "input_bytes": 150,
+      "input_sha256": "ed0e534dcebbf71ee62f8f8c850b9268764b69e3951faee4e14405ce7237cda1",
+      "call": {
+        "entry": "file",
+        "filename": "deploy-notes.md"
+      },
+      "expected": {
+        "apple": "20-role-marker-inside-code-block.expected.apple.json",
+        "web": "20-role-marker-inside-code-block.expected.web.json"
+      },
+      "summary": "A code block whose lines look like speaker markers.",
+      "covers": [
+        "role markers inside fenced code"
+      ],
+      "rules": [
+        "D7",
+        "W8"
+      ],
+      "difference": "Apple splits the assistant's message at `user:`, `system:` and `ai:` inside the code block, producing five messages and a broken block. The web app does not look for markers inside a closed fenced block."
+    },
+    {
+      "id": "21-bold-after-marker",
+      "kind": "defect-fix",
+      "entry": "file",
+      "input": "21-bold-after-marker.input.txt",
+      "input_bytes": 124,
+      "input_sha256": "2e4ecb6b72be068ca023e21bee7ebfd6f9cbf2c22701559ffce1e33be611633f",
+      "call": {
+        "entry": "file",
+        "filename": "tyre-pressure.txt"
+      },
+      "expected": {
+        "apple": "21-bold-after-marker.expected.apple.json",
+        "web": "21-bold-after-marker.expected.web.json"
+      },
+      "summary": "Bold text on the same line as a speaker marker.",
+      "covers": [
+        "** removal on marker lines"
+      ],
+      "rules": [
+        "D7",
+        "W8"
+      ],
+      "difference": "Apple deletes every `**` on a marker line, so bold markup after the label is lost. The web app removes `**` only where it decorates the label itself."
+    },
+    {
+      "id": "22-very-long-turn",
+      "kind": "parity",
+      "entry": "file",
+      "input": "22-very-long-turn.input.txt",
+      "input_bytes": 3369,
+      "input_sha256": "5ed1ae88990d25f0ea5f4629cb5df8568a90dad598ee5929e84bda591687490c",
+      "call": {
+        "entry": "file",
+        "filename": "wheel-truing-checklist.txt"
+      },
+      "expected": {
+        "both": "22-very-long-turn.expected.json"
+      },
+      "summary": "One assistant turn of more than 3,000 characters between two short turns.",
+      "covers": [
+        "one very long turn",
+        "no length limit",
+        "no truncation"
+      ]
+    },
+    {
+      "id": "23-non-ascii-and-emoji",
+      "kind": "parity",
+      "entry": "file",
+      "input": "23-non-ascii-and-emoji.input.txt",
+      "input_bytes": 395,
+      "input_sha256": "c3d8b2e549aad7d5339a727fc0740d38f4ccdf21873ab12764e756dfa2708931",
+      "call": {
+        "entry": "file",
+        "filename": "tea-notes-unicode.txt"
+      },
+      "expected": {
+        "both": "23-non-ascii-and-emoji.expected.json"
+      },
+      "summary": "Accented Latin (composed and decomposed), Japanese, Arabic, Cyrillic, emoji including a joined family sequence, a marker preceded by a no-break space, a full-width colon, and two lines that end in a zero width space followed by a line holding only U+0085.",
+      "covers": [
+        "non-ASCII text",
+        "emoji",
+        "no Unicode normalisation of stored text",
+        "no-break space before a marker",
+        "full-width colon is not a marker",
+        "exact trim sets: U+200B and U+0085 are removed at the ends, which JavaScript trim() does not do"
+      ]
+    },
+    {
+      "id": "24-utf16le-with-bom",
+      "kind": "defect-fix",
+      "entry": "file",
+      "input": "24-utf16le-with-bom.input.txt",
+      "input_bytes": 146,
+      "input_sha256": "fd387428fcf66a7af48d65b6b3b7f49aaf65e4389db4e6dd4dcb45943f7257cc",
+      "call": {
+        "entry": "file",
+        "filename": "cafe-hours-utf16.txt"
+      },
+      "expected": {
+        "apple": "24-utf16le-with-bom.expected.apple.json",
+        "web": "24-utf16le-with-bom.expected.web.json"
+      },
+      "summary": "UTF-16 little-endian text with a byte-order mark and CRLF (what Windows PowerShell 5 writes with `>`).",
+      "covers": [
+        "UTF-16",
+        "byte-order mark",
+        "CRLF"
+      ],
+      "rules": [
+        "D10",
+        "W2"
+      ],
+      "difference": "Apple decodes files as UTF-8 only; this file yields no session and the message 'No sessions found in the selected files.' The web app detects the byte-order mark, decodes UTF-16 and imports the transcript, flagging the encoding it used."
+    },
+    {
+      "id": "25-windows-1252",
+      "kind": "defect-fix",
+      "entry": "file",
+      "input": "25-windows-1252.input.txt",
+      "input_bytes": 56,
+      "input_sha256": "0f4f76b980353a4122def235b11d478a0fd91120f15eeffc1c80fc9677b016ad",
+      "call": {
+        "entry": "file",
+        "filename": "cafe-hours-ansi.txt"
+      },
+      "expected": {
+        "apple": "25-windows-1252.expected.apple.json",
+        "web": "25-windows-1252.expected.web.json"
+      },
+      "summary": "Windows-1252 (ANSI) text with an accented letter, an en dash and curly quotes.",
+      "covers": [
+        "legacy single-byte encoding"
+      ],
+      "rules": [
+        "D10",
+        "W2"
+      ],
+      "difference": "Not valid UTF-8, so Apple imports nothing. The web app falls back to windows-1252 for text that is not UTF-8 and flags it."
+    },
+    {
+      "id": "26-paste-share-page-claude",
+      "kind": "parity",
+      "entry": "paste",
+      "input": "26-paste-share-page-claude.input.txt",
+      "input_bytes": 631,
+      "input_sha256": "c9881efcba94560c08497cd7de31b828db1065b7f8d2a2efc2ce9422199f27cc",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "both": "26-paste-share-page-claude.expected.json"
+      },
+      "summary": "The visible text of a claude.ai share page (synthetic), pasted.",
+      "covers": [
+        "share-page parser",
+        "text before the first header dropped",
+        "header-line preview dropped",
+        "boilerplate lines removed",
+        "bare time lines removed",
+        "consecutive duplicate lines removed",
+        "blank-line collapsing",
+        "provider claude"
+      ]
+    },
+    {
+      "id": "27-paste-share-page-claude-crlf",
+      "kind": "defect-fix",
+      "entry": "paste",
+      "input": "27-paste-share-page-claude-crlf.input.txt",
+      "input_bytes": 656,
+      "input_sha256": "f01c540462e4494d986fcc91a504d472bd03833d3a7a2a2f5f34d6a0e835fe9c",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "apple": "27-paste-share-page-claude-crlf.expected.apple.json",
+        "web": "27-paste-share-page-claude-crlf.expected.web.json"
+      },
+      "summary": "The same share-page text with CRLF line endings.",
+      "covers": [
+        "CRLF"
+      ],
+      "rules": [
+        "D1",
+        "W1"
+      ],
+      "difference": "With CR left at the end of every line Apple no longer recognises the exact-match furniture (Copy, Retry), blank lines or the '10:42 AM' time lines, and keeps CR characters in the text. The web app must return exactly the result of the LF fixture."
+    },
+    {
+      "id": "28-paste-share-page-code-damage",
+      "kind": "defect-fix",
+      "entry": "paste",
+      "input": "28-paste-share-page-code-damage.input.txt",
+      "input_bytes": 431,
+      "input_sha256": "2b6b1581bf797d49fda5e33558f9c9141774eb626e31feb2de677bc9a6769135",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "apple": "28-paste-share-page-code-damage.expected.apple.json",
+        "web": "28-paste-share-page-code-damage.expected.web.json"
+      },
+      "summary": "Share-page text whose answer contains indented code, repeated lines, and lines that look like page furniture.",
+      "covers": [
+        "share-page cleaning damages code"
+      ],
+      "rules": [
+        "D5",
+        "W7"
+      ],
+      "difference": "Apple trims every line (indentation is lost) and drops any line equal to the previous non-empty one (a repeated statement disappears). The web app keeps indentation and never removes an indented line. Still removed in both, by design of the heuristic: the second unindented `print` line, the line `Share` and the line `10:30`."
+    },
+    {
+      "id": "29-paste-share-page-chatgpt-headers",
+      "kind": "defect-fix",
+      "entry": "paste",
+      "input": "29-paste-share-page-chatgpt-headers.input.txt",
+      "input_bytes": 217,
+      "input_sha256": "b791254c2b054df5be64e2f31322539ba346e9a3aa2ea04ec1d92584d33f9251",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "apple": "29-paste-share-page-chatgpt-headers.expected.apple.json",
+        "web": "29-paste-share-page-chatgpt-headers.expected.web.json"
+      },
+      "summary": "Page text with 'You said:' and 'ChatGPT said:' headers (synthetic).",
+      "covers": [
+        "share-page parser fires on any 'You said:'",
+        "provider always Claude"
+      ],
+      "rules": [
+        "D6",
+        "W6"
+      ],
+      "difference": "Apple's share parser knows only 'You said:' and 'Claude responded:'. Every answer is appended to the question before it, all messages are user messages, and the session is labelled Claude. The web app also accepts 'ChatGPT said:', 'Gemini said:' and 'Claude said:' as assistant headers and takes the provider from the header family."
+    },
+    {
+      "id": "30-paste-share-header-line-only-turn",
+      "kind": "defect-fix",
+      "entry": "paste",
+      "input": "30-paste-share-header-line-only-turn.input.txt",
+      "input_bytes": 182,
+      "input_sha256": "b7e7194ed56af8e5ca55b993af032edea505d0bfd455ddb730e2cf5587162cbd",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "apple": "30-paste-share-header-line-only-turn.expected.apple.json",
+        "web": "30-paste-share-header-line-only-turn.expected.web.json"
+      },
+      "summary": "Share-page text in which two turns have text only on their header line.",
+      "covers": [
+        "header-line text is always discarded"
+      ],
+      "rules": [
+        "D6",
+        "W6"
+      ],
+      "difference": "Apple discards the text after 'You said:' as a preview. A turn with nothing else vanishes: here both user turns are lost. The web app falls back to the header-line text when a turn has no body."
+    },
+    {
+      "id": "31-paste-link",
+      "kind": "parity",
+      "entry": "paste",
+      "input": "31-paste-link.input.txt",
+      "input_bytes": 47,
+      "input_sha256": "75259ba0ed0cde63b9146005712191fd6c6dd4ac640a2cf1e75d5c5976ccf67c",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "both": "31-paste-link.expected.json"
+      },
+      "summary": "The clipboard holds a single link.",
+      "covers": [
+        "link routing"
+      ],
+      "rules": [
+        "W11"
+      ],
+      "note": "Nothing is imported. The Apple app opens its capture browser at `link_url`; the web app shows the link help of capture.md section 8.1 (and offers server capture where that tier exists)."
+    },
+    {
+      "id": "32-paste-single-word-with-dot",
+      "kind": "defect-fix",
+      "entry": "paste",
+      "input": "32-paste-single-word-with-dot.input.txt",
+      "input_bytes": 7,
+      "input_sha256": "f51bead488e14b656af3a13e33eb1d6fa9580832cbb9d7a20061f84c4b1c160f",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "apple": "32-paste-single-word-with-dot.expected.apple.json",
+        "web": "32-paste-single-word-with-dot.expected.web.json"
+      },
+      "summary": "The clipboard holds one word that ends in a full stop.",
+      "covers": [
+        "link routing false positive"
+      ],
+      "rules": [
+        "D12",
+        "W11"
+      ],
+      "difference": "Apple treats any single token under 500 characters that contains a dot as a link and opens the capture browser at https://Thanks. The web app uses `looksLikeLink` of capture.md section 8.1 (the host must contain a dot, must not end in a dot, and must end in a label of two or more letters); this text is not a link and is imported as a note."
+    },
+    {
+      "id": "33-paste-whitespace-only",
+      "kind": "parity",
+      "entry": "paste",
+      "input": "33-paste-whitespace-only.input.txt",
+      "input_bytes": 5,
+      "input_sha256": "f17146fe22bb7c7463c0723386688c6d2d55f8dd885f57b20dfe1bfc52f08503",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "both": "33-paste-whitespace-only.expected.json"
+      },
+      "summary": "The clipboard holds only white space.",
+      "covers": [
+        "empty input"
+      ]
+    },
+    {
+      "id": "34-paste-leading-trailing-whitespace",
+      "kind": "parity",
+      "entry": "paste",
+      "input": "34-paste-leading-trailing-whitespace.input.txt",
+      "input_bytes": 120,
+      "input_sha256": "5ba51120e1adee5b95565e01695b37acbce863809415ec1e5ff642c2fc98f556",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "gemini"
+      },
+      "expected": {
+        "both": "34-paste-leading-trailing-whitespace.expected.json"
+      },
+      "summary": "A short dialogue surrounded and interleaved with blank lines, spaces and tabs; the provider picker is set to Gemini.",
+      "covers": [
+        "leading and trailing whitespace",
+        "trimming of messages",
+        "inner indentation kept",
+        "picker labels an unidentified paste"
+      ]
+    },
+    {
+      "id": "35-paste-puller-markdown-leading-blank-lines",
+      "kind": "defect-fix",
+      "entry": "paste",
+      "input": "35-paste-puller-markdown-leading-blank-lines.input.md",
+      "input_bytes": 177,
+      "input_sha256": "4de37fa17e23b53a93e816dee739b980c204d13f559d15910e3a460384f1fd04",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "apple": "35-paste-puller-markdown-leading-blank-lines.expected.apple.json",
+        "web": "35-paste-puller-markdown-leading-blank-lines.expected.web.json"
+      },
+      "summary": "Puller markdown pasted with two blank lines in front of the header.",
+      "covers": [
+        "leading whitespace defeats format detection"
+      ],
+      "rules": [
+        "D11",
+        "W5"
+      ],
+      "difference": "Apple requires the header on the very first line. Here detection fails, the generic parser takes over, the header becomes a Note, every message keeps a trailing '---', and the title is 'Pasted session'. The web app skips leading blank lines."
+    },
+    {
+      "id": "36-paste-sign-in-wall",
+      "kind": "defect-fix",
+      "entry": "paste",
+      "input": "36-paste-sign-in-wall.input.txt",
+      "input_bytes": 222,
+      "input_sha256": "8785583833ef2973d66597fb7037e4305eb0ea590b3df5640ae4819561300e57",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "apple": "36-paste-sign-in-wall.expected.apple.json",
+        "web": "36-paste-sign-in-wall.expected.web.json"
+      },
+      "summary": "The text of a signed-out landing page, pasted.",
+      "covers": [
+        "sign-in wall guard on pasted text"
+      ],
+      "rules": [
+        "D3",
+        "W11"
+      ],
+      "difference": "In the Apple app the sign-in-wall guard exists only on the capture path: pasted wall text is saved as a session. The web app applies the same test to pasted text and answers `sign_in_suspected`; the user may then choose to import anyway."
+    },
+    {
+      "id": "37-paste-with-source-link",
+      "kind": "web-extension",
+      "entry": "paste",
+      "input": "37-paste-with-source-link.input.txt",
+      "input_bytes": 228,
+      "input_sha256": "c7fe22ac42d0e084bd84c35de643c526b496ac97e97f870c5c9fd04aeafae492",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude",
+        "source_url": "https://chatgpt.com/share/EXAMPLE-0000-RYE"
+      },
+      "expected": {
+        "apple": "37-paste-with-source-link.expected.apple.json",
+        "web": "37-paste-with-source-link.expected.web.json"
+      },
+      "summary": "Pasted page text together with the link it was copied from (the link field of capture.md section 8.1).",
+      "covers": [
+        "paste with a source link",
+        "provider from the link host"
+      ],
+      "rules": [
+        "W9",
+        "W11"
+      ],
+      "difference": "The Apple paste path has no link: the session gets the picker's provider and an empty source URL. In the web app the link becomes the source URL and its host decides the provider, whatever the picker says."
+    },
+    {
+      "id": "38-paste-context-pack",
+      "kind": "web-extension",
+      "entry": "paste",
+      "input": "38-paste-context-pack.input.md",
+      "input_bytes": 668,
+      "input_sha256": "3fa649c87515e604e8a5805703664ef8cd9a4b349d834c61d59a9a9d47f6c77a",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "apple": "38-paste-context-pack.expected.apple.json",
+        "web": "38-paste-context-pack.expected.web.json"
+      },
+      "summary": "A context pack, the Apple app's own export (ContextPack.swift), pasted back in. One message contains a '---' line of its own.",
+      "covers": [
+        "context pack round trip"
+      ],
+      "rules": [
+        "D15",
+        "W14"
+      ],
+      "difference": "Apple has no parser for its own export: the header block becomes a Note, every message keeps a trailing '---', the '**Note:**' turn is glued to the previous message, and title, link, tags and summary are lost. OPTIONAL for the web app (data-model.md prefers the interchange format for transfers): a parser that reads the format back into title, provider, model, link, tags, summary and clean messages."
+    },
+    {
+      "id": "39-capture-turns-claude",
+      "kind": "parity",
+      "entry": "capture",
+      "input": "39-capture-turns-claude.input.json",
+      "input_bytes": 391,
+      "input_sha256": "eb5834ef1cacf996dda39481f3ba90e9e128fe6841106f821ca91d93d67e2217",
+      "call": {
+        "entry": "capture"
+      },
+      "expected": {
+        "both": "39-capture-turns-claude.expected.json"
+      },
+      "summary": "Four harvested turn blocks from a claude.ai page, with a title detected on the page.",
+      "covers": [
+        "multi-turn capture",
+        "role from a leading marker",
+        "unlabelled turn becomes role unknown",
+        "furniture cleaning inside turns",
+        "provider from the link",
+        "detected title"
+      ]
+    },
+    {
+      "id": "40-capture-turns-chatgpt-url",
+      "kind": "defect-fix",
+      "entry": "capture",
+      "input": "40-capture-turns-chatgpt-url.input.json",
+      "input_bytes": 236,
+      "input_sha256": "18109b89623b1e2233e5f9870375af2ee1d1bd8fe787c4a05b364b47f1c1b791",
+      "call": {
+        "entry": "capture"
+      },
+      "expected": {
+        "apple": "40-capture-turns-chatgpt-url.expected.apple.json",
+        "web": "40-capture-turns-chatgpt-url.expected.web.json"
+      },
+      "summary": "Two harvested turn blocks from a chatgpt.com link, no title detected and none typed.",
+      "covers": [
+        "provider from the link host",
+        "title falls back to the last path component"
+      ],
+      "rules": [
+        "D2",
+        "W9"
+      ],
+      "difference": "Apple labels every multi-turn capture that is not from claude.ai as Other. The web app maps the link host to a provider."
+    },
+    {
+      "id": "41-capture-header-residue-long-first-turn",
+      "kind": "parity",
+      "entry": "capture",
+      "input": "41-capture-header-residue-long-first-turn.input.json",
+      "input_bytes": 1113,
+      "input_sha256": "af327bc2e1587031a67163d293871282485a745923448b6adbe274bb9a7f993a",
+      "call": {
+        "entry": "capture"
+      },
+      "expected": {
+        "both": "41-capture-header-residue-long-first-turn.expected.json"
+      },
+      "summary": "The first turn (more than 700 characters) starts with page-header lines; the last turn is a page footer.",
+      "covers": [
+        "page-header residue stripped from the first turn",
+        "trailing chrome turn dropped",
+        "dropped turns reported"
+      ]
+    },
+    {
+      "id": "42-capture-header-residue-short-first-turn",
+      "kind": "defect-fix",
+      "entry": "capture",
+      "input": "42-capture-header-residue-short-first-turn.input.json",
+      "input_bytes": 355,
+      "input_sha256": "6fe613047e1893863b2b598544432eeea91b1d2b443cb7a2944a2c61a8d3b0ea",
+      "call": {
+        "entry": "capture"
+      },
+      "expected": {
+        "apple": "42-capture-header-residue-short-first-turn.expected.apple.json",
+        "web": "42-capture-header-residue-short-first-turn.expected.web.json"
+      },
+      "summary": "The same shape with a short first turn (under 700 characters).",
+      "covers": [
+        "chrome test runs before header stripping"
+      ],
+      "rules": [
+        "D4",
+        "W10"
+      ],
+      "difference": "Apple tests the raw first turn for chrome before it strips header lines. A turn under 700 characters that contains 'sign in' is dropped whole, so the user's question is lost. The web app strips the header lines first and judges what is left."
+    },
+    {
+      "id": "43-capture-real-turns-dropped-as-chrome",
+      "kind": "parity",
+      "entry": "capture",
+      "input": "43-capture-real-turns-dropped-as-chrome.input.json",
+      "input_bytes": 334,
+      "input_sha256": "3914b62ea76d3702f09b590cdd91c44004fb8ee23cbf6a0a5cb942d06b65353f",
+      "call": {
+        "entry": "capture"
+      },
+      "expected": {
+        "both": "43-capture-real-turns-dropped-as-chrome.expected.json"
+      },
+      "summary": "A conversation whose first and last turns are short and happen to contain the letters 'sign in'.",
+      "covers": [
+        "real turns dropped silently",
+        "substring matching ('design integrates' contains 'sign in')"
+      ],
+      "rules": [
+        "D4"
+      ],
+      "note": "Both real turns are classified as chrome and dropped, in the Apple app and by the same test in the web app. This weakness of the heuristic is kept on purpose (see import-rules.md, defect D4). What must change is outside this result: the Apple app drops silently, the web app must show `dropped_turns` to the user and let them be restored before saving."
+    },
+    {
+      "id": "44-capture-sign-in-wall",
+      "kind": "parity",
+      "entry": "capture",
+      "input": "44-capture-sign-in-wall.input.json",
+      "input_bytes": 388,
+      "input_sha256": "9f4e5e1bfd235843c8ec3794c4f70ad49a04f5878e2b54362dad27e9897bc7ed",
+      "call": {
+        "entry": "capture"
+      },
+      "expected": {
+        "both": "44-capture-sign-in-wall.expected.json"
+      },
+      "summary": "The whole-page text of a signed-out landing page.",
+      "covers": [
+        "sign-in wall guard",
+        "nothing is saved"
+      ],
+      "rules": [
+        "D3",
+        "W10"
+      ],
+      "note": "The guard function must give the same answer. In the Apple app nothing is saved and a one-line status asks the user to log in and capture again. The web app reports `sign_in_suspected` as a warning and must also offer 'import anyway' (allow_wall)."
+    },
+    {
+      "id": "45-capture-short-conversation-flagged-as-wall",
+      "kind": "parity",
+      "entry": "capture",
+      "input": "45-capture-short-conversation-flagged-as-wall.input.json",
+      "input_bytes": 462,
+      "input_sha256": "36df2ad614e659caa7f747f6c0555cade22b0ba1dcbed03aaf11da9054928231",
+      "call": {
+        "entry": "capture"
+      },
+      "expected": {
+        "both": "45-capture-short-conversation-flagged-as-wall.expected.json"
+      },
+      "summary": "A whole-page capture of a short, real conversation that mentions 'sign in' and 'log in'.",
+      "covers": [
+        "sign-in wall false positive"
+      ],
+      "rules": [
+        "D3",
+        "W10"
+      ],
+      "note": "A false positive of the guard: under 1,200 characters with two marker phrases. The function result is kept identical. The Apple app gives the user no way to save this conversation; the web app must offer 'import anyway' (next fixture)."
+    },
+    {
+      "id": "46-capture-wall-override",
+      "kind": "web-extension",
+      "entry": "capture",
+      "input": "46-capture-wall-override.input.json",
+      "input_bytes": 484,
+      "input_sha256": "6b2199897da104b3344e0916d6e3c1093cdd5b385aae03de83a050de37ea39ac",
+      "call": {
+        "entry": "capture"
+      },
+      "expected": {
+        "apple": "46-capture-wall-override.expected.apple.json",
+        "web": "46-capture-wall-override.expected.web.json"
+      },
+      "summary": "The same capture again, after the user answered the warning with 'import anyway' (allow_wall is true).",
+      "covers": [
+        "sign-in wall override"
+      ],
+      "rules": [
+        "D3",
+        "W10"
+      ],
+      "difference": "The Apple app has no override: the capture stays refused. In the web app the guard only warns; with allow_wall the capture is imported normally."
+    },
+    {
+      "id": "47-capture-page-text-claude-share",
+      "kind": "parity",
+      "entry": "capture",
+      "input": "47-capture-page-text-claude-share.input.json",
+      "input_bytes": 552,
+      "input_sha256": "3936cb19f36fba07c46d7ae9922d56c1eeaa14e0bf1d280d37c6406df740bcfb",
+      "call": {
+        "entry": "capture"
+      },
+      "expected": {
+        "both": "47-capture-page-text-claude-share.expected.json"
+      },
+      "summary": "A whole-page capture (one block) of a claude.ai share page; the user typed a name.",
+      "covers": [
+        "single-block capture runs the text parsers",
+        "typed name wins over the detected title",
+        "source link stored"
+      ]
+    },
+    {
+      "id": "48-capture-page-text-gemini-unsplit",
+      "kind": "defect-fix",
+      "entry": "capture",
+      "input": "48-capture-page-text-gemini-unsplit.input.json",
+      "input_bytes": 464,
+      "input_sha256": "0e858b3bbde39a3e15130e10ec4393f48c1194ebac8346a19fedf334d3c8578a",
+      "call": {
+        "entry": "capture"
+      },
+      "expected": {
+        "apple": "48-capture-page-text-gemini-unsplit.expected.apple.json",
+        "web": "48-capture-page-text-gemini-unsplit.expected.web.json"
+      },
+      "summary": "A whole-page capture from a Gemini link: no speaker labels at all, the first line is the word 'Gemini', and the conversation mentions Claude.",
+      "covers": [
+        "unsplit single-message capture",
+        "wrong provider label"
+      ],
+      "rules": [
+        "D2",
+        "W8",
+        "W9"
+      ],
+      "difference": "This reproduces the mechanism behind the real one-message captures. Apple: the first line is a bare-name marker, so the whole page becomes ONE message of role assistant, and the keyword scan finds 'claude' before 'gemini', so the session is labelled Claude although the link is a Gemini link. The web app takes the provider from the link host, does not honour a lone bare name, and keeps the page as one message of role unknown for the user to review. Nothing in this text allows a split."
+    },
+    {
+      "id": "49-capture-page-text-gemini-labels",
+      "kind": "defect-fix",
+      "entry": "capture",
+      "input": "49-capture-page-text-gemini-labels.input.json",
+      "input_bytes": 437,
+      "input_sha256": "50e1637db637bd8961aff5b4348254260ff4f0465cc205c2a7dd1cac4697c551",
+      "call": {
+        "entry": "capture"
+      },
+      "expected": {
+        "apple": "49-capture-page-text-gemini-labels.expected.apple.json",
+        "web": "49-capture-page-text-gemini-labels.expected.web.json"
+      },
+      "summary": "The same conversation with the label lines 'You said' and 'Gemini said' (no colon) that an earlier review reported for Gemini chat pages. Unverified against a live page.",
+      "covers": [
+        "Gemini label lines without a colon",
+        "unsplit single-message capture",
+        "wrong provider label"
+      ],
+      "rules": [
+        "D2",
+        "W6",
+        "W9"
+      ],
+      "difference": "Apple knows these labels only with a colon, so the result is the same single assistant message labelled Claude. The web app accepts the two whole-line labels when BOTH occur in the text and splits the page into turns. The rule is built on a reported page layout, not on an observed one; if real pages differ it simply does not fire and the previous fixture applies."
+    },
+    {
+      "id": "50-capture-all-chrome",
+      "kind": "parity",
+      "entry": "capture",
+      "input": "50-capture-all-chrome.input.json",
+      "input_bytes": 204,
+      "input_sha256": "2bbaf0b961ff73ed05bea12f3953a444f33d66eebbe94fdf2a73b11db72e95f4",
+      "call": {
+        "entry": "capture"
+      },
+      "expected": {
+        "both": "50-capture-all-chrome.expected.json"
+      },
+      "summary": "Every harvested block is page chrome.",
+      "covers": [
+        "nothing left after chrome stripping"
+      ]
+    },
+    {
+      "id": "51-capture-nothing",
+      "kind": "parity",
+      "entry": "capture",
+      "input": "51-capture-nothing.input.json",
+      "input_bytes": 147,
+      "input_sha256": "742be7715a8374f014e8e7fcea75775071eb087316bb834027de4763e8b42e43",
+      "call": {
+        "entry": "capture"
+      },
+      "expected": {
+        "both": "51-capture-nothing.expected.json"
+      },
+      "summary": "The capture returned no text at all.",
+      "covers": [
+        "empty capture"
+      ]
+    },
+    {
+      "id": "52-capture-marker-only-turns",
+      "kind": "defect-fix",
+      "entry": "capture",
+      "input": "52-capture-marker-only-turns.input.json",
+      "input_bytes": 251,
+      "input_sha256": "9bcd9ff590a767bd83092c165755e7f48573c26eebd0488712f53740cdbc6cfd",
+      "call": {
+        "entry": "capture"
+      },
+      "expected": {
+        "apple": "52-capture-marker-only-turns.expected.apple.json",
+        "web": "52-capture-marker-only-turns.expected.web.json"
+      },
+      "summary": "Two of the four blocks consist of a speaker label and nothing else.",
+      "covers": [
+        "empty messages"
+      ],
+      "rules": [
+        "D8",
+        "W12"
+      ],
+      "difference": "Apple stores a message with empty text for each label-only block. The web app never stores an empty message."
+    },
+    {
+      "id": "53-capture-code-in-turns",
+      "kind": "defect-fix",
+      "entry": "capture",
+      "input": "53-capture-code-in-turns.input.json",
+      "input_bytes": 334,
+      "input_sha256": "1069f1432aae47bdcf1825a51e917b779c957fe423d2b741f347763898653199",
+      "call": {
+        "entry": "capture"
+      },
+      "expected": {
+        "apple": "53-capture-code-in-turns.expected.apple.json",
+        "web": "53-capture-code-in-turns.expected.web.json"
+      },
+      "summary": "A harvested turn that contains indented code with a repeated line.",
+      "covers": [
+        "furniture cleaning damages code in captured turns"
+      ],
+      "rules": [
+        "D5",
+        "W7"
+      ],
+      "difference": "Every captured turn goes through the share-page cleaner. Apple flattens the indentation and deletes the repeated call. The web app keeps indented lines exactly."
+    },
+    {
+      "id": "54-capture-fenced-code-in-turns",
+      "kind": "defect-fix",
+      "entry": "capture",
+      "input": "54-capture-fenced-code-in-turns.input.json",
+      "input_bytes": 298,
+      "input_sha256": "39842c84984251bc98ada7670f0a8a8371f2a288d8596b55b252cd8e12781c3e",
+      "call": {
+        "entry": "capture"
+      },
+      "expected": {
+        "apple": "54-capture-fenced-code-in-turns.expected.apple.json",
+        "web": "54-capture-fenced-code-in-turns.expected.web.json"
+      },
+      "summary": "A harvested turn with a fenced code block whose lines look like page furniture (capture.md fences code at extraction time).",
+      "covers": [
+        "furniture cleaning inside fenced code"
+      ],
+      "rules": [
+        "D5",
+        "W7"
+      ],
+      "difference": "Apple applies the furniture rules inside the fence too: the lines `Copy`, `10:30` and `Share`, the repeated `make build` and one of the two blank lines disappear from the code. The web app copies a closed fenced block untouched; the `Copy` line after the block is still removed."
+    },
+    {
+      "id": "55-guards-sign-in-wall-table",
+      "kind": "parity",
+      "entry": "guards",
+      "input": "55-guards-sign-in-wall-table.input.json",
+      "input_bytes": 20759,
+      "input_sha256": "764fe6d96a4219028adc11521d29d74f2aa09cc78db1b31f33bf4b065e62b1d3",
+      "call": {
+        "entry": "guards"
+      },
+      "expected": {
+        "both": "55-guards-sign-in-wall-table.expected.json"
+      },
+      "summary": "Unit cases for looksLikeSignInWall: both length thresholds, both hit thresholds, how markers are counted, and that length is counted in user-perceived characters.",
+      "covers": [
+        "looksLikeSignInWall thresholds",
+        "grapheme counting"
+      ],
+      "rules": [
+        "W15"
+      ]
+    },
+    {
+      "id": "56-guards-chrome-turns-table",
+      "kind": "defect-fix",
+      "entry": "guards",
+      "input": "56-guards-chrome-turns-table.input.json",
+      "input_bytes": 11053,
+      "input_sha256": "ad4d587a7751fb7911c55110634cd3bbc5d7c6f3c08d9fcf96543f756fc46900",
+      "call": {
+        "entry": "guards"
+      },
+      "expected": {
+        "apple": "56-guards-chrome-turns-table.expected.apple.json",
+        "web": "56-guards-chrome-turns-table.expected.web.json"
+      },
+      "summary": "Unit cases for stripChromeTurns: the 700-character limit, each chrome condition, the header-line rules (90 characters, 12 lines), and the order of the two steps.",
+      "covers": [
+        "stripChromeTurns",
+        "stripLeadingHeaderLines thresholds"
+      ],
+      "rules": [
+        "D4",
+        "W10"
+      ],
+      "difference": "Only the two cases whose name starts with ORDER differ. Apple judges the raw first turn, so header residue condemns the whole turn. The web app strips header lines first. The second ORDER case shows the price: a page name that used to be dropped with its 'Sign in' line now survives as a short turn."
+    },
+    {
+      "id": "57-display-segments-table",
+      "kind": "defect-fix",
+      "entry": "display-segments",
+      "input": "57-display-segments-table.input.json",
+      "input_bytes": 2405,
+      "input_sha256": "b766c94da40ea3164a523821385a17c69c270869e92b9c717e7b524294416990",
+      "call": {
+        "entry": "display-segments"
+      },
+      "expected": {
+        "apple": "57-display-segments-table.expected.apple.json",
+        "web": "57-display-segments-table.expected.web.json"
+      },
+      "summary": "Unit cases for the display splitter that turns one message text into prose and code blocks.",
+      "covers": [
+        "display segments"
+      ],
+      "rules": [
+        "D1",
+        "D16",
+        "W13"
+      ],
+      "difference": "Only the four cases whose name starts with DIFFERENT differ. Apple: CR breaks every fence; a line that starts with three backticks always opens a block, even when it is a one-line code span; fences are exactly three backticks, so a four-backtick fence is mis-split. The web app normalises line endings and follows the CommonMark fence rules for backtick fences."
+    }
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "fixture": "23-non-ascii-and-emoji",
+  "source": "apple-importer; the web app must return the same result",
+  "call": {
+    "entry": "file",
+    "filename": "tea-notes-unicode.txt"
+  },
+  "apple_status_message": "Imported 1 session.",
+  "notes": [
+    "Accented Latin (composed and decomposed), Japanese, Arabic, Cyrillic, emoji including a joined family sequence, a marker preceded by a no-break space, a full-width colon, and two lines that end in a zero width space followed by a line holding only U+0085."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "tea-notes-unicode",
+        "provider": "other",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Quel th\u00e9 pour le petit-d\u00e9jeuner ? \ud83c\udf75",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Quel th\u00e9 pour le petit-d\u00e9jeuner ? \ud83c\udf75"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Un th\u00e9 noir cors\u00e9, par exemple un Assam. \u8336\u306f\u71b1\u3044\u3046\u3061\u306b\u3002",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Un th\u00e9 noir cors\u00e9, par exemple un Assam. \u8336\u306f\u71b1\u3044\u3046\u3061\u306b\u3002"
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "Et pour le soir ?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Et pour le soir ?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Une tisane \ud83c\udf3f \u2014 camomille ou verveine. En famille : \ud83d\udc68\u200d\ud83d\udc69\u200d\ud83d\udc67\nUser\uff1a un deux-points pleine chasse n'est pas un marqueur.\nR\u00e9sum\u00e9: cafe\u0301 (forme d\u00e9compos\u00e9e), \u0634\u0627\u064a, \u0447\u0430\u0439.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Une tisane \ud83c\udf3f \u2014 camomille ou verveine. En famille : \ud83d\udc68\u200d\ud83d\udc69\u200d\ud83d\udc67\nUser\uff1a un deux-points pleine chasse n'est pas un marqueur.\nR\u00e9sum\u00e9: cafe\u0301 (forme d\u00e9compos\u00e9e), \u0634\u0627\u064a, \u0447\u0430\u0439."
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "Merci.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Merci."
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "De rien.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "De rien."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

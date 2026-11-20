@@ -1,0 +1,49 @@
+{
+  "fixture": "34-paste-leading-trailing-whitespace",
+  "source": "apple-importer; the web app must return the same result",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "gemini"
+  },
+  "apple_status_message": "Imported 1 session from clipboard.",
+  "notes": [
+    "A short dialogue surrounded and interleaved with blank lines, spaces and tabs; the provider picker is set to Gemini."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "gemini",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "How often should I water basil?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "How often should I water basil?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Every two days in summer.\n   Keep the soil moist.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Every two days in summer.\n   Keep the soil moist."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

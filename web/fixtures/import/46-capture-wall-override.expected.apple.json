@@ -1,0 +1,19 @@
+{
+  "fixture": "46-capture-wall-override",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "capture"
+  },
+  "apple_status_message": "That looks like a sign-in or landing page \u2014 log in below (or wait for the conversation to appear), then press Capture again.",
+  "notes": [
+    "The same capture again, after the user answered the warning with 'import anyway' (allow_wall is true).",
+    "The Apple app has no override: the capture stays refused. In the web app the guard only warns; with allow_wall the capture is imported normally."
+  ],
+  "result": {
+    "outcome": "rejected",
+    "reason": "sign_in_suspected",
+    "flags": [],
+    "sessions": [],
+    "dropped_turns": []
+  }
+}

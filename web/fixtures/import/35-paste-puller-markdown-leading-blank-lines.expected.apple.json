@@ -1,0 +1,60 @@
+{
+  "fixture": "35-paste-puller-markdown-leading-blank-lines",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "apple_status_message": "Imported 1 session from clipboard.",
+  "notes": [
+    "Puller markdown pasted with two blank lines in front of the header.",
+    "Apple requires the header on the very first line. Here detection fails, the generic parser takes over, the header becomes a Note, every message keeps a trailing '---', and the title is 'Pasted session'. The web app skips leading blank lines."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "unknown",
+            "text": "# session_EXAMPLEMULCH\nSource: https://claude.ai/code/session_EXAMPLEMULCH",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "# session_EXAMPLEMULCH\nSource: https://claude.ai/code/session_EXAMPLEMULCH"
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "Which mulch for strawberries?\n\n---",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Which mulch for strawberries?\n\n---"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Straw. It keeps the fruit clean and dry.\n\n---",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Straw. It keeps the fruit clean and dry.\n\n---"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "fixture": "42-capture-header-residue-short-first-turn",
+  "source": "web-target",
+  "call": {
+    "entry": "capture"
+  },
+  "notes": [
+    "The same shape with a short first turn (under 700 characters).",
+    "Apple tests the raw first turn for chrome before it strips header lines. A turn under 700 characters that contains 'sign in' is dropped whole, so the user's question is lost. The web app strips the header lines first and judges what is left."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "EXAMPLE-0000-FRAME",
+        "provider": "claude",
+        "model": "",
+        "source_url": "https://claude.ai/share/EXAMPLE-0000-FRAME",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Is a steel frame fine for touring?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Is a steel frame fine for touring?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Yes. Steel is forgiving and easy to repair.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Yes. Steel is forgiving and easy to repair."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "dropped_turns": [
+      {
+        "position": "trailing",
+        "index": 2,
+        "text": "This assistant can make mistakes."
+      }
+    ]
+  }
+}

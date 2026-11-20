@@ -1,0 +1,49 @@
+{
+  "fixture": "35-paste-puller-markdown-leading-blank-lines",
+  "source": "web-target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "notes": [
+    "Puller markdown pasted with two blank lines in front of the header.",
+    "Apple requires the header on the very first line. Here detection fails, the generic parser takes over, the header becomes a Note, every message keeps a trailing '---', and the title is 'Pasted session'. The web app skips leading blank lines."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "session_EXAMPLEMULCH",
+        "provider": "claude",
+        "model": "",
+        "source_url": "https://claude.ai/code/session_EXAMPLEMULCH",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Which mulch for strawberries?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Which mulch for strawberries?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Straw. It keeps the fruit clean and dry.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Straw. It keeps the fruit clean and dry."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

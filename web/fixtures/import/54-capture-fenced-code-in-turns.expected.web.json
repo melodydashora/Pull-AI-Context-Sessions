@@ -1,0 +1,57 @@
+{
+  "fixture": "54-capture-fenced-code-in-turns",
+  "source": "web-target",
+  "call": {
+    "entry": "capture"
+  },
+  "notes": [
+    "A harvested turn with a fenced code block whose lines look like page furniture (capture.md fences code at extraction time).",
+    "Apple applies the furniture rules inside the fence too: the lines `Copy`, `10:30` and `Share`, the repeated `make build` and one of the two blank lines disappear from the code. The web app copies a closed fenced block untouched; the `Copy` line after the block is still removed."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "session_EXAMPLETRUING",
+        "provider": "claude",
+        "model": "",
+        "source_url": "https://claude.ai/code/session_EXAMPLETRUING",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Show me the release steps.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Show me the release steps."
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Run these:\n```sh\nCopy\nmake build\nmake build\n10:30\n\n\nShare\n```\nThat is all.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Run these:"
+              },
+              {
+                "type": "code",
+                "language": "sh",
+                "code": "Copy\nmake build\nmake build\n10:30\n\n\nShare"
+              },
+              {
+                "type": "prose",
+                "text": "That is all."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "dropped_turns": []
+  }
+}

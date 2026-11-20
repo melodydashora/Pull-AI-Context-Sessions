@@ -1,0 +1,21 @@
+{
+  "fixture": "32-paste-single-word-with-dot",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "apple_status_message": "That's a link \u2014 opening it in the capture browser.",
+  "notes": [
+    "The clipboard holds one word that ends in a full stop.",
+    "Apple treats any single token under 500 characters that contains a dot as a link and opens the capture browser at https://Thanks. The web app uses `looksLikeLink` of capture.md section 8.1 (the host must contain a dot, must not end in a dot, and must end in a label of two or more letters); this text is not a link and is imported as a note."
+  ],
+  "result": {
+    "outcome": "link",
+    "reason": null,
+    "link_url": "https://Thanks.",
+    "flags": [],
+    "sessions": []
+  }
+}

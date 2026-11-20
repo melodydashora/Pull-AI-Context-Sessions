@@ -1,0 +1,40 @@
+{
+  "fixture": "11-chatgpt-no-current-node-no-times",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "file",
+    "filename": "conversations.json"
+  },
+  "notes": [
+    "A conversation with no current_node and no message timestamps.",
+    "Without current_node Apple sorts the mapping's values by message create_time. The values come from a dictionary with no defined order and the sort is not stable, so messages with equal or missing times come out in a different order on every run. The web app uses a stable sort and keeps the order of the keys in the JSON text for ties."
+  ],
+  "apple_behaviour": "The message order changes from run to run. 8 runs of the same input produced 8 different orders; three of them are listed in apple_observed_orders. There is therefore no single result to record.",
+  "apple_observed_orders": [
+    [
+      "Fifth in the file.",
+      "Fourth in the file.",
+      "Third in the file.",
+      "Sixth in the file.",
+      "First in the file.",
+      "Second in the file."
+    ],
+    [
+      "Fifth in the file.",
+      "Second in the file.",
+      "Sixth in the file.",
+      "First in the file.",
+      "Third in the file.",
+      "Fourth in the file."
+    ],
+    [
+      "Fifth in the file.",
+      "Third in the file.",
+      "First in the file.",
+      "Sixth in the file.",
+      "Fourth in the file.",
+      "Second in the file."
+    ]
+  ],
+  "result": null
+}

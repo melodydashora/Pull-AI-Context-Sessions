@@ -1,0 +1,38 @@
+{
+  "fixture": "15-plain-text-single-speaker",
+  "source": "apple-importer; the web app must return the same result",
+  "call": {
+    "entry": "file",
+    "filename": "birdwatching-notes.txt"
+  },
+  "apple_status_message": "Imported 1 session.",
+  "notes": [
+    "Plain notes with no speaker markers at all."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "birdwatching-notes",
+        "provider": "other",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "unknown",
+            "text": "Saturday walk, reservoir path.\n\nTwo herons near the reeds, one kingfisher by the weir.\nBring the long lens next time.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Saturday walk, reservoir path.\n\nTwo herons near the reeds, one kingfisher by the weir.\nBring the long lens next time."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

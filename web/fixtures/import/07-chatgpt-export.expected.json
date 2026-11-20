@@ -1,0 +1,127 @@
+{
+  "fixture": "07-chatgpt-export",
+  "source": "apple-importer; the web app must return the same result",
+  "call": {
+    "entry": "file",
+    "filename": "conversations.json"
+  },
+  "apple_status_message": "Imported 2 sessions.",
+  "notes": [
+    "A ChatGPT data export (conversations.json) with three conversations."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Sourdough starter schedule",
+        "provider": "chatgpt",
+        "model": "",
+        "source_url": "",
+        "created_at": "2023-11-14T22:13:20.500Z",
+        "messages": [
+          {
+            "role": "user",
+            "text": "When should I feed the starter?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "When should I feed the starter?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Feed it every twelve hours.\nKeep it at room temperature.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Feed it every twelve hours.\nKeep it at room temperature."
+              }
+            ]
+          },
+          {
+            "role": "unknown",
+            "text": "timer set: 12h",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "timer set: 12h"
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "Does this photo look right?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Does this photo look right?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "It looks active and ready.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "It looks active and ready."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "ChatGPT conversation",
+        "provider": "chatgpt",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "First by time, although it comes third in the file.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "First by time, although it comes third in the file."
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "Second by time.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Second by time."
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Third by time.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Third by time."
+              }
+            ]
+          },
+          {
+            "role": "unknown",
+            "text": "A role the app does not know.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "A role the app does not know."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "fixture": "28-paste-share-page-code-damage",
+  "source": "web-target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "notes": [
+    "Share-page text whose answer contains indented code, repeated lines, and lines that look like page furniture.",
+    "Apple trims every line (indentation is lost) and drops any line equal to the previous non-empty one (a repeated statement disappears). The web app keeps indentation and never removes an indented line. Still removed in both, by design of the heuristic: the second unindented `print` line, the line `Share` and the line `10:30`."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Show me a function that totals a list.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Show me a function that totals a list."
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Here is a version with a guard:\ndef total(values):\n    result = 0\n    for value in values:\n        if value is None:\n            continue\n        result += value\n        result += value\n    return result\nprint(total([1, 2]))\nThe schedule is:\nwatering",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Here is a version with a guard:\ndef total(values):\n    result = 0\n    for value in values:\n        if value is None:\n            continue\n        result += value\n        result += value\n    return result\nprint(total([1, 2]))\nThe schedule is:\nwatering"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

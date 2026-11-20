@@ -1,0 +1,60 @@
+{
+  "fixture": "38-paste-context-pack",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "apple_status_message": "Imported 1 session from clipboard.",
+  "notes": [
+    "A context pack, the Apple app's own export (ContextPack.swift), pasted back in. One message contains a '---' line of its own.",
+    "Apple has no parser for its own export: the header block becomes a Note, every message keeps a trailing '---', the '**Note:**' turn is glued to the previous message, and title, link, tags and summary are lost. OPTIONAL for the web app (data-model.md prefers the interchange format for transfers): a parser that reads the format back into title, provider, model, link, tags, summary and clean messages."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "gemini",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "unknown",
+            "text": "# Context pack: Rose pruning plan\n\nOrigin: Gemini (gemini-example-model), saved Aug 5, 2026\nSource: https://gemini.google.com/share/EXAMPLEROSES\nTags: garden, roses\n\n## Summary\n\nPrune in late winter; cut above outward-facing buds.\n\nYou are being given the transcript of an earlier conversation the user had\nwith another AI assistant. Read it, treat its decisions and facts as established\ncontext, and continue helping from where it left off.\n\n## Transcript",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "# Context pack: Rose pruning plan\n\nOrigin: Gemini (gemini-example-model), saved Aug 5, 2026\nSource: https://gemini.google.com/share/EXAMPLEROSES\nTags: garden, roses\n\n## Summary\n\nPrune in late winter; cut above outward-facing buds.\n\nYou are being given the transcript of an earlier conversation the user had\nwith another AI assistant. Read it, treat its decisions and facts as established\ncontext, and continue helping from where it left off.\n\n## Transcript"
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "When should I prune roses?\n\n---",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "When should I prune roses?\n\n---"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "In late winter, just as the buds swell.\n\nA rule of thumb:\n\n---\n\ncut above an outward-facing bud.\n\n---\n\n**Note:**\n\nChecked the shears on 2 March.\n\n---",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "In late winter, just as the buds swell.\n\nA rule of thumb:\n\n---\n\ncut above an outward-facing bud.\n\n---\n\n**Note:**\n\nChecked the shears on 2 March.\n\n---"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

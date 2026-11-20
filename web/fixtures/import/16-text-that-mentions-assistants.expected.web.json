@@ -1,0 +1,38 @@
+{
+  "fixture": "16-text-that-mentions-assistants",
+  "source": "web-target",
+  "call": {
+    "entry": "file",
+    "filename": "assistant-comparison.md"
+  },
+  "notes": [
+    "A note that names assistants, each on its own line, but is not a dialogue.",
+    "Apple treats the three name lines as speaker markers (the last paragraph becomes an assistant message) and labels the session Claude because the word occurs in the text. The web app ignores bare names unless the text has both a user and an assistant marker, and never guesses the provider from words in the content."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "assistant-comparison",
+        "provider": "other",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "unknown",
+            "text": "# Which assistant gave the best pruning advice?\n\nI asked three assistants the same question about pruning roses.\n\nClaude\nChatGPT\nGemini\n\nAll three said to cut above an outward-facing bud.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "# Which assistant gave the best pruning advice?\n\nI asked three assistants the same question about pruning roses.\n\nClaude\nChatGPT\nGemini\n\nAll three said to cut above an outward-facing bud."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

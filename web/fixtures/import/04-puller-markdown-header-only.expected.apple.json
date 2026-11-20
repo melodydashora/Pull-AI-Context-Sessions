@@ -1,0 +1,28 @@
+{
+  "fixture": "04-puller-markdown-header-only",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "file",
+    "filename": "session_EXAMPLEEMPTY.md"
+  },
+  "apple_status_message": "Imported 1 session.",
+  "notes": [
+    "What the puller writes when it harvested no turns: the two header lines and nothing else.",
+    "Apple saves a session with zero messages and reports success. The web app must not save it."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "session_EXAMPLEEMPTY",
+        "provider": "claude",
+        "model": "",
+        "source_url": "https://claude.ai/code/session_EXAMPLEEMPTY",
+        "created_at": null,
+        "messages": []
+      }
+    ]
+  }
+}

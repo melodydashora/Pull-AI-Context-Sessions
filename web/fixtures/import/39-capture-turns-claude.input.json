@@ -1,0 +1,12 @@
+{
+  "source_url": "https://claude.ai/code/session_EXAMPLECHAIN",
+  "detected_title": "Chain maintenance",
+  "typed_name": "",
+  "kind": "turns",
+  "turns": [
+    "User: How often should I oil my chain?",
+    "Assistant: Every 150 km in dry weather.\nWipe off the excess.\nCopy\n10:42 AM",
+    "Searched the web\nSearched the web\nA wet lube lasts longer in rain.",
+    "User: Thanks."
+  ]
+}

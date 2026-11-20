@@ -1,0 +1,77 @@
+{
+  "fixture": "05-puller-markdown-combined",
+  "source": "web-target",
+  "call": {
+    "entry": "file",
+    "filename": "all_sessions.md"
+  },
+  "notes": [
+    "Two sessions in one file, as written by the puller's --combine option (files joined by a blank line).",
+    "Apple reads the file as one session: the second header and its first turn become a single message of role unknown. The web app starts a new session at every header pair that begins a block."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "session_EXAMPLEKNOTS",
+        "provider": "claude",
+        "model": "",
+        "source_url": "https://claude.ai/code/session_EXAMPLEKNOTS",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Which knot holds a tarp ridge line?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Which knot holds a tarp ridge line?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "A taut-line hitch. It slides to adjust and grips under load.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "A taut-line hitch. It slides to adjust and grips under load."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "session_EXAMPLETEA",
+        "provider": "claude",
+        "model": "",
+        "source_url": "https://claude.ai/code/session_EXAMPLETEA",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "How long should black tea steep?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "How long should black tea steep?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Three to five minutes in freshly boiled water.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Three to five minutes in freshly boiled water."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

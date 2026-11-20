@@ -1,0 +1,283 @@
+{
+  "fixture": "57-display-segments-table",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "display-segments"
+  },
+  "notes": [
+    "Unit cases for the display splitter that turns one message text into prose and code blocks.",
+    "Only the four cases whose name starts with DIFFERENT differ. Apple: CR breaks every fence; a line that starts with three backticks always opens a block, even when it is a one-line code span; fences are exactly three backticks, so a four-backtick fence is mis-split. The web app normalises line endings and follows the CommonMark fence rules for backtick fences."
+  ],
+  "result": {
+    "results": [
+      {
+        "name": "plain prose",
+        "display_segments": [
+          {
+            "type": "prose",
+            "text": "Just prose.\nSecond line."
+          }
+        ]
+      },
+      {
+        "name": "fence with a language",
+        "display_segments": [
+          {
+            "type": "prose",
+            "text": "Before"
+          },
+          {
+            "type": "code",
+            "language": "python",
+            "code": "print(1)"
+          },
+          {
+            "type": "prose",
+            "text": "After"
+          }
+        ]
+      },
+      {
+        "name": "fence without a language",
+        "display_segments": [
+          {
+            "type": "code",
+            "language": null,
+            "code": "code"
+          }
+        ]
+      },
+      {
+        "name": "language tag is trimmed",
+        "display_segments": [
+          {
+            "type": "code",
+            "language": "swift",
+            "code": "let x = 1"
+          }
+        ]
+      },
+      {
+        "name": "the whole info string is the language",
+        "display_segments": [
+          {
+            "type": "code",
+            "language": "js title=\"a.js\"",
+            "code": "x()"
+          }
+        ]
+      },
+      {
+        "name": "indented fence; code keeps its indentation",
+        "display_segments": [
+          {
+            "type": "prose",
+            "text": "List:"
+          },
+          {
+            "type": "code",
+            "language": "sh",
+            "code": "  ls -la"
+          },
+          {
+            "type": "prose",
+            "text": "end"
+          }
+        ]
+      },
+      {
+        "name": "unterminated fence runs to the end",
+        "display_segments": [
+          {
+            "type": "prose",
+            "text": "Start"
+          },
+          {
+            "type": "code",
+            "language": "sh",
+            "code": "ls\nmore"
+          }
+        ]
+      },
+      {
+        "name": "empty block",
+        "display_segments": [
+          {
+            "type": "code",
+            "language": null,
+            "code": ""
+          }
+        ]
+      },
+      {
+        "name": "fence opener as the last line",
+        "display_segments": [
+          {
+            "type": "prose",
+            "text": "x"
+          },
+          {
+            "type": "code",
+            "language": null,
+            "code": ""
+          }
+        ]
+      },
+      {
+        "name": "two blocks",
+        "display_segments": [
+          {
+            "type": "prose",
+            "text": "A"
+          },
+          {
+            "type": "code",
+            "language": null,
+            "code": "1"
+          },
+          {
+            "type": "prose",
+            "text": "B"
+          },
+          {
+            "type": "code",
+            "language": null,
+            "code": "2"
+          },
+          {
+            "type": "prose",
+            "text": "C"
+          }
+        ]
+      },
+      {
+        "name": "white-space-only prose between blocks is dropped",
+        "display_segments": [
+          {
+            "type": "code",
+            "language": null,
+            "code": "1"
+          },
+          {
+            "type": "code",
+            "language": null,
+            "code": "2"
+          }
+        ]
+      },
+      {
+        "name": "prose is not trimmed",
+        "display_segments": [
+          {
+            "type": "prose",
+            "text": "\n\nText\n"
+          },
+          {
+            "type": "code",
+            "language": null,
+            "code": "c"
+          }
+        ]
+      },
+      {
+        "name": "blank lines and indentation inside code are kept",
+        "display_segments": [
+          {
+            "type": "code",
+            "language": "py",
+            "code": "def f():\n    return 1\n\n\n    # two blank lines above"
+          }
+        ]
+      },
+      {
+        "name": "tilde fences are not recognised",
+        "display_segments": [
+          {
+            "type": "prose",
+            "text": "~~~\ncode\n~~~"
+          }
+        ]
+      },
+      {
+        "name": "backticks inside a sentence do not open a block",
+        "display_segments": [
+          {
+            "type": "prose",
+            "text": "Use ```npm test``` to run.\nNext line."
+          }
+        ]
+      },
+      {
+        "name": "closing fence with trailing text does not close",
+        "display_segments": [
+          {
+            "type": "code",
+            "language": null,
+            "code": "code\n``` trailing\nmore"
+          },
+          {
+            "type": "prose",
+            "text": "end"
+          }
+        ]
+      },
+      {
+        "name": "empty text",
+        "display_segments": []
+      },
+      {
+        "name": "white-space-only text",
+        "display_segments": []
+      },
+      {
+        "name": "DIFFERENT: CRLF line endings",
+        "display_segments": [
+          {
+            "type": "prose",
+            "text": "Before\r"
+          },
+          {
+            "type": "code",
+            "language": "python\r",
+            "code": "print(1)\r\n```\r\nAfter"
+          }
+        ]
+      },
+      {
+        "name": "DIFFERENT: a line that is only an inline code span",
+        "display_segments": [
+          {
+            "type": "code",
+            "language": "npm test```",
+            "code": "Next line.\nLast line."
+          }
+        ]
+      },
+      {
+        "name": "DIFFERENT: four-backtick fence around a three-backtick fence",
+        "display_segments": [
+          {
+            "type": "code",
+            "language": "`markdown",
+            "code": "```js\nx"
+          },
+          {
+            "type": "code",
+            "language": "`",
+            "code": "After"
+          }
+        ]
+      },
+      {
+        "name": "DIFFERENT: a longer run of backticks closes a three-backtick fence",
+        "display_segments": [
+          {
+            "type": "code",
+            "language": null,
+            "code": "code\n````\nAfter"
+          }
+        ]
+      }
+    ]
+  }
+}

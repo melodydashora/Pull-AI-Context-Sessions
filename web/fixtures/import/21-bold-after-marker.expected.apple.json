@@ -1,0 +1,49 @@
+{
+  "fixture": "21-bold-after-marker",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "file",
+    "filename": "tyre-pressure.txt"
+  },
+  "apple_status_message": "Imported 1 session.",
+  "notes": [
+    "Bold text on the same line as a speaker marker.",
+    "Apple deletes every `**` on a marker line, so bold markup after the label is lost. The web app removes `**` only where it decorates the label itself."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "tyre-pressure",
+        "provider": "other",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Which tyre pressure for wet roads?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Which tyre pressure for wet roads?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Lower it slightly. About 10 percent less grips better.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Lower it slightly. About 10 percent less grips better."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

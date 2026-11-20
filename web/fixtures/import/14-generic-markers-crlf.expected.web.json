@@ -1,0 +1,113 @@
+{
+  "fixture": "14-generic-markers-crlf",
+  "source": "web-target",
+  "call": {
+    "entry": "file",
+    "filename": "bike-repair-chat.txt"
+  },
+  "notes": [
+    "The same text with CRLF line endings (a file saved by Windows Notepad).",
+    "Apple misses every marker that has no colon (the line ends in a carriage return), leaves CR characters inside the stored text, and the code block never closes when the message is displayed. The web app must return exactly the result of the LF fixture."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "bike-repair-chat",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "unknown",
+            "text": "Exported chat about a wobbling wheel.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Exported chat about a wobbling wheel."
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "My rear wheel wobbles. What should I check first?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "My rear wheel wobbles. What should I check first?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Check the spoke tension first.\nSpin the wheel and watch the gap at the brake pads.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Check the spoke tension first.\nSpin the wheel and watch the gap at the brake pads."
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "The gap changes near the valve.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "The gap changes near the valve."
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Tighten the two spokes opposite the wobble by a quarter turn:\n\n```sh\nspoke-key --turn 0.25 --spokes 7,9\n```",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Tighten the two spokes opposite the wobble by a quarter turn:\n"
+              },
+              {
+                "type": "code",
+                "language": "sh",
+                "code": "spoke-key --turn 0.25 --spokes 7,9"
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "Done. It runs true now.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Done. It runs true now."
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Good. Check it again after the first ride.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Good. Check it again after the first ride."
+              }
+            ]
+          },
+          {
+            "role": "system",
+            "text": "End of conversation.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "End of conversation."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

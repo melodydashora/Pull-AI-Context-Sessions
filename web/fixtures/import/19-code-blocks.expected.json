@@ -1,0 +1,105 @@
+{
+  "fixture": "19-code-blocks",
+  "source": "apple-importer; the web app must return the same result",
+  "call": {
+    "entry": "file",
+    "filename": "knots.md"
+  },
+  "apple_status_message": "Imported 1 session.",
+  "notes": [
+    "Fenced code blocks in every shape the display splitter handles: language, no language, indented fence, empty block, unterminated block."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "knots",
+        "provider": "other",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Show me the steps for a bowline as code comments.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Show me the steps for a bowline as code comments."
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Here they are.\n\n```python\n# 1. make a small loop\n# 2. pass the end up through the loop\ndef tie():\n    return \"bowline\"\n```\n\nA block with no language:\n\n```\nrabbit out of the hole, round the tree, back down the hole\n```\n\nAn indented fence inside a list:\n\n  ```sh\n  echo \"dress the knot\"\n  ```\n\nAn empty block:\n\n```\n```",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Here they are.\n"
+              },
+              {
+                "type": "code",
+                "language": "python",
+                "code": "# 1. make a small loop\n# 2. pass the end up through the loop\ndef tie():\n    return \"bowline\""
+              },
+              {
+                "type": "prose",
+                "text": "\nA block with no language:\n"
+              },
+              {
+                "type": "code",
+                "language": null,
+                "code": "rabbit out of the hole, round the tree, back down the hole"
+              },
+              {
+                "type": "prose",
+                "text": "\nAn indented fence inside a list:\n"
+              },
+              {
+                "type": "code",
+                "language": "sh",
+                "code": "  echo \"dress the knot\""
+              },
+              {
+                "type": "prose",
+                "text": "\nAn empty block:\n"
+              },
+              {
+                "type": "code",
+                "language": null,
+                "code": ""
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "And a clove hitch?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "And a clove hitch?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "The last block is not closed:\n\n```text\ntwo turns around the post",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "The last block is not closed:\n"
+              },
+              {
+                "type": "code",
+                "language": "text",
+                "code": "two turns around the post"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

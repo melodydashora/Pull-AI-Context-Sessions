@@ -1,0 +1,50 @@
+{
+  "fixture": "29-paste-share-page-chatgpt-headers",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "apple_status_message": "Imported 1 session from clipboard.",
+  "notes": [
+    "Page text with 'You said:' and 'ChatGPT said:' headers (synthetic).",
+    "Apple's share parser knows only 'You said:' and 'Claude responded:'. Every answer is appended to the question before it, all messages are user messages, and the session is labelled Claude. The web app also accepts 'ChatGPT said:', 'Gemini said:' and 'Claude said:' as assistant headers and takes the provider from the header family."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "How do I patch an inner tube?\nChatGPT said:\nRoughen the area, spread the glue, wait a minute, then press the patch on.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "How do I patch an inner tube?\nChatGPT said:\nRoughen the area, spread the glue, wait a minute, then press the patch on."
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "How long before I can ride?\nChatGPT said:\nAbout five minutes.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "How long before I can ride?\nChatGPT said:\nAbout five minutes."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

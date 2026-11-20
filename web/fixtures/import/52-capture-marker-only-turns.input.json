@@ -1,0 +1,12 @@
+{
+  "source_url": "https://claude.ai/share/EXAMPLE-0000-WAX",
+  "detected_title": null,
+  "typed_name": "",
+  "kind": "turns",
+  "turns": [
+    "User: Which wax for a new chain?",
+    "Assistant",
+    "User:",
+    "Assistant: A paraffin blend."
+  ]
+}

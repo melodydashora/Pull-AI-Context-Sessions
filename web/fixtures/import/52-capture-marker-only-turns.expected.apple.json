@@ -1,0 +1,59 @@
+{
+  "fixture": "52-capture-marker-only-turns",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "capture"
+  },
+  "apple_status_message": "Captured 4 turns from claude.ai.",
+  "notes": [
+    "Two of the four blocks consist of a speaker label and nothing else.",
+    "Apple stores a message with empty text for each label-only block. The web app never stores an empty message."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "EXAMPLE-0000-WAX",
+        "provider": "claude",
+        "model": "",
+        "source_url": "https://claude.ai/share/EXAMPLE-0000-WAX",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Which wax for a new chain?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Which wax for a new chain?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "",
+            "display_segments": []
+          },
+          {
+            "role": "user",
+            "text": "",
+            "display_segments": []
+          },
+          {
+            "role": "assistant",
+            "text": "A paraffin blend.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "A paraffin blend."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "dropped_turns": []
+  }
+}

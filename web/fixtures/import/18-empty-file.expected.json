@@ -1,0 +1,18 @@
+{
+  "fixture": "18-empty-file",
+  "source": "apple-importer; the web app must return the same result",
+  "call": {
+    "entry": "file",
+    "filename": "empty.txt"
+  },
+  "apple_status_message": "No sessions found in the selected files.",
+  "notes": [
+    "A zero-byte file."
+  ],
+  "result": {
+    "outcome": "rejected",
+    "reason": "empty_input",
+    "flags": [],
+    "sessions": []
+  }
+}

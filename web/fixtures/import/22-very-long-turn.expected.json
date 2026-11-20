@@ -1,0 +1,58 @@
+{
+  "fixture": "22-very-long-turn",
+  "source": "apple-importer; the web app must return the same result",
+  "call": {
+    "entry": "file",
+    "filename": "wheel-truing-checklist.txt"
+  },
+  "apple_status_message": "Imported 1 session.",
+  "notes": [
+    "One assistant turn of more than 3,000 characters between two short turns."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "wheel-truing-checklist",
+        "provider": "other",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Give me the full truing checklist.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Give me the full truing checklist."
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Work around the wheel one spoke at a time.\nStep 01: tighten spoke 01 by a quarter turn, then spin the wheel and look again.\nStep 02: tighten spoke 02 by a quarter turn, then spin the wheel and look again.\nStep 03: tighten spoke 03 by a quarter turn, then spin the wheel and look again.\nStep 04: tighten spoke 04 by a quarter turn, then spin the wheel and look again.\nStep 05: tighten spoke 05 by a quarter turn, then spin the wheel and look again.\nStep 06: tighten spoke 06 by a quarter turn, then spin the wheel and look again.\nStep 07: tighten spoke 07 by a quarter turn, then spin the wheel and look again.\nStep 08: tighten spoke 08 by a quarter turn, then spin the wheel and look again.\nStep 09: tighten spoke 09 by a quarter turn, then spin the wheel and look again.\nStep 10: tighten spoke 10 by a quarter turn, then spin the wheel and look again.\nStep 11: tighten spoke 11 by a quarter turn, then spin the wheel and look again.\nStep 12: tighten spoke 12 by a quarter turn, then spin the wheel and look again.\nStep 13: tighten spoke 13 by a quarter turn, then spin the wheel and look again.\nStep 14: tighten spoke 14 by a quarter turn, then spin the wheel and look again.\nStep 15: tighten spoke 15 by a quarter turn, then spin the wheel and look again.\nStep 16: tighten spoke 16 by a quarter turn, then spin the wheel and look again.\nStep 17: tighten spoke 17 by a quarter turn, then spin the wheel and look again.\nStep 18: tighten spoke 18 by a quarter turn, then spin the wheel and look again.\nStep 19: tighten spoke 19 by a quarter turn, then spin the wheel and look again.\nStep 20: tighten spoke 20 by a quarter turn, then spin the wheel and look again.\nStep 21: tighten spoke 21 by a quarter turn, then spin the wheel and look again.\nStep 22: tighten spoke 22 by a quarter turn, then spin the wheel and look again.\nStep 23: tighten spoke 23 by a quarter turn, then spin the wheel and look again.\nStep 24: tighten spoke 24 by a quarter turn, then spin the wheel and look again.\nStep 25: tighten spoke 25 by a quarter turn, then spin the wheel and look again.\nStep 26: tighten spoke 26 by a quarter turn, then spin the wheel and look again.\nStep 27: tighten spoke 27 by a quarter turn, then spin the wheel and look again.\nStep 28: tighten spoke 28 by a quarter turn, then spin the wheel and look again.\nStep 29: tighten spoke 29 by a quarter turn, then spin the wheel and look again.\nStep 30: tighten spoke 30 by a quarter turn, then spin the wheel and look again.\nStep 31: tighten spoke 31 by a quarter turn, then spin the wheel and look again.\nStep 32: tighten spoke 32 by a quarter turn, then spin the wheel and look again.\nStep 33: tighten spoke 33 by a quarter turn, then spin the wheel and look again.\nStep 34: tighten spoke 34 by a quarter turn, then spin the wheel and look again.\nStep 35: tighten spoke 35 by a quarter turn, then spin the wheel and look again.\nStep 36: tighten spoke 36 by a quarter turn, then spin the wheel and look again.\nStep 37: tighten spoke 37 by a quarter turn, then spin the wheel and look again.\nStep 38: tighten spoke 38 by a quarter turn, then spin the wheel and look again.\nStep 39: tighten spoke 39 by a quarter turn, then spin the wheel and look again.\nStep 40: tighten spoke 40 by a quarter turn, then spin the wheel and look again.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Work around the wheel one spoke at a time.\nStep 01: tighten spoke 01 by a quarter turn, then spin the wheel and look again.\nStep 02: tighten spoke 02 by a quarter turn, then spin the wheel and look again.\nStep 03: tighten spoke 03 by a quarter turn, then spin the wheel and look again.\nStep 04: tighten spoke 04 by a quarter turn, then spin the wheel and look again.\nStep 05: tighten spoke 05 by a quarter turn, then spin the wheel and look again.\nStep 06: tighten spoke 06 by a quarter turn, then spin the wheel and look again.\nStep 07: tighten spoke 07 by a quarter turn, then spin the wheel and look again.\nStep 08: tighten spoke 08 by a quarter turn, then spin the wheel and look again.\nStep 09: tighten spoke 09 by a quarter turn, then spin the wheel and look again.\nStep 10: tighten spoke 10 by a quarter turn, then spin the wheel and look again.\nStep 11: tighten spoke 11 by a quarter turn, then spin the wheel and look again.\nStep 12: tighten spoke 12 by a quarter turn, then spin the wheel and look again.\nStep 13: tighten spoke 13 by a quarter turn, then spin the wheel and look again.\nStep 14: tighten spoke 14 by a quarter turn, then spin the wheel and look again.\nStep 15: tighten spoke 15 by a quarter turn, then spin the wheel and look again.\nStep 16: tighten spoke 16 by a quarter turn, then spin the wheel and look again.\nStep 17: tighten spoke 17 by a quarter turn, then spin the wheel and look again.\nStep 18: tighten spoke 18 by a quarter turn, then spin the wheel and look again.\nStep 19: tighten spoke 19 by a quarter turn, then spin the wheel and look again.\nStep 20: tighten spoke 20 by a quarter turn, then spin the wheel and look again.\nStep 21: tighten spoke 21 by a quarter turn, then spin the wheel and look again.\nStep 22: tighten spoke 22 by a quarter turn, then spin the wheel and look again.\nStep 23: tighten spoke 23 by a quarter turn, then spin the wheel and look again.\nStep 24: tighten spoke 24 by a quarter turn, then spin the wheel and look again.\nStep 25: tighten spoke 25 by a quarter turn, then spin the wheel and look again.\nStep 26: tighten spoke 26 by a quarter turn, then spin the wheel and look again.\nStep 27: tighten spoke 27 by a quarter turn, then spin the wheel and look again.\nStep 28: tighten spoke 28 by a quarter turn, then spin the wheel and look again.\nStep 29: tighten spoke 29 by a quarter turn, then spin the wheel and look again.\nStep 30: tighten spoke 30 by a quarter turn, then spin the wheel and look again.\nStep 31: tighten spoke 31 by a quarter turn, then spin the wheel and look again.\nStep 32: tighten spoke 32 by a quarter turn, then spin the wheel and look again.\nStep 33: tighten spoke 33 by a quarter turn, then spin the wheel and look again.\nStep 34: tighten spoke 34 by a quarter turn, then spin the wheel and look again.\nStep 35: tighten spoke 35 by a quarter turn, then spin the wheel and look again.\nStep 36: tighten spoke 36 by a quarter turn, then spin the wheel and look again.\nStep 37: tighten spoke 37 by a quarter turn, then spin the wheel and look again.\nStep 38: tighten spoke 38 by a quarter turn, then spin the wheel and look again.\nStep 39: tighten spoke 39 by a quarter turn, then spin the wheel and look again.\nStep 40: tighten spoke 40 by a quarter turn, then spin the wheel and look again."
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "Thanks, that is thorough.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Thanks, that is thorough."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

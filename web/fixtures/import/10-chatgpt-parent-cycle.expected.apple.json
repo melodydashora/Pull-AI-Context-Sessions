@@ -1,0 +1,14 @@
+{
+  "fixture": "10-chatgpt-parent-cycle",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "file",
+    "filename": "conversations.json"
+  },
+  "notes": [
+    "A malformed export in which two nodes name each other as parent.",
+    "Apple follows `parent` links with no cycle check: the importer never returns and its node list grows without bound (confirmed with a watchdog: no result after 400 ms, while the same data without the cycle returns in about 20 ms). The web app stops at the first node it has already visited."
+  ],
+  "apple_behaviour": "The importer does not return. Run with a 400 ms watchdog: no result (the watchdog ended the process). There is therefore no result to record.",
+  "result": null
+}

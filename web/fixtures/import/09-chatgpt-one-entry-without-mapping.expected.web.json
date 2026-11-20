@@ -1,0 +1,48 @@
+{
+  "fixture": "09-chatgpt-one-entry-without-mapping",
+  "source": "web-target",
+  "call": {
+    "entry": "file",
+    "filename": "conversations.json"
+  },
+  "notes": [
+    "An export array in which one entry has no mapping.",
+    "Apple rejects the whole array as a ChatGPT export and then imports the raw JSON text as one Note. The web app imports the valid conversations and skips the others."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Kettle descaling",
+        "provider": "chatgpt",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "How do I descale a kettle?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "How do I descale a kettle?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Boil water with a little citric acid, then rinse.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Boil water with a little citric acid, then rinse."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

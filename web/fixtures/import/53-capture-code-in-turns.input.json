@@ -1,0 +1,10 @@
+{
+  "source_url": "https://claude.ai/code/session_EXAMPLETRUING",
+  "detected_title": null,
+  "typed_name": "",
+  "kind": "turns",
+  "turns": [
+    "User: Show me the truing loop.",
+    "Assistant: Here it is:\nfor spoke in wheel:\n    if spoke.loose:\n        spoke.tighten()\n        spoke.tighten()\n    check(spoke)\nDone."
+  ]
+}

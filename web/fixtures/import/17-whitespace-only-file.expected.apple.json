@@ -1,0 +1,34 @@
+{
+  "fixture": "17-whitespace-only-file",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "file",
+    "filename": "blank.txt"
+  },
+  "apple_status_message": "Imported 1 session.",
+  "notes": [
+    "A file that contains only spaces, a tab and newlines.",
+    "Apple saves a session that holds one empty message. The web app rejects the file as empty."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "blank",
+        "provider": "other",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "unknown",
+            "text": "",
+            "display_segments": []
+          }
+        ]
+      }
+    ]
+  }
+}

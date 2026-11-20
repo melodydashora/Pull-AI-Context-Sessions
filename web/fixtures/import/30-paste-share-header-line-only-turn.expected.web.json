@@ -1,0 +1,59 @@
+{
+  "fixture": "30-paste-share-header-line-only-turn",
+  "source": "web-target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "notes": [
+    "Share-page text in which two turns have text only on their header line.",
+    "Apple discards the text after 'You said:' as a preview. A turn with nothing else vanishes: here both user turns are lost. The web app falls back to the header-line text when a turn has no body."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Is a 1:2:3 sourdough ratio fine?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Is a 1:2:3 sourdough ratio fine?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Yes, it is a common ratio. Feed it and wait for it to double.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Yes, it is a common ratio. Feed it and wait for it to double."
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "Thanks, that helps.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Thanks, that helps."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

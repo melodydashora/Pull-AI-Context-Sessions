@@ -1,0 +1,19 @@
+{
+  "fixture": "25-windows-1252",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "file",
+    "filename": "cafe-hours-ansi.txt"
+  },
+  "apple_status_message": "No sessions found in the selected files.",
+  "notes": [
+    "Windows-1252 (ANSI) text with an accented letter, an en dash and curly quotes.",
+    "Not valid UTF-8, so Apple imports nothing. The web app falls back to windows-1252 for text that is not UTF-8 and flags it."
+  ],
+  "result": {
+    "outcome": "rejected",
+    "reason": "undecodable",
+    "flags": [],
+    "sessions": []
+  }
+}

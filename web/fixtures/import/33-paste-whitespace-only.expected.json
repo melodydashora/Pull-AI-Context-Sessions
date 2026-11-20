@@ -1,0 +1,19 @@
+{
+  "fixture": "33-paste-whitespace-only",
+  "source": "apple-importer; the web app must return the same result",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "apple_status_message": "Clipboard is empty.",
+  "notes": [
+    "The clipboard holds only white space."
+  ],
+  "result": {
+    "outcome": "rejected",
+    "reason": "empty_input",
+    "flags": [],
+    "sessions": []
+  }
+}

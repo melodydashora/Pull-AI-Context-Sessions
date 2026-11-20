@@ -1,0 +1,58 @@
+{
+  "fixture": "46-capture-wall-override",
+  "source": "web-target",
+  "call": {
+    "entry": "capture"
+  },
+  "notes": [
+    "The same capture again, after the user answered the warning with 'import anyway' (allow_wall is true).",
+    "The Apple app has no override: the capture stays refused. In the web app the guard only warns; with allow_wall the capture is imported normally."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "EXAMPLE-0000-ROUTER",
+        "provider": "claude",
+        "model": "",
+        "source_url": "https://claude.ai/share/EXAMPLE-0000-ROUTER",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "My new router arrived today. How do I sign in to it?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "My new router arrived today. How do I sign in to it?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Open the admin page at the address on the label and log in with the password printed there.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Open the admin page at the address on the label and log in with the password printed there."
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "Thanks, that worked.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Thanks, that worked."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "dropped_turns": []
+  }
+}

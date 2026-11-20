@@ -1,0 +1,109 @@
+{
+  "fixture": "55-guards-sign-in-wall-table",
+  "source": "apple-importer; the web app must return the same result",
+  "call": {
+    "entry": "guards"
+  },
+  "notes": [
+    "Unit cases for looksLikeSignInWall: both length thresholds, both hit thresholds, how markers are counted, and that length is counted in user-perceived characters."
+  ],
+  "result": {
+    "results": [
+      {
+        "name": "1199 characters, 2 markers",
+        "joined_length": 1199,
+        "sign_in_wall": true
+      },
+      {
+        "name": "1200 characters, 2 markers",
+        "joined_length": 1200,
+        "sign_in_wall": false
+      },
+      {
+        "name": "1199 characters, 1 marker",
+        "joined_length": 1199,
+        "sign_in_wall": false
+      },
+      {
+        "name": "1200 characters, 4 markers",
+        "joined_length": 1200,
+        "sign_in_wall": true
+      },
+      {
+        "name": "2499 characters, 4 markers",
+        "joined_length": 2499,
+        "sign_in_wall": true
+      },
+      {
+        "name": "2500 characters, 4 markers",
+        "joined_length": 2500,
+        "sign_in_wall": false
+      },
+      {
+        "name": "2499 characters, 3 markers",
+        "joined_length": 2499,
+        "sign_in_wall": false
+      },
+      {
+        "name": "two turns, 599 + newline + 599 = 1199, one marker in each",
+        "joined_length": 1199,
+        "sign_in_wall": true
+      },
+      {
+        "name": "two turns, 600 + newline + 599 = 1200, one marker in each",
+        "joined_length": 1200,
+        "sign_in_wall": false
+      },
+      {
+        "name": "the same marker three times counts once",
+        "joined_length": 26,
+        "sign_in_wall": false
+      },
+      {
+        "name": "markers match without regard to case",
+        "joined_length": 35,
+        "sign_in_wall": true
+      },
+      {
+        "name": "substring accidents: 'design in' and 'blog in'",
+        "joined_length": 34,
+        "sign_in_wall": true
+      },
+      {
+        "name": "'cookies' contains 'cookie'; 'welcome back'",
+        "joined_length": 38,
+        "sign_in_wall": true
+      },
+      {
+        "name": "overlapping markers: 'google terms' and 'terms of service'",
+        "joined_length": 23,
+        "sign_in_wall": true
+      },
+      {
+        "name": "a marker split across two turns is not found",
+        "joined_length": 14,
+        "sign_in_wall": false
+      },
+      {
+        "name": "emoji: 1139 letters + 60 bicycles = 1199 characters (1259 UTF-16 units)",
+        "joined_length": 1199,
+        "sign_in_wall": true
+      },
+      {
+        "name": "emoji: 1140 letters + 60 bicycles = 1200 characters (1260 UTF-16 units)",
+        "joined_length": 1200,
+        "sign_in_wall": false
+      },
+      {
+        "name": "no turns",
+        "joined_length": 0,
+        "sign_in_wall": false
+      },
+      {
+        "name": "a short real conversation about signing in",
+        "joined_length": 103,
+        "sign_in_wall": true
+      }
+    ]
+  }
+}

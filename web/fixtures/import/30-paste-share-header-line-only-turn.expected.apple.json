@@ -1,0 +1,40 @@
+{
+  "fixture": "30-paste-share-header-line-only-turn",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "apple_status_message": "Imported 1 session from clipboard.",
+  "notes": [
+    "Share-page text in which two turns have text only on their header line.",
+    "Apple discards the text after 'You said:' as a preview. A turn with nothing else vanishes: here both user turns are lost. The web app falls back to the header-line text when a turn has no body."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "assistant",
+            "text": "Yes, it is a common ratio. Feed it and wait for it to double.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Yes, it is a common ratio. Feed it and wait for it to double."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

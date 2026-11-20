@@ -1,0 +1,70 @@
+{
+  "fixture": "27-paste-share-page-claude-crlf",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "apple_status_message": "Imported 1 session from clipboard.",
+  "notes": [
+    "The same share-page text with CRLF line endings.",
+    "With CR left at the end of every line Apple no longer recognises the exact-match furniture (Copy, Retry), blank lines or the '10:42 AM' time lines, and keeps CR characters in the text. The web app must return exactly the result of the LF fixture."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "How long should I prove sourdough at room temperature?\r\n10:42 AM",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "How long should I prove sourdough at room temperature?\r\n10:42 AM"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "About four hours at 24 degrees Celsius.\r\n\r\nSearched the web\r\n\r\nFold the dough once per hour.\r\nCopy\r\nRetry",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "About four hours at 24 degrees Celsius.\r\n\r\nSearched the web\r\n\r\nFold the dough once per hour.\r\nCopy\r\nRetry"
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "And in the fridge?\r\n10:45 AM",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "And in the fridge?\r\n10:45 AM"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Twelve to eighteen hours.\r\nCopy\r\nRetry",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Twelve to eighteen hours.\r\nCopy\r\nRetry"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

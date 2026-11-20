@@ -1,0 +1,87 @@
+{
+  "fixture": "03-puller-markdown-bom",
+  "source": "apple-importer; the web app must return the same result",
+  "call": {
+    "entry": "file",
+    "filename": "session_EXAMPLEGARDEN.md"
+  },
+  "apple_status_message": "Imported 1 session.",
+  "notes": [
+    "The same transcript with a UTF-8 byte-order mark in front."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "session_EXAMPLEGARDEN",
+        "provider": "claude",
+        "model": "",
+        "source_url": "https://claude.ai/code/session_EXAMPLEGARDEN",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "How deep should I plant tulip bulbs?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "How deep should I plant tulip bulbs?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "About three times the height of the bulb.\n```text\ndepth_cm = bulb_height_cm * 3\n```\nWater once after planting.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "About three times the height of the bulb."
+              },
+              {
+                "type": "code",
+                "language": "text",
+                "code": "depth_cm = bulb_height_cm * 3"
+              },
+              {
+                "type": "prose",
+                "text": "Water once after planting."
+              }
+            ]
+          },
+          {
+            "role": "unknown",
+            "text": "Planted 24 bulbs along the north fence.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Planted 24 bulbs along the north fence."
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "And daffodils?\nIs it the same rule?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "And daffodils?\nIs it the same rule?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Yes, the same rule works for daffodils.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Yes, the same rule works for daffodils."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

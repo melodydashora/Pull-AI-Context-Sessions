@@ -1,0 +1,69 @@
+{
+  "fixture": "26-paste-share-page-claude",
+  "source": "apple-importer; the web app must return the same result",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "apple_status_message": "Imported 1 session from clipboard.",
+  "notes": [
+    "The visible text of a claude.ai share page (synthetic), pasted."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "How long should I prove sourdough at room temperature?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "How long should I prove sourdough at room temperature?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "About four hours at 24 degrees Celsius.\n\nSearched the web\n\nFold the dough once per hour.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "About four hours at 24 degrees Celsius.\n\nSearched the web\n\nFold the dough once per hour."
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "And in the fridge?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "And in the fridge?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Twelve to eighteen hours.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Twelve to eighteen hours."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "fixture": "41-capture-header-residue-long-first-turn",
+  "source": "apple-importer; the web app must return the same result",
+  "call": {
+    "entry": "capture"
+  },
+  "apple_status_message": "Captured 2 turns from claude.ai.",
+  "notes": [
+    "The first turn (more than 700 characters) starts with page-header lines; the last turn is a page footer."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "EXAMPLE-0000-TOUR",
+        "provider": "claude",
+        "model": "",
+        "source_url": "https://claude.ai/share/EXAMPLE-0000-TOUR",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "I am planning a week of bicycle touring and want to check my packing list. I will carry two panniers, a small frame bag and a handlebar roll. I will carry two panniers, a small frame bag and a handlebar roll. I will carry two panniers, a small frame bag and a handlebar roll. I will carry two panniers, a small frame bag and a handlebar roll. I will carry two panniers, a small frame bag and a handlebar roll. I will carry two panniers, a small frame bag and a handlebar roll. I will carry two panniers, a small frame bag and a handlebar roll. I will carry two panniers, a small frame bag and a handlebar roll. I will carry two panniers, a small frame bag and a handlebar roll. I will carry two panniers, a small frame bag and a handlebar roll. Is that too much for a steel frame?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "I am planning a week of bicycle touring and want to check my packing list. I will carry two panniers, a small frame bag and a handlebar roll. I will carry two panniers, a small frame bag and a handlebar roll. I will carry two panniers, a small frame bag and a handlebar roll. I will carry two panniers, a small frame bag and a handlebar roll. I will carry two panniers, a small frame bag and a handlebar roll. I will carry two panniers, a small frame bag and a handlebar roll. I will carry two panniers, a small frame bag and a handlebar roll. I will carry two panniers, a small frame bag and a handlebar roll. I will carry two panniers, a small frame bag and a handlebar roll. I will carry two panniers, a small frame bag and a handlebar roll. Is that too much for a steel frame?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "No. A steel touring frame carries that load comfortably.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "No. A steel touring frame carries that load comfortably."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "dropped_turns": [
+      {
+        "position": "trailing",
+        "index": 2,
+        "text": "This assistant can make mistakes."
+      }
+    ]
+  }
+}

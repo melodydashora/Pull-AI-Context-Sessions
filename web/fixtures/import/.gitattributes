@@ -1,0 +1,3 @@
+# Keep every fixture byte for byte: CRLF line endings, byte-order marks, UTF-16 and
+# trailing white space are the point of several inputs. Do not let git convert them.
+* -text

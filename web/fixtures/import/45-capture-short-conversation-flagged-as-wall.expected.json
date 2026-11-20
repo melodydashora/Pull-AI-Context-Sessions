@@ -1,0 +1,19 @@
+{
+  "fixture": "45-capture-short-conversation-flagged-as-wall",
+  "source": "apple-importer; the web app must return the same result",
+  "call": {
+    "entry": "capture"
+  },
+  "apple_status_message": "That looks like a sign-in or landing page \u2014 log in below (or wait for the conversation to appear), then press Capture again.",
+  "notes": [
+    "A whole-page capture of a short, real conversation that mentions 'sign in' and 'log in'.",
+    "A false positive of the guard: under 1,200 characters with two marker phrases. The function result is kept identical. The Apple app gives the user no way to save this conversation; the web app must offer 'import anyway' (next fixture)."
+  ],
+  "result": {
+    "outcome": "rejected",
+    "reason": "sign_in_suspected",
+    "flags": [],
+    "sessions": [],
+    "dropped_turns": []
+  }
+}

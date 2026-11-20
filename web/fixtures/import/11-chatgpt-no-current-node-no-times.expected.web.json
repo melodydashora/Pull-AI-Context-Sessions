@@ -1,0 +1,88 @@
+{
+  "fixture": "11-chatgpt-no-current-node-no-times",
+  "source": "web-target",
+  "call": {
+    "entry": "file",
+    "filename": "conversations.json"
+  },
+  "notes": [
+    "A conversation with no current_node and no message timestamps.",
+    "Without current_node Apple sorts the mapping's values by message create_time. The values come from a dictionary with no defined order and the sort is not stable, so messages with equal or missing times come out in a different order on every run. The web app uses a stable sort and keeps the order of the keys in the JSON text for ties."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Order without timestamps",
+        "provider": "chatgpt",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "First in the file.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "First in the file."
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Second in the file.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Second in the file."
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "Third in the file.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Third in the file."
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Fourth in the file.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Fourth in the file."
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "Fifth in the file.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Fifth in the file."
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Sixth in the file.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Sixth in the file."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

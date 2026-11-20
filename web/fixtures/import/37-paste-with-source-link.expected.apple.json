@@ -1,0 +1,71 @@
+{
+  "fixture": "37-paste-with-source-link",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude",
+    "source_url": "https://chatgpt.com/share/EXAMPLE-0000-RYE"
+  },
+  "apple_status_message": "Imported 1 session from clipboard.",
+  "notes": [
+    "Pasted page text together with the link it was copied from (the link field of capture.md section 8.1).",
+    "The Apple paste path has no link: the session gets the picker's provider and an empty source URL. In the web app the link becomes the source URL and its host decides the provider, whatever the picker says."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Is rye flour good for a starter?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Is rye flour good for a starter?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Yes. Rye ferments quickly and makes a lively starter.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Yes. Rye ferments quickly and makes a lively starter."
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "How much water should I add at each feeding?",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "How much water should I add at each feeding?"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "The same weight as the flour. Stir well and cover it loosely.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "The same weight as the flour. Stir well and cover it loosely."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

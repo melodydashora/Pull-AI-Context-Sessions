@@ -1,0 +1,4 @@
+User: Is rye flour good for a starter?
+Assistant: Yes. Rye ferments quickly and makes a lively starter.
+User: How much water should I add at each feeding?
+Assistant: The same weight as the flour. Stir well and cover it loosely.

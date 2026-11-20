@@ -1,0 +1,92 @@
+{
+  "cases": [
+    {
+      "name": "plain prose",
+      "text": "Just prose.\nSecond line."
+    },
+    {
+      "name": "fence with a language",
+      "text": "Before\n```python\nprint(1)\n```\nAfter"
+    },
+    {
+      "name": "fence without a language",
+      "text": "```\ncode\n```"
+    },
+    {
+      "name": "language tag is trimmed",
+      "text": "```  swift  \nlet x = 1\n```"
+    },
+    {
+      "name": "the whole info string is the language",
+      "text": "```js title=\"a.js\"\nx()\n```"
+    },
+    {
+      "name": "indented fence; code keeps its indentation",
+      "text": "List:\n  ```sh\n  ls -la\n  ```\nend"
+    },
+    {
+      "name": "unterminated fence runs to the end",
+      "text": "Start\n```sh\nls\nmore"
+    },
+    {
+      "name": "empty block",
+      "text": "```\n```"
+    },
+    {
+      "name": "fence opener as the last line",
+      "text": "x\n```"
+    },
+    {
+      "name": "two blocks",
+      "text": "A\n```\n1\n```\nB\n```\n2\n```\nC"
+    },
+    {
+      "name": "white-space-only prose between blocks is dropped",
+      "text": "```\n1\n```\n\n   \n```\n2\n```"
+    },
+    {
+      "name": "prose is not trimmed",
+      "text": "\n\nText\n\n```\nc\n```\n\n"
+    },
+    {
+      "name": "blank lines and indentation inside code are kept",
+      "text": "```py\ndef f():\n    return 1\n\n\n    # two blank lines above\n```"
+    },
+    {
+      "name": "tilde fences are not recognised",
+      "text": "~~~\ncode\n~~~"
+    },
+    {
+      "name": "backticks inside a sentence do not open a block",
+      "text": "Use ```npm test``` to run.\nNext line."
+    },
+    {
+      "name": "closing fence with trailing text does not close",
+      "text": "```\ncode\n``` trailing\nmore\n```\nend"
+    },
+    {
+      "name": "empty text",
+      "text": ""
+    },
+    {
+      "name": "white-space-only text",
+      "text": "   \n  "
+    },
+    {
+      "name": "DIFFERENT: CRLF line endings",
+      "text": "Before\r\n```python\r\nprint(1)\r\n```\r\nAfter"
+    },
+    {
+      "name": "DIFFERENT: a line that is only an inline code span",
+      "text": "```npm test```\nNext line.\nLast line."
+    },
+    {
+      "name": "DIFFERENT: four-backtick fence around a three-backtick fence",
+      "text": "````markdown\n```js\nx\n```\n````\nAfter"
+    },
+    {
+      "name": "DIFFERENT: a longer run of backticks closes a three-backtick fence",
+      "text": "```\ncode\n````\nAfter"
+    }
+  ]
+}

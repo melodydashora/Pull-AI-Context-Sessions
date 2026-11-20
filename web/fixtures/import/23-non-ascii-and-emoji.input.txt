@@ -1,0 +1,9 @@
+User: Quel thé pour le petit-déjeuner ? 🍵
+Assistant: Un thé noir corsé, par exemple un Assam. 茶は熱いうちに。
+ User: Et pour le soir ?
+Assistant: Une tisane 🌿 — camomille ou verveine. En famille : 👨‍👩‍👧
+User： un deux-points pleine chasse n'est pas un marqueur.
+Résumé: café (forme décomposée), شاي, чай.
+User: Merci.​
+Assistant: De rien.​
+

@@ -6,7 +6,14 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   plugins: [react()],
   test: {
-    include: ["core/src/**/*.test.ts", "server/src/**/*.test.ts", "app/src/**/*.test.{ts,tsx}"],
+    include: [
+      "core/src/**/*.test.ts",
+      // Tests that compare the core with the reference port. They live outside src/ because
+      // the reference port is not part of the strict TypeScript project.
+      "core/differential/**/*.test.ts",
+      "server/src/**/*.test.ts",
+      "app/src/**/*.test.{ts,tsx}",
+    ],
     environment: "node",
   },
   define: {

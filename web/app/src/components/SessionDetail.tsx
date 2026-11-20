@@ -72,6 +72,7 @@ export function SessionDetail({
         <a
           className="toolbar__back"
           href="/sessions"
+          aria-label="All Sessions"
           onClick={(event) => {
             event.preventDefault();
             onBack();

@@ -1,0 +1,288 @@
+{
+  "schema": "sessionvault.capture-selectors/1",
+  "version": "2026-11-19-draft",
+  "status": "DRAFT. No entry has been checked against a live provider page. Selectors come from the three extractors in this repository, which were themselves tested on mock pages at most. Share-link path shapes and the gemini-share strategy come from general knowledge and from one earlier review of cached page code. Verify every entry against a real page, add a fixture, and record the date in `verified` before relying on it.",
+  "defaults": {
+    "excludeInTurn": [
+      "button",
+      "[role=\"button\"]"
+    ],
+    "fenceCode": true,
+    "coverageMin": 0.5,
+    "maxMs": 60000,
+    "timing": {
+      "startMs": 600,
+      "stepMs": 450,
+      "settleMs": 800,
+      "maxSteps": 800
+    },
+    "signIn": {
+      "urlSubstrings": [
+        "login",
+        "signin",
+        "sign-in",
+        "sign_in",
+        "accounts.google.com"
+      ],
+      "selectors": [
+        "input[type=\"password\"]"
+      ]
+    },
+    "titleBoilerplate": [
+      "",
+      "Claude",
+      "Claude Code",
+      "ChatGPT",
+      "Gemini",
+      "Just a moment..."
+    ]
+  },
+  "strategies": [
+    {
+      "id": "chatgpt-author-role",
+      "type": "containers",
+      "selectors": [
+        {
+          "sel": "[data-message-author-role=\"user\"]",
+          "role": "user"
+        },
+        {
+          "sel": "[data-message-author-role=\"assistant\"]",
+          "role": "assistant"
+        }
+      ],
+      "source": "reference/session-capture-ios/SessionCapture/CaptureEngine.swift:136-139",
+      "verified": "mock pages only",
+      "fixture": "static-author-role.html"
+    },
+    {
+      "id": "chatgpt-turn-testid",
+      "type": "containers",
+      "selectors": [
+        {
+          "sel": "[data-testid^=\"conversation-turn\"]",
+          "role": null
+        }
+      ],
+      "source": "reference/session-capture-ios/SessionCapture/CaptureEngine.swift:144-146",
+      "verified": "never",
+      "fixture": null
+    },
+    {
+      "id": "gemini-chat",
+      "type": "containers",
+      "selectors": [
+        {
+          "sel": "user-query",
+          "role": "user"
+        },
+        {
+          "sel": "model-response",
+          "role": "assistant"
+        }
+      ],
+      "source": "reference/session-capture-ios/SessionCapture/CaptureEngine.swift:140-143",
+      "verified": "mock pages only",
+      "fixture": "static-custom-elements-chat.html"
+    },
+    {
+      "id": "gemini-share",
+      "type": "containers",
+      "selectors": [
+        {
+          "sel": "user-query",
+          "role": "user"
+        },
+        {
+          "sel": "response-container",
+          "role": "assistant"
+        }
+      ],
+      "source": "not in the code; element names reported by an earlier review of cached page code (2026-11)",
+      "verified": "never",
+      "fixture": "static-custom-elements-share.html"
+    },
+    {
+      "id": "indexed-data-index",
+      "type": "indexed",
+      "selector": "[data-index]",
+      "indexAttribute": "data-index",
+      "maxLists": 3,
+      "source": "apple/SessionVault/WebCapture.swift:79; puller/pull_sessions.py:135; reference/session-capture-ios/SessionCapture/CaptureEngine.swift:90",
+      "verified": "per apple/BUILD_REPORT.md the Apple app captured real pages this way in 2026-08; no page markup is recorded",
+      "fixture": "virtual-list.html"
+    },
+    {
+      "id": "generic-main-article",
+      "type": "containers",
+      "selectors": [
+        {
+          "sel": "main article",
+          "role": null
+        }
+      ],
+      "source": "reference/session-capture-ios/SessionCapture/CaptureEngine.swift:147-149",
+      "verified": "mock pages only",
+      "fixture": "generic-articles.html"
+    },
+    {
+      "id": "page-text",
+      "type": "page-text",
+      "source": "apple/SessionVault/WebCapture.swift:176",
+      "verified": "n/a",
+      "fixture": "share-text-markers.html"
+    }
+  ],
+  "providers": [
+    {
+      "id": "claude",
+      "label": "Claude",
+      "hosts": [
+        "claude.ai"
+      ],
+      "shareLinks": [
+        {
+          "host": "claude.ai",
+          "path": "^/share/[A-Za-z0-9_-]{8,64}/?$"
+        }
+      ],
+      "navigationHosts": [
+        "claude.ai"
+      ],
+      "serverCapture": false,
+      "strategyOrder": [
+        "indexed-data-index",
+        "page-text"
+      ],
+      "titleSuffixes": [
+        " - Claude",
+        " \u2013 Claude",
+        " | Claude"
+      ],
+      "roleLabels": [
+        {
+          "text": "You said:",
+          "role": "user",
+          "match": "line-prefix"
+        },
+        {
+          "text": "Claude responded:",
+          "role": "assistant",
+          "match": "line-prefix"
+        }
+      ]
+    },
+    {
+      "id": "chatgpt",
+      "label": "ChatGPT",
+      "hosts": [
+        "chatgpt.com",
+        "chat.openai.com"
+      ],
+      "shareLinks": [
+        {
+          "host": "chatgpt.com",
+          "path": "^/share/[A-Za-z0-9_-]{8,64}/?$"
+        },
+        {
+          "host": "chat.openai.com",
+          "path": "^/share/[A-Za-z0-9_-]{8,64}/?$"
+        }
+      ],
+      "navigationHosts": [
+        "chatgpt.com",
+        "chat.openai.com"
+      ],
+      "serverCapture": false,
+      "strategyOrder": [
+        "chatgpt-author-role",
+        "chatgpt-turn-testid",
+        "page-text"
+      ],
+      "titleSuffixes": [
+        " - ChatGPT",
+        " | ChatGPT"
+      ],
+      "roleLabels": [
+        {
+          "text": "You said:",
+          "role": "user",
+          "match": "line"
+        },
+        {
+          "text": "ChatGPT said:",
+          "role": "assistant",
+          "match": "line"
+        }
+      ]
+    },
+    {
+      "id": "gemini",
+      "label": "Gemini",
+      "hosts": [
+        "gemini.google.com",
+        "share.gemini.google"
+      ],
+      "shareLinks": [
+        {
+          "host": "gemini.google.com",
+          "path": "^/share/[A-Za-z0-9_-]{6,64}/?$"
+        },
+        {
+          "host": "g.co",
+          "path": "^/gemini/share/[A-Za-z0-9_-]{6,64}/?$"
+        },
+        {
+          "host": "share.gemini.google",
+          "path": "^/.+"
+        }
+      ],
+      "navigationHosts": [
+        "gemini.google.com",
+        "share.gemini.google",
+        "g.co"
+      ],
+      "serverCapture": false,
+      "strategyOrder": [
+        "gemini-chat",
+        "gemini-share",
+        "page-text"
+      ],
+      "titleSuffixes": [
+        " - Gemini",
+        " | Gemini"
+      ],
+      "roleLabels": [
+        {
+          "text": "You said",
+          "role": "user",
+          "match": "line"
+        },
+        {
+          "text": "Gemini said",
+          "role": "assistant",
+          "match": "line"
+        }
+      ]
+    },
+    {
+      "id": "other",
+      "label": "Other",
+      "hosts": [],
+      "shareLinks": [],
+      "navigationHosts": [],
+      "serverCapture": false,
+      "strategyOrder": [
+        "chatgpt-author-role",
+        "gemini-chat",
+        "gemini-share",
+        "indexed-data-index",
+        "chatgpt-turn-testid",
+        "generic-main-article",
+        "page-text"
+      ],
+      "titleSuffixes": [],
+      "roleLabels": []
+    }
+  ]
+}

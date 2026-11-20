@@ -1,0 +1,1498 @@
+{
+  "about": "Observed results for the synthetic pages in this folder. They document what the existing page scripts do (including their defects) and what the prototype extractor returns. They say nothing about real provider pages.",
+  "generated": "2026-11-20",
+  "engine": "WebKit: WKWebView, 1000 x 700 CSS px, not attached to a window, macOS 27.2.1. Not run in Chromium.",
+  "howEachBlockWasProduced": {
+    "appleScripts": "capture-scripts/live-*.js driven by a loop that mirrors apple/SessionVault/WebCapture.swift:146-186 and :102-116, sleeps included.",
+    "appleSnapshot": "The frame-growing logic of WebCapture.swift:120-142 followed by WKWebView.createPDF.",
+    "applePipeline": "The appleScripts turns passed to the unmodified looksLikeSignInWall and fromCapturedTurns of apple/SessionVault/Importers.swift, with the fake source URL shown and the title precedence of ImportSheet.swift:134-138 (no typed name). When looksLikeSignInWall is true the Apple app saves nothing; the other fields show what it would have saved without that guard.",
+    "referenceEngine": "The verbatim body of capture-scripts/reference-capture-engine.js via callAsyncJavaScript.",
+    "pullerEmulation": "NOT a run of pull_sessions.py: its Python logic (lines 70-95, 123, 134-182) restated in page JavaScript around the four verbatim puller-*.js function texts.",
+    "prototype": "capture-scripts/proposed/web-extractor.prototype.js with the defaults of capture-selectors.draft.json and the strategy order of the named provider entry."
+  },
+  "textNormalisation": "Every text below was normalised: split on newlines, collapse runs of spaces, tabs and no-break spaces to one space, trim each line, drop empty lines, join with newlines. Apply the same function before comparing, because innerText differs slightly between browser engines. Indentation inside code is therefore not visible here.",
+  "roleLegend": "U = user, A = assistant, N = none (Apple role 'unknown', shown as 'Note')",
+  "lists": "Lists of more than six turns are given as turnCount, firstTurns (two) and lastTurn. A text longer than 600 characters is cut to its first 300 and last 120 characters with a marker in between. applePipeline message texts are the saved texts as they are (not normalised).",
+  "fixtures": {
+    "data-index-document-scroll.html": {
+      "about": "30 [data-index] turns in normal page flow (nothing virtualized, the page itself scrolls). The only h1 is the word Claude.",
+      "appleScripts": {
+        "status": "Captured 30 turns.",
+        "turnCount": 30,
+        "detectTitleRaw": "Claude",
+        "detectTitle": null,
+        "firstTurns": [
+          "User: EXAMPLE turn 0 about growing beans. Synthetic filler sentence.",
+          "Assistant: EXAMPLE turn 1 about growing beans. Synthetic filler sentence."
+        ],
+        "lastTurn": "Assistant: EXAMPLE turn 29 about growing beans. Synthetic filler sentence."
+      },
+      "appleSnapshot": {
+        "bodyScrollHeight": 2458,
+        "viewWasGrown": true,
+        "pdfPages": 1,
+        "pdfPageSizes": [
+          [
+            983,
+            2477
+          ]
+        ]
+      },
+      "applePipeline": {
+        "sourceUrlUsed": "https://claude.ai/code/session_EXAMPLE0001",
+        "looksLikeSignInWall": false,
+        "provider": "Claude",
+        "savedTitle": "session_EXAMPLE0001",
+        "messageCount": 30,
+        "roles": "UAUAUAUAUAUAUAUAUAUAUAUAUAUAUA"
+      },
+      "referenceEngine": {
+        "turnCount": 30,
+        "roles": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+        "firstTurns": [
+          "User: EXAMPLE turn 0 about growing beans. Synthetic filler sentence.",
+          "Assistant: EXAMPLE turn 1 about growing beans. Synthetic filler sentence."
+        ],
+        "lastTurn": "Assistant: EXAMPLE turn 29 about growing beans. Synthetic filler sentence."
+      },
+      "pullerEmulation": {
+        "scrollerFound": false,
+        "passwordInputFound": false,
+        "turnCount": 30
+      },
+      "prototype": {
+        "claude": {
+          "strategy": "indexed-data-index",
+          "attempts": [
+            {
+              "id": "indexed-data-index",
+              "ok": true,
+              "reason": null
+            }
+          ],
+          "turnCount": 30,
+          "roles": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+          "partial": false,
+          "warnings": [],
+          "heading": "Claude",
+          "title": "EXAMPLE growing beans - Claude",
+          "passwordInputs": 0,
+          "firstTurns": [
+            "User: EXAMPLE turn 0 about growing beans. Synthetic filler sentence.",
+            "Assistant: EXAMPLE turn 1 about growing beans. Synthetic filler sentence."
+          ],
+          "lastTurn": "Assistant: EXAMPLE turn 29 about growing beans. Synthetic filler sentence."
+        },
+        "other": {
+          "strategy": "indexed-data-index",
+          "attempts": [
+            {
+              "id": "chatgpt-author-role",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "gemini-chat",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "gemini-share",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "indexed-data-index",
+              "ok": true,
+              "reason": null
+            }
+          ],
+          "turnCount": 30,
+          "roles": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+          "partial": false,
+          "warnings": [],
+          "heading": "Claude",
+          "title": "EXAMPLE growing beans - Claude",
+          "passwordInputs": 0,
+          "firstTurns": [
+            "User: EXAMPLE turn 0 about growing beans. Synthetic filler sentence.",
+            "Assistant: EXAMPLE turn 1 about growing beans. Synthetic filler sentence."
+          ],
+          "lastTurn": "Assistant: EXAMPLE turn 29 about growing beans. Synthetic filler sentence."
+        }
+      }
+    },
+    "generic-articles.html": {
+      "about": "Two article elements inside main; the first contains a nested article.",
+      "appleScripts": {
+        "status": "Captured page text (no turn structure found).",
+        "turnCount": 1,
+        "detectTitleRaw": "EXAMPLE seed saving",
+        "detectTitle": "EXAMPLE seed saving",
+        "turns": [
+          "How do I save tomato seeds?\nEXAMPLE quoted note inside the first article.\nFerment the pulp for three days, rinse, then dry the seeds. EXAMPLE answer."
+        ]
+      },
+      "appleSnapshot": {
+        "bodyScrollHeight": 86,
+        "viewWasGrown": false,
+        "pdfPages": 1,
+        "pdfPageSizes": [
+          [
+            1000,
+            700
+          ]
+        ]
+      },
+      "applePipeline": {
+        "sourceUrlUsed": "https://example.invalid/share/EXAMPLE",
+        "looksLikeSignInWall": false,
+        "provider": "Other",
+        "savedTitle": "EXAMPLE seed saving",
+        "messageCount": 1,
+        "roles": "N",
+        "messages": [
+          {
+            "role": "unknown",
+            "text": "How do I save tomato seeds?\n\nEXAMPLE quoted note inside the first article.\n\nFerment the pulp for three days, rinse, then dry the seeds. EXAMPLE answer."
+          }
+        ]
+      },
+      "referenceEngine": {
+        "turnCount": 3,
+        "roles": "NNN",
+        "imageCounts": [
+          0,
+          0,
+          0
+        ],
+        "turns": [
+          "How do I save tomato seeds?\nEXAMPLE quoted note inside the first article.",
+          "EXAMPLE quoted note inside the first article.",
+          "Ferment the pulp for three days, rinse, then dry the seeds. EXAMPLE answer."
+        ]
+      },
+      "pullerEmulation": {
+        "scrollerFound": false,
+        "passwordInputFound": false,
+        "turnCount": 0
+      },
+      "prototype": {
+        "other": {
+          "strategy": "generic-main-article",
+          "attempts": [
+            {
+              "id": "chatgpt-author-role",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "gemini-chat",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "gemini-share",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "indexed-data-index",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "chatgpt-turn-testid",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "generic-main-article",
+              "ok": true,
+              "reason": null
+            }
+          ],
+          "turnCount": 2,
+          "roles": "NN",
+          "partial": false,
+          "warnings": [],
+          "heading": null,
+          "title": "EXAMPLE seed saving",
+          "passwordInputs": 0,
+          "turns": [
+            "How do I save tomato seeds?\nEXAMPLE quoted note inside the first article.",
+            "Ferment the pulp for three days, rinse, then dry the seeds. EXAMPLE answer."
+          ]
+        }
+      }
+    },
+    "long-static-page.html": {
+      "about": "60 plain blocks in normal page flow, 4800 px tall, no turn markup.",
+      "appleScripts": {
+        "status": "Captured page text (no turn structure found).",
+        "turnCount": 1,
+        "detectTitleRaw": "EXAMPLE growing beans",
+        "detectTitle": "EXAMPLE growing beans",
+        "turns": [
+          "Question: EXAMPLE paragraph 0 about growing beans. Synthetic filler sentence.\nAnswer: EXAMPLE paragraph 1 about growing beans. Synthetic filler sentence.\nQuestion: EXAMPLE paragraph 2 about growing beans. Synthetic filler sentence.\nAnswer: EXAMPLE paragraph 3 about growing beans. Synthetic filler se [... 4249 characters omitted ...] t growing beans. Synthetic filler sentence.\nAnswer: EXAMPLE paragraph 59 about growing beans. Synthetic filler sentence."
+        ]
+      },
+      "appleSnapshot": {
+        "bodyScrollHeight": 4800,
+        "viewWasGrown": true,
+        "pdfPages": 1,
+        "pdfPageSizes": [
+          [
+            1000,
+            4800
+          ]
+        ]
+      },
+      "applePipeline": {
+        "sourceUrlUsed": "https://example.invalid/share/EXAMPLE",
+        "looksLikeSignInWall": false,
+        "provider": "Other",
+        "savedTitle": "EXAMPLE growing beans",
+        "messageCount": 1,
+        "roles": "N",
+        "messages": [
+          {
+            "role": "unknown",
+            "text": "Question: EXAMPLE paragraph 0 about growing beans. Synthetic filler sentence.\n\nAnswer: EXAMPLE paragraph 1 about growing beans. Synthetic filler sentence.\n\nQuestion: EXAMPLE paragraph 2 about growing beans. Synthetic filler sentence.\n\nAnswer: EXAMPLE paragraph 3 about growing beans. Synthetic filler [... 4308 characters omitted ...]  growing beans. Synthetic filler sentence.\n\nAnswer: EXAMPLE paragraph 59 about growing beans. Synthetic filler sentence."
+          }
+        ]
+      },
+      "referenceEngine": {
+        "turnCount": 1,
+        "roles": "N",
+        "imageCounts": [
+          0
+        ],
+        "turns": [
+          "Question: EXAMPLE paragraph 0 about growing beans. Synthetic filler sentence.\nAnswer: EXAMPLE paragraph 1 about growing beans. Synthetic filler sentence.\nQuestion: EXAMPLE paragraph 2 about growing beans. Synthetic filler sentence.\nAnswer: EXAMPLE paragraph 3 about growing beans. Synthetic filler se [... 4249 characters omitted ...] t growing beans. Synthetic filler sentence.\nAnswer: EXAMPLE paragraph 59 about growing beans. Synthetic filler sentence."
+        ]
+      },
+      "pullerEmulation": {
+        "scrollerFound": false,
+        "passwordInputFound": false,
+        "turnCount": 0
+      },
+      "prototype": {
+        "other": {
+          "strategy": "page-text",
+          "attempts": [
+            {
+              "id": "chatgpt-author-role",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "gemini-chat",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "gemini-share",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "indexed-data-index",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "chatgpt-turn-testid",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "generic-main-article",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "page-text",
+              "ok": true,
+              "reason": null
+            }
+          ],
+          "turnCount": 1,
+          "roles": "N",
+          "partial": false,
+          "warnings": [],
+          "heading": null,
+          "title": "EXAMPLE growing beans",
+          "passwordInputs": 0,
+          "turns": [
+            "Question: EXAMPLE paragraph 0 about growing beans. Synthetic filler sentence.\nAnswer: EXAMPLE paragraph 1 about growing beans. Synthetic filler sentence.\nQuestion: EXAMPLE paragraph 2 about growing beans. Synthetic filler sentence.\nAnswer: EXAMPLE paragraph 3 about growing beans. Synthetic filler se [... 4249 characters omitted ...] t growing beans. Synthetic filler sentence.\nAnswer: EXAMPLE paragraph 59 about growing beans. Synthetic filler sentence."
+          ]
+        }
+      }
+    },
+    "share-text-markers.html": {
+      "about": "No turn containers at all. The page text carries 'You said:' and 'Claude responded:' header lines plus share-page boilerplate.",
+      "appleScripts": {
+        "status": "Captured page text (no turn structure found).",
+        "turnCount": 1,
+        "detectTitleRaw": "EXAMPLE tulip planting - Claude",
+        "detectTitle": "EXAMPLE tulip planting",
+        "turns": [
+          "EXAMPLE tulip planting\nShared by Example Person\nThis is a copy of a chat between Claude and Example Person. Content may include unverified or unsafe content.\nReport\nYou said: How deep should I plant\nHow deep should I plant tulip bulbs?\n9:41 AM\nClaude responded: Plant tulip bulbs about\nPlant tulip bulbs about 15 cm deep, pointed end up. EXAMPLE answer.\nCopy\nRetry\nYou said: And when?\nAnd when?\n9:42 AM\nClaude responded: In autumn, before\nIn autumn, before the first hard frost. EXAMPLE answer.\nCopy\nRetry\nClaude can make mistakes. Please double-check responses."
+        ]
+      },
+      "appleSnapshot": {
+        "bodyScrollHeight": 402,
+        "viewWasGrown": false,
+        "pdfPages": 1,
+        "pdfPageSizes": [
+          [
+            1000,
+            700
+          ]
+        ]
+      },
+      "applePipeline": {
+        "sourceUrlUsed": "https://claude.ai/share/EXAMPLE-0000-0000",
+        "looksLikeSignInWall": false,
+        "provider": "Claude",
+        "savedTitle": "EXAMPLE tulip planting",
+        "messageCount": 4,
+        "roles": "UAUA",
+        "messages": [
+          {
+            "role": "user",
+            "text": "How deep should I plant tulip bulbs?"
+          },
+          {
+            "role": "assistant",
+            "text": "Plant tulip bulbs about 15 cm deep, pointed end up. EXAMPLE answer."
+          },
+          {
+            "role": "user",
+            "text": "And when?"
+          },
+          {
+            "role": "assistant",
+            "text": "In autumn, before the first hard frost. EXAMPLE answer."
+          }
+        ]
+      },
+      "referenceEngine": {
+        "turnCount": 1,
+        "roles": "N",
+        "imageCounts": [
+          0
+        ],
+        "turns": [
+          "EXAMPLE tulip planting\nShared by Example Person\nThis is a copy of a chat between Claude and Example Person. Content may include unverified or unsafe content.\nReport\nYou said: How deep should I plant\nHow deep should I plant tulip bulbs?\n9:41 AM\nClaude responded: Plant tulip bulbs about\nPlant tulip bulbs about 15 cm deep, pointed end up. EXAMPLE answer.\nCopy\nRetry\nYou said: And when?\nAnd when?\n9:42 AM\nClaude responded: In autumn, before\nIn autumn, before the first hard frost. EXAMPLE answer.\nCopy\nRetry\nClaude can make mistakes. Please double-check responses."
+        ]
+      },
+      "pullerEmulation": {
+        "scrollerFound": false,
+        "passwordInputFound": false,
+        "turnCount": 0
+      },
+      "prototype": {
+        "claude": {
+          "strategy": "page-text",
+          "attempts": [
+            {
+              "id": "indexed-data-index",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "page-text",
+              "ok": true,
+              "reason": null
+            }
+          ],
+          "turnCount": 1,
+          "roles": "N",
+          "partial": false,
+          "warnings": [],
+          "heading": null,
+          "title": "EXAMPLE tulip planting - Claude",
+          "passwordInputs": 0,
+          "turns": [
+            "EXAMPLE tulip planting\nShared by Example Person\nThis is a copy of a chat between Claude and Example Person. Content may include unverified or unsafe content.\nReport\nYou said: How deep should I plant\nHow deep should I plant tulip bulbs?\n9:41 AM\nClaude responded: Plant tulip bulbs about\nPlant tulip bulbs about 15 cm deep, pointed end up. EXAMPLE answer.\nCopy\nRetry\nYou said: And when?\nAnd when?\n9:42 AM\nClaude responded: In autumn, before\nIn autumn, before the first hard frost. EXAMPLE answer.\nCopy\nRetry\nClaude can make mistakes. Please double-check responses."
+          ]
+        },
+        "other": {
+          "strategy": "page-text",
+          "attempts": [
+            {
+              "id": "chatgpt-author-role",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "gemini-chat",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "gemini-share",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "indexed-data-index",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "chatgpt-turn-testid",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "generic-main-article",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "page-text",
+              "ok": true,
+              "reason": null
+            }
+          ],
+          "turnCount": 1,
+          "roles": "N",
+          "partial": false,
+          "warnings": [],
+          "heading": null,
+          "title": "EXAMPLE tulip planting - Claude",
+          "passwordInputs": 0,
+          "turns": [
+            "EXAMPLE tulip planting\nShared by Example Person\nThis is a copy of a chat between Claude and Example Person. Content may include unverified or unsafe content.\nReport\nYou said: How deep should I plant\nHow deep should I plant tulip bulbs?\n9:41 AM\nClaude responded: Plant tulip bulbs about\nPlant tulip bulbs about 15 cm deep, pointed end up. EXAMPLE answer.\nCopy\nRetry\nYou said: And when?\nAnd when?\n9:42 AM\nClaude responded: In autumn, before\nIn autumn, before the first hard frost. EXAMPLE answer.\nCopy\nRetry\nClaude can make mistakes. Please double-check responses."
+          ]
+        }
+      }
+    },
+    "sign-in-wall.html": {
+      "about": "A sign-in form with a password field and legal text.",
+      "appleScripts": {
+        "status": "Captured page text (no turn structure found).",
+        "turnCount": 1,
+        "detectTitleRaw": "Welcome back",
+        "detectTitle": "Welcome back",
+        "turns": [
+          "Welcome back\nSign in to EXAMPLE Chat to continue.\nEmail Password Log in\nBy continuing you agree to the Terms of Service and the Privacy Policy. This site uses a cookie to keep you signed in."
+        ]
+      },
+      "appleSnapshot": {
+        "bodyScrollHeight": 147,
+        "viewWasGrown": false,
+        "pdfPages": 1,
+        "pdfPageSizes": [
+          [
+            1000,
+            700
+          ]
+        ]
+      },
+      "applePipeline": {
+        "sourceUrlUsed": "https://claude.ai/code/session_EXAMPLE0001",
+        "looksLikeSignInWall": true,
+        "provider": "Claude",
+        "savedTitle": "Welcome back",
+        "messageCount": 1,
+        "roles": "N",
+        "messages": [
+          {
+            "role": "unknown",
+            "text": "Welcome back\n\nSign in to EXAMPLE Chat to continue.\n\nEmail  Password  Log in\n\nBy continuing you agree to the Terms of Service and the Privacy Policy. This site uses a cookie to keep you signed in."
+          }
+        ]
+      },
+      "referenceEngine": {
+        "turnCount": 1,
+        "roles": "N",
+        "imageCounts": [
+          0
+        ],
+        "turns": [
+          "Welcome back\nSign in to EXAMPLE Chat to continue.\nEmail Password Log in\nBy continuing you agree to the Terms of Service and the Privacy Policy. This site uses a cookie to keep you signed in."
+        ]
+      },
+      "pullerEmulation": {
+        "scrollerFound": false,
+        "passwordInputFound": true,
+        "turnCount": 0
+      },
+      "prototype": {
+        "claude": {
+          "strategy": "page-text",
+          "attempts": [
+            {
+              "id": "indexed-data-index",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "page-text",
+              "ok": true,
+              "reason": null
+            }
+          ],
+          "turnCount": 1,
+          "roles": "N",
+          "partial": false,
+          "warnings": [],
+          "heading": "Welcome back",
+          "title": "Sign in - EXAMPLE Chat",
+          "passwordInputs": 1,
+          "turns": [
+            "Welcome back\nSign in to EXAMPLE Chat to continue.\nEmail Password Log in\nBy continuing you agree to the Terms of Service and the Privacy Policy. This site uses a cookie to keep you signed in."
+          ]
+        },
+        "other": {
+          "strategy": "page-text",
+          "attempts": [
+            {
+              "id": "chatgpt-author-role",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "gemini-chat",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "gemini-share",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "indexed-data-index",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "chatgpt-turn-testid",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "generic-main-article",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "page-text",
+              "ok": true,
+              "reason": null
+            }
+          ],
+          "turnCount": 1,
+          "roles": "N",
+          "partial": false,
+          "warnings": [],
+          "heading": "Welcome back",
+          "title": "Sign in - EXAMPLE Chat",
+          "passwordInputs": 1,
+          "turns": [
+            "Welcome back\nSign in to EXAMPLE Chat to continue.\nEmail Password Log in\nBy continuing you agree to the Terms of Service and the Privacy Policy. This site uses a cookie to keep you signed in."
+          ]
+        }
+      }
+    },
+    "static-author-role.html": {
+      "about": "Turn containers marked data-message-author-role inside article elements, with a signed-out header, a legal footer, two code blocks, a Copy button and two images.",
+      "appleScripts": {
+        "status": "Captured page text (no turn structure found).",
+        "turnCount": 1,
+        "detectTitleRaw": "EXAMPLE bicycle chain care",
+        "detectTitle": "EXAMPLE bicycle chain care",
+        "turns": [
+          "Log in Sign up for free\nEXAMPLE bicycle chain care\nYou said:\nHow often should I oil a bicycle chain?\nChatGPT said:\nOil it every 150 km, or after a wet ride. EXAMPLE answer.\ndef chain_due(km):\nif km >= 150:\nreturn True\nreturn False\nCopy\nYou said:\nAnd how do I clean it first?\nChatGPT said:\nWipe it with a dry rag, then use a degreaser. Run pip install example-degreaser to get the helper. EXAMPLE answer.\npip install example-degreaser\nEXAMPLE assistant can make mistakes. Check important info. Terms of Service and Privacy Policy apply."
+        ]
+      },
+      "appleSnapshot": {
+        "bodyScrollHeight": 418,
+        "viewWasGrown": false,
+        "pdfPages": 1,
+        "pdfPageSizes": [
+          [
+            1000,
+            700
+          ]
+        ]
+      },
+      "applePipeline": {
+        "sourceUrlUsed": "https://chatgpt.com/share/EXAMPLE-0000-0000",
+        "looksLikeSignInWall": true,
+        "provider": "Claude",
+        "savedTitle": "EXAMPLE bicycle chain care",
+        "messageCount": 2,
+        "roles": "UU",
+        "messages": [
+          {
+            "role": "user",
+            "text": "How often should I oil a bicycle chain?\nChatGPT said:\n\nOil it every 150 km, or after a wet ride. EXAMPLE answer.\n\ndef chain_due(km):\nif km >= 150:\nreturn True\nreturn False"
+          },
+          {
+            "role": "user",
+            "text": "And how do I clean it first?\nChatGPT said:\n\nWipe it with a dry rag, then use a degreaser. Run pip install example-degreaser to get the helper. EXAMPLE answer.\n\npip install example-degreaser\nEXAMPLE assistant can make mistakes. Check important info. Terms of Service and Privacy Policy apply."
+          }
+        ]
+      },
+      "referenceEngine": {
+        "turnCount": 4,
+        "roles": "UAUA",
+        "imageCounts": [
+          0,
+          1,
+          0,
+          0
+        ],
+        "turns": [
+          "How often should I oil a bicycle chain?",
+          "Oil it every 150 km, or after a wet ride. EXAMPLE answer.\ndef chain_due(km):\nif km >= 150:\nreturn True\nreturn False\nCopy",
+          "And how do I clean it first?",
+          "Wipe it with a dry rag, then use a degreaser. Run pip install example-degreaser to get the helper. EXAMPLE answer.\npip install example-degreaser"
+        ]
+      },
+      "pullerEmulation": {
+        "scrollerFound": false,
+        "passwordInputFound": false,
+        "turnCount": 0
+      },
+      "prototype": {
+        "chatgpt": {
+          "strategy": "chatgpt-author-role",
+          "attempts": [
+            {
+              "id": "chatgpt-author-role",
+              "ok": true,
+              "reason": null
+            }
+          ],
+          "turnCount": 4,
+          "roles": "UAUA",
+          "partial": false,
+          "warnings": [],
+          "heading": "EXAMPLE bicycle chain care",
+          "title": "EXAMPLE bicycle chain care | ChatGPT",
+          "passwordInputs": 0,
+          "turns": [
+            "How often should I oil a bicycle chain?",
+            "Oil it every 150 km, or after a wet ride. EXAMPLE answer.\n```\ndef chain_due(km):\nif km >= 150:\nreturn True\nreturn False\n```",
+            "And how do I clean it first?",
+            "Wipe it with a dry rag, then use a degreaser. Run pip install example-degreaser to get the helper. EXAMPLE answer.\n```sh\npip install example-degreaser\n```"
+          ]
+        },
+        "other": {
+          "strategy": "chatgpt-author-role",
+          "attempts": [
+            {
+              "id": "chatgpt-author-role",
+              "ok": true,
+              "reason": null
+            }
+          ],
+          "turnCount": 4,
+          "roles": "UAUA",
+          "partial": false,
+          "warnings": [],
+          "heading": "EXAMPLE bicycle chain care",
+          "title": "EXAMPLE bicycle chain care | ChatGPT",
+          "passwordInputs": 0,
+          "turns": [
+            "How often should I oil a bicycle chain?",
+            "Oil it every 150 km, or after a wet ride. EXAMPLE answer.\n```\ndef chain_due(km):\nif km >= 150:\nreturn True\nreturn False\n```",
+            "And how do I clean it first?",
+            "Wipe it with a dry rag, then use a degreaser. Run pip install example-degreaser to get the helper. EXAMPLE answer.\n```sh\npip install example-degreaser\n```"
+          ]
+        }
+      }
+    },
+    "static-custom-elements-chat.html": {
+      "about": "user-query and model-response elements with their label lines inside; the only h2 on the page is inside a reply.",
+      "appleScripts": {
+        "status": "Captured page text (no turn structure found).",
+        "turnCount": 1,
+        "detectTitleRaw": "Tools you need",
+        "detectTitle": "Tools you need",
+        "turns": [
+          "Gemini\nYou said\nHow do I patch a bicycle tube?\nGemini said\nTools you need\nSandpaper, glue and a patch. EXAMPLE answer.\nYou said\nHow long should the glue dry?\nGemini said\nAbout five minutes, until it looks dull. EXAMPLE answer."
+        ]
+      },
+      "appleSnapshot": {
+        "bodyScrollHeight": 302,
+        "viewWasGrown": false,
+        "pdfPages": 1,
+        "pdfPageSizes": [
+          [
+            1000,
+            700
+          ]
+        ]
+      },
+      "applePipeline": {
+        "sourceUrlUsed": "https://gemini.google.com/share/EXAMPLE",
+        "looksLikeSignInWall": false,
+        "provider": "Gemini",
+        "savedTitle": "Tools you need",
+        "messageCount": 1,
+        "roles": "A",
+        "messages": [
+          {
+            "role": "assistant",
+            "text": "You said\nHow do I patch a bicycle tube?\nGemini said\nTools you need\n\nSandpaper, glue and a patch. EXAMPLE answer.\n\nYou said\nHow long should the glue dry?\nGemini said\n\nAbout five minutes, until it looks dull. EXAMPLE answer."
+          }
+        ]
+      },
+      "referenceEngine": {
+        "turnCount": 4,
+        "roles": "UAUA",
+        "imageCounts": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "turns": [
+          "You said\nHow do I patch a bicycle tube?",
+          "Gemini said\nTools you need\nSandpaper, glue and a patch. EXAMPLE answer.",
+          "You said\nHow long should the glue dry?",
+          "Gemini said\nAbout five minutes, until it looks dull. EXAMPLE answer."
+        ]
+      },
+      "pullerEmulation": {
+        "scrollerFound": false,
+        "passwordInputFound": false,
+        "turnCount": 0
+      },
+      "prototype": {
+        "gemini": {
+          "strategy": "gemini-chat",
+          "attempts": [
+            {
+              "id": "gemini-chat",
+              "ok": true,
+              "reason": null
+            }
+          ],
+          "turnCount": 4,
+          "roles": "UAUA",
+          "partial": false,
+          "warnings": [],
+          "heading": null,
+          "title": "EXAMPLE patching a tube - Gemini",
+          "passwordInputs": 0,
+          "turns": [
+            "You said\nHow do I patch a bicycle tube?",
+            "Gemini said\nTools you need\nSandpaper, glue and a patch. EXAMPLE answer.",
+            "You said\nHow long should the glue dry?",
+            "Gemini said\nAbout five minutes, until it looks dull. EXAMPLE answer."
+          ]
+        },
+        "other": {
+          "strategy": "gemini-chat",
+          "attempts": [
+            {
+              "id": "chatgpt-author-role",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "gemini-chat",
+              "ok": true,
+              "reason": null
+            }
+          ],
+          "turnCount": 4,
+          "roles": "UAUA",
+          "partial": false,
+          "warnings": [],
+          "heading": null,
+          "title": "EXAMPLE patching a tube - Gemini",
+          "passwordInputs": 0,
+          "turns": [
+            "You said\nHow do I patch a bicycle tube?",
+            "Gemini said\nTools you need\nSandpaper, glue and a patch. EXAMPLE answer.",
+            "You said\nHow long should the glue dry?",
+            "Gemini said\nAbout five minutes, until it looks dull. EXAMPLE answer."
+          ]
+        }
+      }
+    },
+    "static-custom-elements-share.html": {
+      "about": "share-turn-viewer elements holding user-query and response-container; there is no model-response element.",
+      "appleScripts": {
+        "status": "Captured page text (no turn structure found).",
+        "turnCount": 1,
+        "detectTitleRaw": "EXAMPLE patching a tube - Gemini",
+        "detectTitle": "EXAMPLE patching a tube - Gemini",
+        "turns": [
+          "Gemini Sign in\nCreated with EXAMPLE model. Published 1 January 2000.\nYou said\nHow do I patch a bicycle tube?\nRoughen the tube, apply glue, wait, then press the patch on. EXAMPLE answer.\nYou said\nHow long should the glue dry?\nAbout five minutes, until it looks dull. EXAMPLE answer.\nSign in to continue this chat. EXAMPLE Terms and the EXAMPLE Privacy Policy apply. EXAMPLE assistant can make mistakes."
+        ]
+      },
+      "appleSnapshot": {
+        "bodyScrollHeight": 250,
+        "viewWasGrown": false,
+        "pdfPages": 1,
+        "pdfPageSizes": [
+          [
+            1000,
+            700
+          ]
+        ]
+      },
+      "applePipeline": {
+        "sourceUrlUsed": "https://gemini.google.com/share/EXAMPLE",
+        "looksLikeSignInWall": true,
+        "provider": "Gemini",
+        "savedTitle": "EXAMPLE patching a tube - Gemini",
+        "messageCount": 1,
+        "roles": "N",
+        "messages": [
+          {
+            "role": "unknown",
+            "text": "Gemini Sign in\nCreated with EXAMPLE model. Published 1 January 2000.\nYou said\nHow do I patch a bicycle tube?\n\nRoughen the tube, apply glue, wait, then press the patch on. EXAMPLE answer.\n\nYou said\nHow long should the glue dry?\n\nAbout five minutes, until it looks dull. EXAMPLE answer.\n\nSign in to continue this chat. EXAMPLE Terms and the EXAMPLE Privacy Policy apply. EXAMPLE assistant can make mistakes."
+          }
+        ]
+      },
+      "referenceEngine": {
+        "turnCount": 2,
+        "roles": "UU",
+        "imageCounts": [
+          0,
+          0
+        ],
+        "turns": [
+          "You said\nHow do I patch a bicycle tube?",
+          "You said\nHow long should the glue dry?"
+        ]
+      },
+      "pullerEmulation": {
+        "scrollerFound": false,
+        "passwordInputFound": false,
+        "turnCount": 0
+      },
+      "prototype": {
+        "gemini": {
+          "strategy": "gemini-share",
+          "attempts": [
+            {
+              "id": "gemini-chat",
+              "ok": false,
+              "reason": "one_role_only"
+            },
+            {
+              "id": "gemini-share",
+              "ok": true,
+              "reason": null
+            }
+          ],
+          "turnCount": 4,
+          "roles": "UAUA",
+          "partial": false,
+          "warnings": [],
+          "heading": null,
+          "title": "EXAMPLE patching a tube - Gemini",
+          "passwordInputs": 0,
+          "turns": [
+            "You said\nHow do I patch a bicycle tube?",
+            "Roughen the tube, apply glue, wait, then press the patch on. EXAMPLE answer.",
+            "You said\nHow long should the glue dry?",
+            "About five minutes, until it looks dull. EXAMPLE answer."
+          ]
+        },
+        "other": {
+          "strategy": "gemini-share",
+          "attempts": [
+            {
+              "id": "chatgpt-author-role",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "gemini-chat",
+              "ok": false,
+              "reason": "one_role_only"
+            },
+            {
+              "id": "gemini-share",
+              "ok": true,
+              "reason": null
+            }
+          ],
+          "turnCount": 4,
+          "roles": "UAUA",
+          "partial": false,
+          "warnings": [],
+          "heading": null,
+          "title": "EXAMPLE patching a tube - Gemini",
+          "passwordInputs": 0,
+          "turns": [
+            "You said\nHow do I patch a bicycle tube?",
+            "Roughen the tube, apply glue, wait, then press the patch on. EXAMPLE answer.",
+            "You said\nHow long should the glue dry?",
+            "About five minutes, until it looks dull. EXAMPLE answer."
+          ]
+        }
+      }
+    },
+    "stray-data-index-plain.html": {
+      "about": "A plain-text conversation without turn markup plus the same three [data-index] suggestion chips.",
+      "appleScripts": {
+        "status": "Captured 3 turns.",
+        "turnCount": 3,
+        "detectTitleRaw": "EXAMPLE compost basics",
+        "detectTitle": "EXAMPLE compost basics",
+        "turns": [
+          "EXAMPLE suggestion: composting in winter",
+          "EXAMPLE suggestion: worm bins",
+          "EXAMPLE suggestion: leaf mould"
+        ]
+      },
+      "appleSnapshot": {
+        "bodyScrollHeight": 208,
+        "viewWasGrown": false,
+        "pdfPages": 1,
+        "pdfPageSizes": [
+          [
+            1000,
+            700
+          ]
+        ]
+      },
+      "applePipeline": {
+        "sourceUrlUsed": "https://example.invalid/share/EXAMPLE",
+        "looksLikeSignInWall": false,
+        "provider": "Other",
+        "savedTitle": "EXAMPLE compost basics",
+        "messageCount": 3,
+        "roles": "NNN",
+        "messages": [
+          {
+            "role": "unknown",
+            "text": "EXAMPLE suggestion: composting in winter"
+          },
+          {
+            "role": "unknown",
+            "text": "EXAMPLE suggestion: worm bins"
+          },
+          {
+            "role": "unknown",
+            "text": "EXAMPLE suggestion: leaf mould"
+          }
+        ]
+      },
+      "referenceEngine": {
+        "turnCount": 3,
+        "roles": "NNN",
+        "imageCounts": [
+          0,
+          0,
+          0
+        ],
+        "turns": [
+          "EXAMPLE suggestion: composting in winter",
+          "EXAMPLE suggestion: worm bins",
+          "EXAMPLE suggestion: leaf mould"
+        ]
+      },
+      "pullerEmulation": {
+        "scrollerFound": false,
+        "passwordInputFound": false,
+        "turnCount": 3
+      },
+      "prototype": {
+        "other": {
+          "strategy": "page-text",
+          "attempts": [
+            {
+              "id": "chatgpt-author-role",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "gemini-chat",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "gemini-share",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "indexed-data-index",
+              "ok": false,
+              "reason": "low_coverage"
+            },
+            {
+              "id": "chatgpt-turn-testid",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "generic-main-article",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "page-text",
+              "ok": true,
+              "reason": null
+            }
+          ],
+          "turnCount": 1,
+          "roles": "N",
+          "partial": false,
+          "warnings": [],
+          "heading": null,
+          "title": "EXAMPLE compost basics",
+          "passwordInputs": 0,
+          "turns": [
+            "What can I put in a compost bin, and what should stay out of it? I have a small garden and a closed plastic bin.\nVegetable scraps, fruit peel, leaves, grass cuttings and coffee grounds all work well. Keep out meat, dairy and cooked food, because they attract pests. Mix green and brown material in roughly equal parts and turn the heap every two weeks. EXAMPLE answer.\nHow long until it is ready?\nIn a closed bin, about six months in warm weather and up to a year in a cold one. EXAMPLE answer.\nEXAMPLE suggestion: composting in winter\nEXAMPLE suggestion: worm bins\nEXAMPLE suggestion: leaf mould"
+          ]
+        }
+      }
+    },
+    "stray-data-index.html": {
+      "about": "A two-turn conversation in data-message-author-role containers plus an unrelated list of three [data-index] suggestion chips.",
+      "appleScripts": {
+        "status": "Captured 3 turns.",
+        "turnCount": 3,
+        "detectTitleRaw": "EXAMPLE compost basics | ChatGPT",
+        "detectTitle": "EXAMPLE compost basics",
+        "turns": [
+          "EXAMPLE suggestion: composting in winter",
+          "EXAMPLE suggestion: worm bins",
+          "EXAMPLE suggestion: leaf mould"
+        ]
+      },
+      "appleSnapshot": {
+        "bodyScrollHeight": 122,
+        "viewWasGrown": false,
+        "pdfPages": 1,
+        "pdfPageSizes": [
+          [
+            1000,
+            700
+          ]
+        ]
+      },
+      "applePipeline": {
+        "sourceUrlUsed": "https://chatgpt.com/share/EXAMPLE-0000-0000",
+        "looksLikeSignInWall": false,
+        "provider": "Other",
+        "savedTitle": "EXAMPLE compost basics",
+        "messageCount": 3,
+        "roles": "NNN",
+        "messages": [
+          {
+            "role": "unknown",
+            "text": "EXAMPLE suggestion: composting in winter"
+          },
+          {
+            "role": "unknown",
+            "text": "EXAMPLE suggestion: worm bins"
+          },
+          {
+            "role": "unknown",
+            "text": "EXAMPLE suggestion: leaf mould"
+          }
+        ]
+      },
+      "referenceEngine": {
+        "turnCount": 3,
+        "roles": "NNN",
+        "imageCounts": [
+          0,
+          0,
+          0
+        ],
+        "turns": [
+          "EXAMPLE suggestion: composting in winter",
+          "EXAMPLE suggestion: worm bins",
+          "EXAMPLE suggestion: leaf mould"
+        ]
+      },
+      "pullerEmulation": {
+        "scrollerFound": false,
+        "passwordInputFound": false,
+        "turnCount": 3
+      },
+      "prototype": {
+        "chatgpt": {
+          "strategy": "chatgpt-author-role",
+          "attempts": [
+            {
+              "id": "chatgpt-author-role",
+              "ok": true,
+              "reason": null
+            }
+          ],
+          "turnCount": 2,
+          "roles": "UA",
+          "partial": false,
+          "warnings": [],
+          "heading": null,
+          "title": "EXAMPLE compost basics | ChatGPT",
+          "passwordInputs": 0,
+          "turns": [
+            "What can I put in a compost bin?",
+            "Vegetable scraps, leaves and coffee grounds. EXAMPLE answer."
+          ]
+        },
+        "other": {
+          "strategy": "chatgpt-author-role",
+          "attempts": [
+            {
+              "id": "chatgpt-author-role",
+              "ok": true,
+              "reason": null
+            }
+          ],
+          "turnCount": 2,
+          "roles": "UA",
+          "partial": false,
+          "warnings": [],
+          "heading": null,
+          "title": "EXAMPLE compost basics | ChatGPT",
+          "passwordInputs": 0,
+          "turns": [
+            "What can I put in a compost bin?",
+            "Vegetable scraps, leaves and coffee grounds. EXAMPLE answer."
+          ]
+        }
+      }
+    },
+    "virtual-list-renamed.html": {
+      "about": "The same list, but the scroll pane has other class names and is not inside <main>.",
+      "appleScripts": {
+        "status": "Captured 45 turns.",
+        "turnCount": 45,
+        "detectTitleRaw": "EXAMPLE pruning apple trees",
+        "detectTitle": "EXAMPLE pruning apple trees",
+        "firstTurns": [
+          "User: EXAMPLE turn 0 about pruning apple trees. Synthetic filler sentence.",
+          "Assistant: EXAMPLE turn 1 about pruning apple trees. Synthetic filler sentence. Synthetic filler sentence."
+        ],
+        "lastTurn": "User: EXAMPLE turn 44 about pruning apple trees. Synthetic filler sentence. Synthetic filler sentence. Synthetic filler sentence."
+      },
+      "appleSnapshot": {
+        "bodyScrollHeight": 700,
+        "viewWasGrown": false,
+        "pdfPages": 1,
+        "pdfPageSizes": [
+          [
+            1000,
+            700
+          ]
+        ]
+      },
+      "applePipeline": {
+        "sourceUrlUsed": "https://claude.ai/code/session_EXAMPLE0001",
+        "looksLikeSignInWall": false,
+        "provider": "Claude",
+        "savedTitle": "EXAMPLE pruning apple trees",
+        "messageCount": 45,
+        "roles": "UAUAUAUAUAUAUAUAUAUAUAUAUAUAUAUAUAUAUAUAUAUAU"
+      },
+      "referenceEngine": {
+        "turnCount": 10,
+        "roles": "NNNNNNNNNN",
+        "firstTurns": [
+          "User: EXAMPLE turn 0 about pruning apple trees. Synthetic filler sentence.",
+          "Assistant: EXAMPLE turn 1 about pruning apple trees. Synthetic filler sentence. Synthetic filler sentence."
+        ],
+        "lastTurn": "Assistant: EXAMPLE turn 9 about pruning apple trees. Synthetic filler sentence."
+      },
+      "pullerEmulation": {
+        "scrollerFound": false,
+        "passwordInputFound": false,
+        "turnCount": 10
+      },
+      "prototype": {
+        "claude": {
+          "strategy": "indexed-data-index",
+          "attempts": [
+            {
+              "id": "indexed-data-index",
+              "ok": true,
+              "reason": null
+            }
+          ],
+          "turnCount": 45,
+          "roles": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+          "partial": false,
+          "warnings": [],
+          "heading": "EXAMPLE pruning apple trees",
+          "title": "EXAMPLE pruning apple trees - Claude",
+          "passwordInputs": 0,
+          "firstTurns": [
+            "User: EXAMPLE turn 0 about pruning apple trees. Synthetic filler sentence.",
+            "Assistant: EXAMPLE turn 1 about pruning apple trees. Synthetic filler sentence. Synthetic filler sentence."
+          ],
+          "lastTurn": "User: EXAMPLE turn 44 about pruning apple trees. Synthetic filler sentence. Synthetic filler sentence. Synthetic filler sentence."
+        },
+        "other": {
+          "strategy": "indexed-data-index",
+          "attempts": [
+            {
+              "id": "chatgpt-author-role",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "gemini-chat",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "gemini-share",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "indexed-data-index",
+              "ok": true,
+              "reason": null
+            }
+          ],
+          "turnCount": 45,
+          "roles": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+          "partial": false,
+          "warnings": [],
+          "heading": "EXAMPLE pruning apple trees",
+          "title": "EXAMPLE pruning apple trees - Claude",
+          "passwordInputs": 0,
+          "firstTurns": [
+            "User: EXAMPLE turn 0 about pruning apple trees. Synthetic filler sentence.",
+            "Assistant: EXAMPLE turn 1 about pruning apple trees. Synthetic filler sentence. Synthetic filler sentence."
+          ],
+          "lastTurn": "User: EXAMPLE turn 44 about pruning apple trees. Synthetic filler sentence. Synthetic filler sentence. Synthetic filler sentence."
+        }
+      }
+    },
+    "virtual-list-with-sidebar.html": {
+      "about": "The same list next to a sidebar: a second scroll pane, earlier in the document, holding 60 short [data-index] items.",
+      "appleScripts": {
+        "status": "Captured 60 turns.",
+        "turnCount": 60,
+        "detectTitleRaw": "EXAMPLE pruning apple trees",
+        "detectTitle": "EXAMPLE pruning apple trees",
+        "firstTurns": [
+          "User: EXAMPLE turn 0 about pruning apple trees. Synthetic filler sentence.",
+          "Assistant: EXAMPLE turn 1 about pruning apple trees. Synthetic filler sentence. Synthetic filler sentence."
+        ],
+        "lastTurn": "EXAMPLE saved chat 59"
+      },
+      "appleSnapshot": {
+        "bodyScrollHeight": 700,
+        "viewWasGrown": false,
+        "pdfPages": 1,
+        "pdfPageSizes": [
+          [
+            1000,
+            700
+          ]
+        ]
+      },
+      "applePipeline": {
+        "sourceUrlUsed": "https://claude.ai/code/session_EXAMPLE0001",
+        "looksLikeSignInWall": false,
+        "provider": "Claude",
+        "savedTitle": "EXAMPLE pruning apple trees",
+        "messageCount": 60,
+        "roles": "UAUAUAUAUANNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN"
+      },
+      "referenceEngine": {
+        "turnCount": 60,
+        "roles": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+        "firstTurns": [
+          "User: EXAMPLE turn 0 about pruning apple trees. Synthetic filler sentence.",
+          "Assistant: EXAMPLE turn 1 about pruning apple trees. Synthetic filler sentence. Synthetic filler sentence."
+        ],
+        "lastTurn": "EXAMPLE saved chat 59"
+      },
+      "pullerEmulation": {
+        "scrollerFound": true,
+        "passwordInputFound": false,
+        "turnCount": 60
+      },
+      "prototype": {
+        "claude": {
+          "strategy": "indexed-data-index",
+          "attempts": [
+            {
+              "id": "indexed-data-index",
+              "ok": true,
+              "reason": null
+            }
+          ],
+          "turnCount": 45,
+          "roles": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+          "partial": false,
+          "warnings": [
+            "several_indexed_lists"
+          ],
+          "heading": "EXAMPLE pruning apple trees",
+          "title": "EXAMPLE pruning apple trees - Claude",
+          "passwordInputs": 0,
+          "firstTurns": [
+            "User: EXAMPLE turn 0 about pruning apple trees. Synthetic filler sentence.",
+            "Assistant: EXAMPLE turn 1 about pruning apple trees. Synthetic filler sentence. Synthetic filler sentence."
+          ],
+          "lastTurn": "User: EXAMPLE turn 44 about pruning apple trees. Synthetic filler sentence. Synthetic filler sentence. Synthetic filler sentence."
+        },
+        "other": {
+          "strategy": "indexed-data-index",
+          "attempts": [
+            {
+              "id": "chatgpt-author-role",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "gemini-chat",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "gemini-share",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "indexed-data-index",
+              "ok": true,
+              "reason": null
+            }
+          ],
+          "turnCount": 45,
+          "roles": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+          "partial": false,
+          "warnings": [
+            "several_indexed_lists"
+          ],
+          "heading": "EXAMPLE pruning apple trees",
+          "title": "EXAMPLE pruning apple trees - Claude",
+          "passwordInputs": 0,
+          "firstTurns": [
+            "User: EXAMPLE turn 0 about pruning apple trees. Synthetic filler sentence.",
+            "Assistant: EXAMPLE turn 1 about pruning apple trees. Synthetic filler sentence. Synthetic filler sentence."
+          ],
+          "lastTurn": "User: EXAMPLE turn 44 about pruning apple trees. Synthetic filler sentence. Synthetic filler sentence. Synthetic filler sentence."
+        }
+      }
+    },
+    "virtual-list.html": {
+      "about": "Windowed list of 45 [data-index] turns inside a scroll pane whose classes match the puller's first selector. Rows mount with a short placeholder and get their text 120 ms later; 5 of the 45 rows appear only after the bottom is first reached.",
+      "appleScripts": {
+        "status": "Captured 45 turns.",
+        "turnCount": 45,
+        "detectTitleRaw": "EXAMPLE pruning apple trees",
+        "detectTitle": "EXAMPLE pruning apple trees",
+        "firstTurns": [
+          "User: EXAMPLE turn 0 about pruning apple trees. Synthetic filler sentence.",
+          "Assistant: EXAMPLE turn 1 about pruning apple trees. Synthetic filler sentence. Synthetic filler sentence."
+        ],
+        "lastTurn": "User: EXAMPLE turn 44 about pruning apple trees. Synthetic filler sentence. Synthetic filler sentence. Synthetic filler sentence."
+      },
+      "appleSnapshot": {
+        "bodyScrollHeight": 700,
+        "viewWasGrown": false,
+        "pdfPages": 1,
+        "pdfPageSizes": [
+          [
+            1000,
+            700
+          ]
+        ]
+      },
+      "applePipeline": {
+        "sourceUrlUsed": "https://claude.ai/code/session_EXAMPLE0001",
+        "looksLikeSignInWall": false,
+        "provider": "Claude",
+        "savedTitle": "EXAMPLE pruning apple trees",
+        "messageCount": 45,
+        "roles": "UAUAUAUAUAUAUAUAUAUAUAUAUAUAUAUAUAUAUAUAUAUAU"
+      },
+      "referenceEngine": {
+        "turnCount": 45,
+        "roles": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+        "firstTurns": [
+          "User: EXAMPLE turn 0 about pruning apple trees. Synthetic filler sentence.",
+          "Assistant: EXAMPLE turn 1 about pruning apple trees. Synthetic filler sentence. Synthetic filler sentence."
+        ],
+        "lastTurn": "User: EXAMPLE turn 44 about pruning apple trees. Synthetic filler sentence. Synthetic filler sentence. Synthetic filler sentence."
+      },
+      "pullerEmulation": {
+        "scrollerFound": true,
+        "passwordInputFound": false,
+        "turnCount": 45
+      },
+      "prototype": {
+        "claude": {
+          "strategy": "indexed-data-index",
+          "attempts": [
+            {
+              "id": "indexed-data-index",
+              "ok": true,
+              "reason": null
+            }
+          ],
+          "turnCount": 45,
+          "roles": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+          "partial": false,
+          "warnings": [],
+          "heading": "EXAMPLE pruning apple trees",
+          "title": "EXAMPLE pruning apple trees - Claude",
+          "passwordInputs": 0,
+          "firstTurns": [
+            "User: EXAMPLE turn 0 about pruning apple trees. Synthetic filler sentence.",
+            "Assistant: EXAMPLE turn 1 about pruning apple trees. Synthetic filler sentence. Synthetic filler sentence."
+          ],
+          "lastTurn": "User: EXAMPLE turn 44 about pruning apple trees. Synthetic filler sentence. Synthetic filler sentence. Synthetic filler sentence."
+        },
+        "other": {
+          "strategy": "indexed-data-index",
+          "attempts": [
+            {
+              "id": "chatgpt-author-role",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "gemini-chat",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "gemini-share",
+              "ok": false,
+              "reason": "no_match"
+            },
+            {
+              "id": "indexed-data-index",
+              "ok": true,
+              "reason": null
+            }
+          ],
+          "turnCount": 45,
+          "roles": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+          "partial": false,
+          "warnings": [],
+          "heading": "EXAMPLE pruning apple trees",
+          "title": "EXAMPLE pruning apple trees - Claude",
+          "passwordInputs": 0,
+          "firstTurns": [
+            "User: EXAMPLE turn 0 about pruning apple trees. Synthetic filler sentence.",
+            "Assistant: EXAMPLE turn 1 about pruning apple trees. Synthetic filler sentence. Synthetic filler sentence."
+          ],
+          "lastTurn": "User: EXAMPLE turn 44 about pruning apple trees. Synthetic filler sentence. Synthetic filler sentence. Synthetic filler sentence."
+        }
+      }
+    }
+  }
+}

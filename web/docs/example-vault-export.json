@@ -1,0 +1,367 @@
+{
+  "format": "sessionvault-interchange",
+  "version": 1,
+  "kind": "vault",
+  "exported_at": "2026-11-19T12:00:00.000Z",
+  "generator": {
+    "app": "sessionvault-web",
+    "app_version": "0.0.0-example",
+    "platform": "web"
+  },
+  "x_note": "Synthetic example data. Nothing in this file comes from a real conversation.",
+  "projects": [
+    {
+      "id": "aaaaaaaa-0000-4000-8000-000000000001",
+      "name": "Bike workshop",
+      "created_at": "2026-03-01T10:00:00.000Z",
+      "updated_at": "2026-03-01T10:00:00.000Z"
+    },
+    {
+      "id": "aaaaaaaa-0000-4000-8000-000000000002",
+      "name": "Garden",
+      "created_at": "2026-07-20T08:15:00.000Z",
+      "updated_at": "2026-09-02T12:00:00.000Z",
+      "x_color": "green"
+    },
+    {
+      "id": "aaaaaaaa-0000-4000-8000-000000000003",
+      "name": "apple pie ideas",
+      "created_at": "2026-11-02T09:00:00.000Z",
+      "updated_at": "2026-11-02T09:00:00.000Z"
+    }
+  ],
+  "sessions": [
+    {
+      "id": "5e550000-0000-4000-8000-000000000001",
+      "title": "Truing a bicycle wheel",
+      "provider": "chatgpt",
+      "model": "example-model-1",
+      "source_url": "https://chat.example/share/EXAMPLE-0001",
+      "summary": "Wheel wobble fixed by quarter turns.\nSecond summary line.",
+      "tags": [
+        "bikes",
+        "repair"
+      ],
+      "is_pinned": false,
+      "created_at": "2026-03-14T09:30:00.000Z",
+      "imported_at": "2026-03-15T18:02:11.482Z",
+      "updated_at": "2026-03-15T18:05:40.100Z",
+      "project_id": "aaaaaaaa-0000-4000-8000-000000000001",
+      "attachments": [],
+      "messages": [
+        {
+          "id": "0e55a9e0-0001-4000-8000-000000000000",
+          "index": 0,
+          "role": "user",
+          "segments": [
+            {
+              "type": "text",
+              "text": "My rear wheel wobbles. How do I true it?"
+            }
+          ]
+        },
+        {
+          "id": "0e55a9e0-0001-4000-8000-000000000001",
+          "index": 1,
+          "role": "assistant",
+          "segments": [
+            {
+              "type": "text",
+              "text": "Tighten the spoke on the side you want the rim to move toward.\n\n```sh\necho quarter-turn\n```"
+            }
+          ]
+        },
+        {
+          "id": "0e55a9e0-0001-4000-8000-000000000002",
+          "index": 2,
+          "role": "system",
+          "segments": [
+            {
+              "type": "text",
+              "text": "System text."
+            }
+          ]
+        },
+        {
+          "id": "0e55a9e0-0001-4000-8000-000000000003",
+          "index": 3,
+          "role": "unknown",
+          "segments": [
+            {
+              "type": "text",
+              "text": "A note with no speaker."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "5e550000-0000-4000-8000-000000000002",
+      "title": "Tomato blight on the balcony",
+      "provider": "gemini",
+      "model": "",
+      "source_url": "https://share.example/EXAMPLE-0002",
+      "summary": "",
+      "tags": [
+        "garden"
+      ],
+      "is_pinned": true,
+      "created_at": "2026-08-02T16:45:00.000Z",
+      "imported_at": "2026-08-02T16:45:03.250Z",
+      "updated_at": "2026-08-03T07:10:00.000Z",
+      "project_id": "aaaaaaaa-0000-4000-8000-000000000002",
+      "attachments": [
+        {
+          "kind": "original_pdf",
+          "sha256": "1810cb5406ca55b31aaa3be7458db38d90a4fb0afe45831ebbaaebb3c9cd5746",
+          "media_type": "application/pdf",
+          "byte_length": 616,
+          "filename": "Tomato blight on the balcony.pdf",
+          "created_at": "2026-08-02T16:45:03.250Z",
+          "data_base64": "JVBERi0xLjQKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCAzNjAgMTQ0XSAvQ29udGVudHMgNCAwIFIgL1Jlc291cmNlcyA8PCAvRm9udCA8PCAvRjEgNSAwIFIgPj4gPj4gPj4KZW5kb2JqCjQgMCBvYmoKPDwgL0xlbmd0aCA3MiA+PgpzdHJlYW0KQlQgL0YxIDEyIFRmIDI0IDk2IFRkIChFWEFNUExFIG9yaWdpbmFsIHBhZ2Ugc25hcHNob3QgKHN5bnRoZXRpYykpIFRqIEVUCmVuZHN0cmVhbQplbmRvYmoKNSAwIG9iago8PCAvVHlwZSAvRm9udCAvU3VidHlwZSAvVHlwZTEgL0Jhc2VGb250IC9IZWx2ZXRpY2EgPj4KZW5kb2JqCnhyZWYKMCA2CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAwOSAwMDAwMCBuIAowMDAwMDAwMDU4IDAwMDAwIG4gCjAwMDAwMDAxMTUgMDAwMDAgbiAKMDAwMDAwMDI0MSAwMDAwMCBuIAowMDAwMDAwMzYzIDAwMDAwIG4gCnRyYWlsZXIKPDwgL1NpemUgNiAvUm9vdCAxIDAgUiA+PgpzdGFydHhyZWYKNDMzCiUlRU9GCg==",
+          "x_pages": 1
+        }
+      ],
+      "messages": [
+        {
+          "id": "0e55a9e0-0002-4000-8000-000000000000",
+          "index": 0,
+          "role": "unknown",
+          "segments": [
+            {
+              "type": "text",
+              "text": "Why do my tomato leaves have brown spots?\n\nBrown spots with yellow halos usually mean early blight. Remove the affected leaves and water at the base of the plant."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "5e550000-0000-4000-8000-000000000003",
+      "title": "Sourdough starter schedule",
+      "provider": "claude",
+      "model": "claude-opus-5",
+      "source_url": "",
+      "summary": "Feed 1:2:2 twice a day; bake when it doubles in 6 hours.",
+      "tags": [
+        "baking",
+        "bread"
+      ],
+      "is_pinned": false,
+      "created_at": "2026-10-10T08:00:00.000Z",
+      "imported_at": "2026-10-10T08:00:00.000Z",
+      "updated_at": "2026-11-18T19:21:05.000Z",
+      "project_id": null,
+      "attachments": [
+        {
+          "kind": "image",
+          "sha256": "a0a4337e393b5dcba561013018a5261d56c20d164d4fa0be4b31456b211a3fd7",
+          "media_type": "image/png",
+          "byte_length": 73,
+          "filename": "starter-jar-EXAMPLE.png",
+          "created_at": "2026-11-18T19:20:31.000Z",
+          "data_base64": "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEElEQVR42mOw2VwIRAwQCgAlugWBXOWW3gAAAABJRU5ErkJggg=="
+        }
+      ],
+      "messages": [
+        {
+          "id": "0e55a9e0-0003-4000-8000-000000000000",
+          "index": 0,
+          "role": "user",
+          "segments": [
+            {
+              "type": "text",
+              "text": "How often should I feed a new sourdough starter?"
+            }
+          ]
+        },
+        {
+          "id": "0e55a9e0-0003-4000-8000-000000000001",
+          "index": 1,
+          "role": "assistant",
+          "segments": [
+            {
+              "type": "text",
+              "text": "Twice a day at room temperature.\n\n1. Discard all but 20 g.\n2. Add 40 g flour and 40 g water.\n3. Stir, cover loosely, and wait 12 hours."
+            }
+          ]
+        },
+        {
+          "id": "0e55a9e0-0003-4000-8000-000000000002",
+          "index": 2,
+          "role": "user",
+          "segments": [
+            {
+              "type": "text",
+              "text": "Here is a photo of the jar after six hours."
+            },
+            {
+              "type": "attachment",
+              "sha256": "a0a4337e393b5dcba561013018a5261d56c20d164d4fa0be4b31456b211a3fd7"
+            },
+            {
+              "type": "text",
+              "text": "Is it ready?"
+            }
+          ],
+          "created_at": "2026-11-18T19:20:31.000Z"
+        },
+        {
+          "id": "0e55a9e0-0003-4000-8000-000000000003",
+          "index": 3,
+          "role": "assistant",
+          "segments": [
+            {
+              "type": "text",
+              "text": "It has doubled, so it is ready. Bake today."
+            }
+          ],
+          "created_at": "2026-11-18T19:21:05.000Z",
+          "model": "claude-opus-5"
+        }
+      ]
+    },
+    {
+      "id": "5e550000-0000-4000-8000-000000000004",
+      "title": "Untitled",
+      "provider": "other",
+      "model": "",
+      "source_url": "",
+      "summary": "",
+      "tags": [],
+      "is_pinned": false,
+      "created_at": "2026-01-05T12:00:00.000Z",
+      "imported_at": "2026-01-05T12:00:00.000Z",
+      "updated_at": "2026-01-05T12:00:00.000Z",
+      "project_id": null,
+      "attachments": [],
+      "messages": []
+    },
+    {
+      "id": "5e550000-0000-4000-8000-000000000005",
+      "title": "Seed order comparison",
+      "provider": "examplebot",
+      "model": "examplebot-2",
+      "source_url": "",
+      "summary": "",
+      "tags": [
+        "garden",
+        "shopping"
+      ],
+      "is_pinned": false,
+      "created_at": "2026-10-31T23:30:00.000Z",
+      "imported_at": "2026-11-01T10:00:00.000Z",
+      "updated_at": "2026-11-01T10:00:00.000Z",
+      "project_id": "aaaaaaaa-0000-4000-8000-000000000002",
+      "x_capture": {
+        "method": "paste",
+        "note": "unknown field, must survive a round trip"
+      },
+      "attachments": [
+        {
+          "kind": "original_pdf",
+          "sha256": "d10c0f337641f502b997b7e3537d94cabaca39d0335037853d21696816cc78ab",
+          "media_type": "application/pdf",
+          "byte_length": 623,
+          "filename": "Seed order comparison.pdf",
+          "created_at": "2026-11-01T10:00:00.000Z"
+        }
+      ],
+      "messages": [
+        {
+          "id": "0e55a9e0-0005-4000-8000-000000000000",
+          "index": 0,
+          "role": "user",
+          "segments": [
+            {
+              "type": "text",
+              "text": "Compare carrot and beet seed prices for a 2 m bed."
+            }
+          ]
+        },
+        {
+          "id": "0e55a9e0-0005-4000-8000-000000000001",
+          "index": 1,
+          "role": "tool",
+          "segments": [
+            {
+              "type": "text",
+              "text": "lookup: seed catalogue, 2 results"
+            }
+          ]
+        },
+        {
+          "id": "0e55a9e0-0005-4000-8000-000000000002",
+          "index": 2,
+          "role": "assistant",
+          "segments": [
+            {
+              "type": "text",
+              "text": "Carrots are cheaper per row."
+            },
+            {
+              "type": "x_table",
+              "columns": [
+                "seed",
+                "price_per_row"
+              ],
+              "rows": [
+                [
+                  "carrot",
+                  "0.40"
+                ],
+                [
+                  "beet",
+                  "0.55"
+                ]
+              ]
+            }
+          ],
+          "x_rating": 5
+        }
+      ]
+    },
+    {
+      "id": "5e550000-0000-4000-8000-000000000006",
+      "title": "Café menu translation",
+      "provider": "claude",
+      "model": "",
+      "source_url": "",
+      "summary": "Menu terms for a bicycle café.",
+      "tags": [
+        "travel",
+        "two words"
+      ],
+      "is_pinned": false,
+      "created_at": "2025-12-31T23:59:59.000Z",
+      "imported_at": "2026-11-01T10:00:00.000Z",
+      "updated_at": "2026-11-01T10:00:00.000Z",
+      "project_id": null,
+      "attachments": [],
+      "messages": [
+        {
+          "id": "0e55a9e0-0006-4000-8000-000000000000",
+          "index": 0,
+          "role": "user",
+          "segments": [
+            {
+              "type": "text",
+              "text": "Translate 'soup of the day' for a café menu."
+            }
+          ]
+        },
+        {
+          "id": "0e55a9e0-0006-4000-8000-000000000001",
+          "index": 1,
+          "role": "assistant",
+          "segments": [
+            {
+              "type": "text",
+              "text": "Soupe du jour."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

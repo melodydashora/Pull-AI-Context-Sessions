@@ -1,0 +1,60 @@
+<!doctype html>
+<!-- SYNTHETIC FIXTURE. Not a copy of any provider page. Text is invented. -->
+<html lang="en"><head><meta charset="utf-8">
+<title>EXAMPLE pruning apple trees - Claude</title>
+<style>
+html, body { margin: 0; height: 100%; overflow: hidden; font: 14px/1.4 sans-serif; }
+header { height: 40px; }
+header h2 { margin: 0; font-size: 16px; line-height: 40px; }
+main, .pane-wrap { height: calc(100% - 40px); }
+.h-full, .pane { height: 100%; }
+.overflow-y-auto, .pane { overflow-y: auto; }
+.overflow-x-hidden, .pane { overflow-x: hidden; }
+.spacer { position: relative; }
+.row { position: absolute; left: 0; right: 0; height: 100px; box-sizing: border-box; padding: 8px; overflow: hidden; }
+</style></head>
+<body>
+<header><h2>EXAMPLE pruning apple trees</h2></header>
+<main><div id="scroller" class="h-full overflow-y-auto overflow-x-hidden"><div id="spacer" class="spacer"></div></div></main>
+<script>
+// A windowed list: only the rows near the viewport exist in the DOM, each as
+// a NEW node when it scrolls into range. Rows show a short placeholder first
+// and their full text 120 ms later. The list grows by 5 rows, once, 300 ms
+// after the bottom is first reached.
+var ROW = 100, OVERSCAN = 2, total = 40, grown = false;
+var scroller = document.getElementById('scroller');
+var spacer = document.getElementById('spacer');
+function textFor(i) {
+  var who = i % 2 === 0 ? 'User: ' : 'Assistant: ';
+  var filler = new Array(2 + (i % 3)).join(' Synthetic filler sentence.');
+  return who + 'EXAMPLE turn ' + i + ' about pruning apple trees.' + filler;
+}
+function render() {
+  spacer.style.height = (total * ROW) + 'px';
+  var first = Math.max(0, Math.floor(scroller.scrollTop / ROW) - OVERSCAN);
+  var last = Math.min(total - 1, Math.ceil((scroller.scrollTop + scroller.clientHeight) / ROW) + OVERSCAN);
+  Array.prototype.slice.call(spacer.children).forEach(function (el) {
+    var i = parseInt(el.getAttribute('data-index'), 10);
+    if (i < first || i > last) { el.remove(); }
+  });
+  for (var i = first; i <= last; i++) {
+    if (spacer.querySelector('[data-index="' + i + '"]')) { continue; }
+    (function (i) {
+      var el = document.createElement('div');
+      el.className = 'row';
+      el.setAttribute('data-index', String(i));
+      el.style.top = (i * ROW) + 'px';
+      el.textContent = 'Loading ' + i;
+      setTimeout(function () { el.textContent = textFor(i); }, 120);
+      spacer.appendChild(el);
+    })(i);
+  }
+  if (!grown && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 4 && scroller.scrollTop > 0) {
+    grown = true;
+    setTimeout(function () { total += 5; render(); }, 300);
+  }
+}
+scroller.addEventListener('scroll', render);
+render();
+</script>
+</body></html>

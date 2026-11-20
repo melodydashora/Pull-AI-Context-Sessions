@@ -1,0 +1,283 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:sessionvault:interchange:v1",
+  "title": "SessionVault interchange document, version 1",
+  "description": "One JSON document that carries either a whole vault (kind \"vault\") or exactly one session (kind \"session\"). Written and read by the SessionVault web app; the Apple app is expected to gain the same export and import later. Rules that a schema cannot express (id uniqueness, index order, hash checks, merge behaviour) are in data-model.md, section 'Interchange format, version 1'. Unknown properties are allowed on every object and must be preserved by readers that store and re-export the data. Property names starting with \"x_\" are reserved for app-specific extensions and will never be given a standard meaning.",
+  "type": "object",
+  "required": ["format", "version", "kind", "exported_at", "projects", "sessions"],
+  "additionalProperties": true,
+  "properties": {
+    "format": {
+      "description": "Fixed marker that identifies the file type. Readers must check it before anything else.",
+      "const": "sessionvault-interchange"
+    },
+    "version": {
+      "description": "Major version. Additive changes keep the value 1. A reader that sees a larger number must refuse the file with a clear message and must not import part of it.",
+      "const": 1
+    },
+    "kind": {
+      "description": "\"vault\": every project and every session of one vault at the time of export. \"session\": exactly one session, plus its project when it has one. Import is always a merge; a session or project that is absent from a \"vault\" document is never deleted at the destination.",
+      "enum": ["vault", "session"]
+    },
+    "exported_at": {
+      "description": "When the document was written.",
+      "$ref": "#/definitions/timestamp"
+    },
+    "generator": { "$ref": "#/definitions/generator" },
+    "projects": {
+      "description": "Projects referenced by the sessions in this document. A \"vault\" document also lists projects that have no sessions.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/project" }
+    },
+    "sessions": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/session" }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["kind"],
+        "properties": { "kind": { "const": "session" } }
+      },
+      "then": {
+        "properties": {
+          "sessions": { "type": "array", "minItems": 1, "maxItems": 1 },
+          "projects": { "type": "array", "maxItems": 1 }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "uuid": {
+      "description": "UUID in canonical form: 36 characters, lower-case hexadecimal, any UUID version. Swift's UUID.uuidString is upper-case and must be lower-cased by the exporter. Readers should accept upper-case input and lower-case it before comparing.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "timestamp": {
+      "description": "An instant in UTC, RFC 3339 with the literal suffix Z and an optional fraction of 1 to 9 digits. Writers should emit exactly three fraction digits (milliseconds). Readers must accept both forms.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?Z$"
+    },
+    "sha256": {
+      "description": "SHA-256 of the raw bytes, 64 lower-case hexadecimal characters.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "generator": {
+      "description": "Which program wrote the document. Informational only.",
+      "type": "object",
+      "required": ["app"],
+      "additionalProperties": true,
+      "properties": {
+        "app": {
+          "description": "Known values: \"sessionvault-web\", \"sessionvault-apple\".",
+          "type": "string",
+          "minLength": 1
+        },
+        "app_version": { "type": "string" },
+        "platform": {
+          "description": "Free text, for example \"web\", \"macOS\", \"iOS\".",
+          "type": "string"
+        }
+      }
+    },
+    "project": {
+      "type": "object",
+      "required": ["id", "name", "created_at"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "$ref": "#/definitions/uuid" },
+        "name": {
+          "description": "Display name, not empty after trimming white space.",
+          "type": "string",
+          "minLength": 1,
+          "pattern": "[^\\s]"
+        },
+        "created_at": { "$ref": "#/definitions/timestamp" },
+        "updated_at": {
+          "description": "Last change to the project. When absent, readers use created_at.",
+          "$ref": "#/definitions/timestamp"
+        }
+      }
+    },
+    "session": {
+      "type": "object",
+      "required": ["id", "title", "provider", "created_at", "imported_at", "messages"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "$ref": "#/definitions/uuid" },
+        "title": {
+          "description": "May be empty (the Apple app allows it); apps display an empty title as \"Untitled\".",
+          "type": "string"
+        },
+        "provider": {
+          "description": "Which assistant the conversation came from. Open list. Known values: \"claude\", \"chatgpt\", \"gemini\", \"other\". Any other value is kept as written and behaves like \"other\".",
+          "type": "string",
+          "minLength": 1
+        },
+        "model": {
+          "description": "Free-text model label, empty when unknown. Informative examples: \"claude-opus-5\", \"claude-fable-5-1\", \"claude-fable-5\", \"claude-sonnet-5\", \"claude-haiku-4-5\". Never validated against a list.",
+          "type": "string"
+        },
+        "source_url": {
+          "description": "The link the session was captured or pulled from, empty when there is none.",
+          "type": "string"
+        },
+        "summary": {
+          "description": "Free text, may contain line breaks, empty when there is none.",
+          "type": "string"
+        },
+        "tags": {
+          "description": "Ordered. Each tag is trimmed, lower-case, not empty, without commas, and appears once.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^,]+$"
+          }
+        },
+        "is_pinned": { "type": "boolean" },
+        "created_at": {
+          "description": "The ORIGINAL date of the conversation (\"Original date\" in the Apple app; user-editable). This is NOT the time the record was created in a database.",
+          "$ref": "#/definitions/timestamp"
+        },
+        "imported_at": {
+          "description": "When the session first entered a vault. Never changes afterwards, also not when the session moves between apps. Default list order is by this field.",
+          "$ref": "#/definitions/timestamp"
+        },
+        "updated_at": {
+          "description": "Last change to the session or to its message list. When absent, readers use imported_at.",
+          "$ref": "#/definitions/timestamp"
+        },
+        "project_id": {
+          "description": "Id of an entry in the document's projects array, or null.",
+          "anyOf": [
+            { "type": "null" },
+            { "$ref": "#/definitions/uuid" }
+          ]
+        },
+        "attachments": {
+          "description": "Every binary object this session refers to: the page snapshot and anything referenced from message segments.",
+          "type": "array",
+          "items": { "$ref": "#/definitions/attachment" }
+        },
+        "messages": {
+          "description": "In conversation order. messages[i].index must equal i.",
+          "type": "array",
+          "items": { "$ref": "#/definitions/message" }
+        }
+      }
+    },
+    "attachment": {
+      "description": "Describes one binary object by content hash. The bytes travel inline (data_base64), or as the entry blobs/<sha256> of a ZIP bundle, or not at all.",
+      "type": "object",
+      "required": ["kind", "sha256", "media_type", "byte_length"],
+      "additionalProperties": true,
+      "properties": {
+        "kind": {
+          "description": "Open list. Known values: \"original_pdf\" (pixel-faithful PDF of the captured page, at most one per session), \"image\", \"file\", \"other\". Any other value is kept as written and behaves like \"other\".",
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": { "$ref": "#/definitions/sha256" },
+        "media_type": {
+          "description": "IANA media type in lower case without parameters, for example \"application/pdf\" or \"image/png\".",
+          "type": "string",
+          "pattern": "^[a-z0-9!#$&^_.+-]+/[a-z0-9!#$&^_.+-]+$"
+        },
+        "byte_length": {
+          "description": "Length of the raw bytes.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "filename": {
+          "description": "Suggested file name for downloads. No path separators.",
+          "type": "string",
+          "pattern": "^[^/\\\\]*$"
+        },
+        "created_at": { "$ref": "#/definitions/timestamp" },
+        "data_base64": {
+          "description": "The raw bytes in standard base64 (RFC 4648 section 4) with padding and without line breaks. Optional.",
+          "type": "string",
+          "contentEncoding": "base64",
+          "pattern": "^[A-Za-z0-9+/]*={0,2}$"
+        }
+      }
+    },
+    "message": {
+      "type": "object",
+      "required": ["id", "index", "role", "segments"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "$ref": "#/definitions/uuid" },
+        "index": {
+          "description": "Zero-based position in the session. Equal to the position in the messages array.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "role": {
+          "description": "Open list. Known values: \"user\", \"assistant\", \"system\", \"unknown\" (text with no identified speaker, shown as \"Note\"). Any other value is kept as written and behaves like \"unknown\".",
+          "type": "string",
+          "minLength": 1
+        },
+        "segments": {
+          "description": "The content, in order. At least one segment. Two text segments never follow each other directly.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/segment" }
+        },
+        "created_at": {
+          "description": "When this message was written, if known. Absent for imported transcripts.",
+          "$ref": "#/definitions/timestamp"
+        },
+        "model": {
+          "description": "Model id that produced this message when it was generated through the app's own API call. Absent otherwise.",
+          "type": "string"
+        }
+      }
+    },
+    "segment": {
+      "description": "One part of a message. Open list of types. Known types: \"text\" and \"attachment\". A segment of any other type is kept as written, is left out of the flattened text, and is shown as a placeholder.",
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": true,
+      "properties": {
+        "type": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["type"],
+            "properties": { "type": { "const": "text" } }
+          },
+          "then": {
+            "required": ["text"],
+            "properties": {
+              "text": {
+                "description": "Markdown source exactly as stored, may be empty. Fenced code blocks stay inside this text; they are split out when the message is displayed.",
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["type"],
+            "properties": { "type": { "const": "attachment" } }
+          },
+          "then": {
+            "required": ["sha256"],
+            "properties": {
+              "sha256": {
+                "description": "Must match the sha256 of an entry in the attachments array of the same session.",
+                "$ref": "#/definitions/sha256"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

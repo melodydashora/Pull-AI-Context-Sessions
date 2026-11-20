@@ -16,6 +16,8 @@ For each link (written to `./sessions` by default):
 
 ## Setup (once)
 
+On macOS, create and activate the virtual environment first, as described in the README at the top of the repository. On Windows, use the commands in that README instead: they call `.venv\Scripts\python.exe` directly and need no activation.
+
 ```bash
 pip install -r requirements.txt
 playwright install chromium

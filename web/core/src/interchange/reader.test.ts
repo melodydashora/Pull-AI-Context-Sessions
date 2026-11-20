@@ -116,10 +116,22 @@ describe("repair 1: lower-case all ids", () => {
     expect(brief(refused(document))).toEqual(["R2 /projects/1/id"]);
   });
 
-  it("does not lower-case hashes: an upper-case sha256 stays a problem", () => {
+  it("lower-cases hashes too: the sha256 of a descriptor and of an attachment segment (corrections.md 2, point 5)", () => {
     const document = example();
     document.sessions[1].attachments[0].sha256 = document.sessions[1].attachments[0].sha256.toUpperCase();
-    expect(brief(refused(document))).toEqual(["schema:pattern /sessions/1/attachments/0/sha256"]);
+    document.sessions[2].messages[2].segments[1].sha256 =
+      document.sessions[2].messages[2].segments[1].sha256.toUpperCase();
+    const result = read(document);
+    expect(result.doc).toEqual(example());
+    expect(codes(result.repairs.items)).toEqual([
+      "id_lowercased /sessions/1/attachments/0/sha256",
+      "id_lowercased /sessions/2/messages/2/segments/1/sha256",
+    ]);
+    // A writer must write them in lower case: strict validation does not repair.
+    expect(brief(validateDocument(document).problems.items)).toEqual([
+      "schema:pattern /sessions/1/attachments/0/sha256",
+      "schema:pattern /sessions/2/messages/2/segments/1/sha256",
+    ]);
   });
 
   it("leaves what is not a UUID alone", () => {
@@ -456,12 +468,12 @@ describe("repair 4: tags", () => {
 });
 
 describe("repair 5: strings", () => {
-  it("removes U+0000 and replaces lone surrogates in every string, also in unknown properties and names", () => {
+  it("removes U+0000 and replaces lone surrogates in every string, also in unknown properties", () => {
     const document = example();
     document.sessions[0].title = "A\u0000B";
     document.sessions[0].summary = "half \uD83D pair";
     document.sessions[0].messages[0].segments[0].text = "\u0000start \uDE00 end\u0000";
-    document.sessions[4].x_capture.note = ["nested\u0000", { "k\u0000ey": "v\uDFFF" }];
+    document.sessions[4].x_capture.note = ["nested\u0000", { key: "v\uDFFF" }];
     document.projects[0].name = "Bike\u0000 workshop";
     const result = read(document);
     expect(result.doc.sessions[0]?.title).toBe("AB");
@@ -472,12 +484,29 @@ describe("repair 5: strings", () => {
       note: ["nested", { key: "v\uFFFD" }],
     });
     expect(result.doc.projects[0]?.name).toBe("Bike workshop");
-    expect(result.repairs.counts).toEqual({ string_cleaned: 7 });
+    expect(result.repairs.counts).toEqual({ string_cleaned: 6 });
+    expect(result.warnings.total).toBe(0);
     expect(validateDocument(result.doc).ok).toBe(true);
     // Strict validation calls each of them R9.
     expect(validateDocument(document).problems.items.map((p) => p.rule)).toEqual(
-      Array.from({ length: 7 }, () => "R9"),
+      Array.from({ length: 6 }, () => "R9"),
     );
+  });
+
+  it("drops a property whose NAME holds U+0000 or a lone surrogate, with a warning (corrections.md 2)", () => {
+    const document = example();
+    document.sessions[4].x_capture.note = [
+      "nested",
+      { "k\u0000ey": "v\uDFFF", kept: 1, "half\uD83D": [1, 2] },
+    ];
+    const result = read(document);
+    // The value goes with the name: it is neither cleaned nor kept.
+    expect(result.doc.sessions[4]?.x_capture).toEqual({ method: "paste", note: ["nested", { kept: 1 }] });
+    expect(result.repairs.total).toBe(0);
+    expect(result.warnings.counts).toEqual({ property_dropped: 2 });
+    expect(validateDocument(result.doc).ok).toBe(true);
+    // A writer may not emit such a name at all: R9, for each name and for the string under the first.
+    expect(validateDocument(document).problems.items.map((p) => p.rule)).toEqual(["R9", "R9", "R9"]);
   });
 
   it("keeps valid surrogate pairs and other unusual characters", () => {
@@ -503,7 +532,7 @@ describe("repair 5: strings", () => {
     expect(codes(result.repairs.items)).toEqual(["line_endings /sessions/0/messages/0/segments/0/text"]);
   });
 
-  it("when cleaning makes two property names equal, keeps the first and says so", () => {
+  it("a name is never cleaned into another name: such properties are dropped, the clean one stays", () => {
     const text = EXAMPLE_TEXT.replace(
       '"x_color": "green"',
       '"x_color": "green", "x_\\u0000color": "red", "x_c\\u0000olor": "blue"',
@@ -517,7 +546,12 @@ describe("repair 5: strings", () => {
       "updated_at",
       "x_color",
     ]);
-    expect(result.repairs.counts).toEqual({ string_cleaned: 2, property_dropped: 2 });
+    expect(result.repairs.total).toBe(0);
+    expect(result.warnings.counts).toEqual({ property_dropped: 2 });
+    // Also when the name would be a known one after cleaning: it is not that property.
+    const title = EXAMPLE_TEXT.replace('"title": "Untitled"', '"ti\\u0000tle": "Untitled"');
+    expect(title).not.toBe(EXAMPLE_TEXT);
+    expect(brief(refused(title))).toEqual(["schema:required /sessions/3/title"]);
   });
 
   it("a string that is empty after cleaning is judged as the empty string", () => {
@@ -834,10 +868,23 @@ describe("repair 9: inline bytes that do not match the descriptor", () => {
     expect(result.inlineBytes.get(empty)).toEqual(new Uint8Array(0));
   });
 
-  it("refuse data that is not a string", () => {
-    const document = example();
-    document.sessions[1].attachments[0].data_base64 = [1, 2, 3];
-    expect(brief(refused(document))).toEqual(["schema:type /sessions/1/attachments/0/data_base64"]);
+  it("data that is not a string is removed with a warning too; the descriptor stays (corrections.md 2, point 7)", () => {
+    for (const data of [[1, 2, 3], 7, true, { base64: "AAAA" }]) {
+      const document = example();
+      document.sessions[1].attachments[0].data_base64 = data;
+      const result = read(document);
+      expect(codes(result.warnings.items)).toEqual(["bytes_discarded /sessions/1/attachments/0/data_base64"]);
+      expect(result.doc.sessions[1]?.attachments[0]).not.toHaveProperty("data_base64");
+      expect(result.doc.sessions[1]?.attachments[0]).toMatchObject({
+        kind: "original_pdf",
+        byte_length: 616,
+      });
+      expect(result.inlineBytes.size).toBe(1);
+      // A writer's data must be a string.
+      expect(brief(validateDocument(document).problems.items)).toEqual([
+        "schema:type /sessions/1/attachments/0/data_base64",
+      ]);
+    }
   });
 });
 
@@ -859,12 +906,14 @@ describe("timestamps (6.1)", () => {
     expect(result.repairs.total).toBe(0);
   });
 
-  it("are cut to milliseconds, never rounded up, and that is reported", () => {
+  it("are cut to milliseconds, never rounded up, and that is reported in one line for the file", () => {
     const document = example();
     document.sessions[0].updated_at = "2026-03-15T18:05:40.999999999Z";
     const result = read(document);
     expect(result.doc.sessions[0]?.updated_at).toBe("2026-03-15T18:05:40.999Z");
-    expect(codes(result.repairs.items)).toEqual(["timestamp_precision /sessions/0/updated_at"]);
+    expect(result.repairs.items).toEqual([
+      { code: "timestamp_precision", path: "", message: "Cut 1 timestamp to milliseconds.", count: 1 },
+    ]);
   });
 
   it("are checked everywhere they occur", () => {

@@ -107,39 +107,66 @@ describe("base64", () => {
     );
   });
 
-  it("accepts missing padding and refuses everything that is not base64", () => {
+  it("accepts padding as optional and refuses everything that cannot be decoded (corrections.md 2, point 7)", () => {
+    // Only A-Z a-z 0-9 + /, then at most two "="; without the "=" the length is not 1 modulo 4.
     expect(decodeBase64("Zg")).toEqual(encoder.encode("f"));
     expect(decodeBase64("Zm8")).toEqual(encoder.encode("fo"));
+    expect(decodeBase64("Zg==")).toEqual(encoder.encode("f"));
+    expect(decodeBase64("Zm8=")).toEqual(encoder.encode("fo"));
+    // Whether the "=" complete a group of four is not asked: length and hash judge the bytes.
+    expect(decodeBase64("Zg=")).toEqual(encoder.encode("f"));
+    expect(decodeBase64("Zm8==")).toEqual(encoder.encode("fo"));
+    expect(decodeBase64("Zm9v=")).toEqual(encoder.encode("foo"));
+    expect(decodeBase64("Zm9v==")).toEqual(encoder.encode("foo"));
+    expect(decodeBase64("")).toEqual(new Uint8Array(0));
+    expect(decodeBase64("=")).toEqual(new Uint8Array(0));
+    expect(decodeBase64("==")).toEqual(new Uint8Array(0));
     for (const bad of [
+      // The length without "=" is 1 modulo 4.
       "Z",
-      "Zg=",
-      "Zm8==",
-      "Zm9v=",
-      "=",
-      "==",
+      "Z=",
+      "Z==",
+      "Zm9vZ",
+      "Zm9vZ==",
+      // More than two "=", or one that is not at the end.
       "Zg===",
-      "Zm 9v",
-      "Zm9v\n",
-      "Zm9-",
-      "Zm9_",
-      "Z\u00E9==",
       "====",
       "Z===",
       "Zg=g",
+      "=Zg",
+      // White space, and the URL-safe alphabet.
+      "Zm 9v",
+      " Zm9v",
+      "Zm9v ",
+      "Zm9v\n",
+      "Zm9v\r\n",
+      "Zm\t9v",
+      "Zm9-",
+      "Zm9_",
+      // Anything else.
+      `Z${String.fromCodePoint(0xe9)}==`,
+      "Zm9v.",
+      "Zm9v\u0000",
     ]) {
-      expect(decodeBase64(bad), bad).toBeNull();
+      expect(decodeBase64(bad), JSON.stringify(bad)).toBeNull();
     }
   });
 
-  it("decodes only what the schema's pattern admits", () => {
+  it("decodes exactly what the rule admits: the schema's pattern, and a length that is not 1 modulo 4", () => {
     const pattern = /^[A-Za-z0-9+/]*={0,2}$/u;
     const alphabet = fc.constantFrom(..."ABab01+/=-_ \n");
+    let decoded = 0;
     fc.assert(
       fc.property(fc.string({ unit: alphabet, maxLength: 12 }), (text) => {
-        if (decodeBase64(text) !== null) expect(pattern.test(text)).toBe(true);
+        let end = text.length;
+        while (end > 0 && text[end - 1] === "=") end -= 1;
+        const admitted = pattern.test(text) && end % 4 !== 1;
+        expect(decodeBase64(text) !== null, JSON.stringify(text)).toBe(admitted);
+        if (admitted) decoded += 1;
       }),
-      { numRuns: 2000 },
+      { numRuns: 4000 },
     );
+    expect(decoded).toBeGreaterThan(50);
   });
 });
 
@@ -255,21 +282,37 @@ describe("timestamps", () => {
     expect(parseTimestamp("2000-02-29T00:00:00Z").ok).toBe(true);
   });
 
-  it("covers the whole range of four-digit years", () => {
-    expect(parseTimestamp("0000-01-01T00:00:00Z")).toMatchObject({ ms: -62_167_219_200_000 });
+  it("the year is 0001 to 9999 (corrections.md 2, point 8)", () => {
+    expect(parseTimestamp("0001-01-01T00:00:00Z")).toMatchObject({ ms: -62_135_596_800_000 });
     expect(parseTimestamp("9999-12-31T23:59:59.999Z")).toMatchObject({ ms: 253_402_300_799_999 });
-    expect(formatTimestamp(-62_167_219_200_000)).toBe("0000-01-01T00:00:00.000Z");
+    // The schema's pattern admits the year 0000; it is no year of the calendar.
+    for (const text of ["0000-01-01T00:00:00Z", "0000-12-31T23:59:59.999Z", "0000-02-29T12:00:00.5Z"]) {
+      expect(hasTimestampShape(text), text).toBe(true);
+      expect(parseTimestamp(text), text).toEqual({ ok: false, reason: "calendar" });
+    }
+    expect(formatTimestamp(-62_135_596_800_000)).toBe("0001-01-01T00:00:00.000Z");
     expect(formatTimestamp(253_402_300_799_999)).toBe("9999-12-31T23:59:59.999Z");
     expect(formatTimestamp(253_402_300_800_000)).toBeNull();
-    expect(formatTimestamp(-62_167_219_200_001)).toBeNull();
+    expect(formatTimestamp(-62_135_596_800_001)).toBeNull();
+    expect(formatTimestamp(-62_167_219_200_000)).toBeNull();
     expect(formatTimestamp(Number.NaN)).toBeNull();
+    expect(formatTimestamp(Number.POSITIVE_INFINITY)).toBeNull();
     expect(dateToTimestamp(new Date(Number.NaN))).toBeNull();
     expect(dateToTimestamp(new Date(0))).toBe("1970-01-01T00:00:00.000Z");
   });
 
+  it("writing cuts a fraction of a millisecond, never rounds: the text is never later than the instant", () => {
+    expect(formatTimestamp(1.9)).toBe("1970-01-01T00:00:00.001Z");
+    expect(formatTimestamp(0.999)).toBe("1970-01-01T00:00:00.000Z");
+    expect(formatTimestamp(-0.5)).toBe("1969-12-31T23:59:59.999Z");
+    expect(formatTimestamp(-1.000001)).toBe("1969-12-31T23:59:59.998Z");
+    expect(formatTimestamp(253_402_300_799_999.5)).toBe("9999-12-31T23:59:59.999Z");
+    expect(formatTimestamp(-62_135_596_800_000.5)).toBeNull();
+  });
+
   it("agrees with the platform's calendar for every instant it can write", () => {
     fc.assert(
-      fc.property(fc.integer({ min: -62_167_219_200_000, max: 253_402_300_799_999 }), (ms) => {
+      fc.property(fc.integer({ min: -62_135_596_800_000, max: 253_402_300_799_999 }), (ms) => {
         const text = formatTimestamp(ms);
         expect(text).toBe(new Date(ms).toISOString());
         if (text === null) return;

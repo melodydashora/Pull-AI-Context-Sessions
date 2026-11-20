@@ -883,7 +883,9 @@ describe("the rules a schema cannot express (6.6)", () => {
       ["R5", table.R5.rejected.slice(2), "bytes_discarded"],
       ["R6", table.R6.rejected, "messages_renumbered"],
       ["R7", table.R7.rejected.slice(0, 1), "segments_merged"],
-      ["R9", table.R9.rejected, "string_cleaned"],
+      ["R9", table.R9.rejected.slice(0, 3), "string_cleaned"],
+      // corrections.md 2: a property whose NAME holds U+0000 is dropped, with a warning.
+      ["R9", table.R9.rejected.slice(3), "property_dropped"],
       ["R10", table.R10.rejected, "line_endings"],
     ];
     for (const [rule, items, code] of mended) {

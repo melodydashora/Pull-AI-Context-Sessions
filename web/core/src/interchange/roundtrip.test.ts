@@ -393,6 +393,7 @@ describe("9.4, the further cases its reference implementation passed", () => {
         incomingId: "bbbbbbbb-0000-4000-8000-000000000001",
         id: "aaaaaaaa-0000-4000-8000-000000000002",
         outcome: "merged",
+        conflict: false,
       },
     ]);
     expect(second.vault.projects.length).toBe(3);

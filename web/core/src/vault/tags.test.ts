@@ -60,11 +60,14 @@ describe("8.2 parseTags: trim, lower case, no empty tags, no leading '#', no rep
     expect(parseTags("c#, a#b, tag#")).toEqual(["c#", "a#b", "tag#"]);
   });
 
-  it("as the document prints it, '#' behind white space behind '#' survives one pass", () => {
-    // "# #a": the leading run of '#' is removed once, the rest is trimmed, and "#a" remains.
-    // The reader's repair 4 goes on until nothing changes (normaliseTags of the interchange module).
-    expect(parseTags("# #a")).toEqual(["#a"]);
+  it("the whole leading run of '#' and white space goes at once (corrections.md 2, point 1)", () => {
+    // As 8.2 first printed it, "# #a" gave "#a", and the next reading of that tag gave "a".
+    expect(parseTags("# #a")).toEqual(["a"]);
+    expect(parseTags("#\t# #  ## a#b #")).toEqual(["a#b #"]);
+    expect(parseTags("# # #")).toEqual([]);
+    // The reader's repair 4 is the same function on the joined tags.
     expect(normaliseTags(["# #a"])).toEqual(["a"]);
+    expect(normaliseTags(["# #a", "b,# c"])).toEqual(parseTags("# #a,b,# c"));
   });
 
   it("keeps what is inside a tag: spaces, punctuation, even a line break", () => {
@@ -122,6 +125,9 @@ describe("8.2 parseTags: trim, lower case, no empty tags, no leading '#', no rep
           expect(tag).toBe(tag.toLowerCase());
         }
         expect(new Set(tags).size).toBe(tags.length);
+        // Idempotent (corrections.md 2, point 1): the stored tags are what the field gives again.
+        expect(parseTags(tags.join(","))).toEqual(tags);
+        for (const tag of tags) expect(parseTags(tag)).toEqual([tag]);
       }),
       { seed: SEED, numRuns: 2000 },
     );

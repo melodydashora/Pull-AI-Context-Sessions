@@ -7,6 +7,7 @@
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const UUID_ANY_CASE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/u;
 const SHA256 = /^[0-9a-f]{64}$/u;
+const SHA256_ANY_CASE = /^[0-9a-fA-F]{64}$/u;
 const NON_WHITE_SPACE = /[^\s]/u;
 
 /** definitions.uuid: canonical lower-case form, any UUID version. */
@@ -22,6 +23,11 @@ export function isUuidOfAnyCase(text: string): boolean {
 /** definitions.sha256: 64 lower-case hexadecimal characters. */
 export function isSha256Hex(text: string): boolean {
   return text.length === 64 && SHA256.test(text);
+}
+
+/** A SHA-256 written with letters of either case: what repair 1 lower-cases (corrections.md 2, point 5). */
+export function isSha256HexOfAnyCase(text: string): boolean {
+  return text.length === 64 && SHA256_ANY_CASE.test(text);
 }
 
 /** project.name: holds at least one character that is not white space. */

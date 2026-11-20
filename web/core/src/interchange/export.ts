@@ -2,9 +2,9 @@
 //
 // The output is deterministic: the same vault, time, generator and options give the same document.
 // Messages are written by position and properties in the order of the schema with the unknown ones
-// after them, as 6.8 prescribes. Open point in data-model.md 6.8: it gives no order for the lists
-// ("order carries no meaning", 6.1). Projects and sessions are written in the order of their ids,
-// attachments in stored order.
+// after them, as 6.8 prescribes. corrections.md 2, point 12: writers emit projects and sessions in
+// id order; the order of properties carries no meaning; attachments keep the order of the imported
+// array (their order is not decided yet).
 
 import { encodeBase64 } from "./base64.ts";
 import { assemble, EMPTY_OBJECT, type JsonObject } from "./json.ts";

@@ -2,8 +2,14 @@
 //
 // A pure function: the vault that goes in is not changed, a new one comes out. Import never
 // deletes: a project or session the document does not mention is left alone.
+//
+// corrections.md section 2 settles the open points of 6.7: projects with the same id (point 9),
+// message ids (point 10) and "same content" (point 11). One vault is one user: with the keys of
+// 7.2, (owner_id, id), an id that another user holds never collides, so nothing here knows of
+// other users (point 10).
 
 import { type JsonValue, jsonEqual, newObject, unknownProperties } from "./json.ts";
+import { toVaultProject, toVaultSession } from "./normalise.ts";
 import {
   type CappedList,
   createNoticeLog,
@@ -16,26 +22,11 @@ import { readDocument } from "./reader.ts";
 import { sha256Hex } from "./sha256.ts";
 import { isCanonicalUuid } from "./shapes.ts";
 import { projectNameKey } from "./shared.ts";
+import { cleanString } from "./text.ts";
 import { parseTimestamp } from "./timestamp.ts";
-import {
-  ATTACHMENT_KEY_SET,
-  type DocumentKind,
-  type InterchangeGenerator,
-  type InterchangeProject,
-  type InterchangeSession,
-  MESSAGE_KEY_SET,
-  PROJECT_KEY_SET,
-  SESSION_KEY_SET,
-} from "./types.ts";
+import type { DocumentKind, InterchangeGenerator, InterchangeProject, InterchangeSession } from "./types.ts";
 import { canonicalProject, canonicalSession } from "./validate.ts";
-import {
-  makeSession,
-  segmentedMessage,
-  type Vault,
-  type VaultAttachment,
-  type VaultProject,
-  type VaultSession,
-} from "./vault.ts";
+import type { Vault, VaultProject, VaultSession } from "./vault.ts";
 import { projectValue, sessionValue } from "./wire.ts";
 
 /**
@@ -56,19 +47,9 @@ export interface DocumentImportContext {
   readonly now: Date;
   /**
    * Gives a new random UUID, for example crypto.randomUUID. Called only when an incoming id cannot
-   * be used: it belongs to another owner, to a message of another session, or a copy is made.
+   * be used: a message of another session of this vault holds it, or a copy is made.
    */
   readonly newId: () => string;
-}
-
-/**
- * Ids that exist in the store under another owner (6.7, owner scoping). An incoming entity that
- * would be inserted under one of them gets a new id, and references in the document follow.
- */
-export interface ReservedIds {
-  readonly projects?: ReadonlySet<string>;
-  readonly sessions?: ReadonlySet<string>;
-  readonly messages?: ReadonlySet<string>;
 }
 
 export interface DocumentImportOptions {
@@ -79,17 +60,16 @@ export interface DocumentImportOptions {
    * (6.4). They are checked against their hash before they are stored. Do not change them afterwards.
    */
   readonly bundleBlobs?: ReadonlyMap<string, Uint8Array>;
-  readonly reservedIds?: ReservedIds;
   /** Bounds on depth, size and the length of the reported lists. Defaults: DEFAULT_LIMITS. */
   readonly limits?: Partial<Limits>;
 }
 
 /**
- * What happened to a project of the document (6.7 step 2).
+ * What happened to a project of the document (6.7 step 2, corrections.md 2, point 9).
  * - "added": inserted. "merged": a stored project has the same name (compared by projectNameKey);
- *   that one is used. "updated": same id, the incoming copy was newer. "unchanged": same id and
- *   content. "kept": same id, different content, the incoming copy was not newer or its new name
- *   belongs to another project.
+ *   that one is used. "updated": same id, the incoming copy was newer and replaced the whole
+ *   project. "unchanged": same id and content. "kept": same id, different content, and the
+ *   incoming copy was not newer or its name belongs to another project.
  */
 export type ProjectOutcome = "added" | "merged" | "updated" | "unchanged" | "kept";
 
@@ -106,12 +86,14 @@ export interface ProjectMergeResult {
   /** The id of the project in the vault that now stands for it. */
   readonly id: string;
   readonly outcome: ProjectOutcome;
+  /** True when the content differed and `updated_at` was equal: neither copy is the newer one. */
+  readonly conflict: boolean;
 }
 
 export interface SessionMergeResult {
   /** The id the document gives the session. */
   readonly incomingId: string;
-  /** The id of the session in the vault. Differs from `incomingId` only when the id was reserved. */
+  /** The id of the session in the vault: the same id. */
   readonly id: string;
   readonly outcome: SessionOutcome;
   /** True when the content differed and `updated_at` was equal, whatever the policy then did. */
@@ -184,66 +166,15 @@ function date(text: string): Date {
   return new Date(reading.ms);
 }
 
-function toVaultProject(project: InterchangeProject, id: string): VaultProject {
-  return {
-    id,
-    name: project.name,
-    created_at: date(project.created_at),
-    updated_at: date(project.updated_at),
-    extra: unknownProperties(project, PROJECT_KEY_SET),
-  };
-}
-
-function toVaultSession(
-  session: InterchangeSession,
-  id: string,
-  title: string,
-  projectId: string | null,
-  messageIds: readonly string[],
-): VaultSession {
-  const attachments: VaultAttachment[] = session.attachments.map((attachment) => ({
-    kind: attachment.kind,
-    sha256: attachment.sha256,
-    media_type: attachment.media_type,
-    byte_length: attachment.byte_length,
-    filename: attachment.filename,
-    created_at: date(attachment.created_at),
-    extra: unknownProperties(attachment, ATTACHMENT_KEY_SET),
-  }));
-  const messages = session.messages.map((message, position) =>
-    segmentedMessage({
-      id: messageIds[position] ?? message.id,
-      position,
-      role: message.role,
-      segments: message.segments,
-      model: message.model ?? "",
-      created_at: message.created_at === undefined ? null : date(message.created_at),
-      extra: unknownProperties(message, MESSAGE_KEY_SET),
-    }),
-  );
-  return makeSession({
-    id,
-    project_id: projectId,
-    title,
-    provider: session.provider,
-    model: session.model,
-    source_url: session.source_url,
-    summary: session.summary,
-    tags: session.tags,
-    is_pinned: session.is_pinned,
-    created_at: date(session.created_at),
-    imported_at: date(session.imported_at),
-    updated_at: date(session.updated_at),
-    attachments,
-    messages,
-    extra: unknownProperties(session, SESSION_KEY_SET),
-  });
-}
-
 const UPDATED_AT: ReadonlySet<string> = new Set(["updated_at"]);
 const DATA_BASE64: ReadonlySet<string> = new Set(["data_base64"]);
+const MESSAGE_ID: ReadonlySet<string> = new Set(["id"]);
 
-/** A session as "same content" compares it (6.7): without updated_at and without inline bytes. */
+/**
+ * A session as "same content" compares it. corrections.md 2, point 11: ignored are `updated_at`,
+ * the presence of `data_base64`, message ids and the order of properties (jsonEqual does not look
+ * at that order). Everything else counts, the order of every array included.
+ */
 function comparableSession(session: InterchangeSession, projectId: string | null): JsonValue {
   const out = newObject();
   for (const key of Object.keys(session)) {
@@ -252,17 +183,18 @@ function comparableSession(session: InterchangeSession, projectId: string | null
     if (key === "project_id") out[key] = projectId;
     else if (key === "attachments") {
       out[key] = session.attachments.map((attachment) => unknownProperties(attachment, DATA_BASE64));
+    } else if (key === "messages") {
+      out[key] = session.messages.map((message) => unknownProperties(message, MESSAGE_ID));
     } else out[key] = value;
   }
   return out;
 }
 
 /**
- * 6.7 "same content": the incoming session, after repair, equals what the exporter would write
- * for the stored one.
- * Departure from data-model.md 6.7: the exporter's output is read the way the incoming document
- * was, so both sides are in the reader's form whatever the vault holds. Compared as written, a
- * stored value the reader would repair makes the vault's own export look like a conflict.
+ * 6.7 "same content". corrections.md 2, point 11: both sides are compared in reader form, the
+ * incoming session after repair and the exporter's output for the stored session passed through
+ * the same repair. (With the storage invariant G1 that repair changes nothing; it is what makes
+ * the comparison right for a vault built by other means.)
  */
 function sameSession(
   incoming: InterchangeSession,
@@ -284,7 +216,7 @@ function sameProject(incoming: InterchangeProject, existing: VaultProject, limit
   return jsonEqual(unknownProperties(incoming, UPDATED_AT), unknownProperties(written, UPDATED_AT));
 }
 
-type IdKind = "projects" | "sessions" | "messages";
+type IdKind = "sessions" | "messages";
 
 function merge(
   vault: Vault,
@@ -303,11 +235,9 @@ function merge(
   const warnings = createNoticeLog(limits.maxListed);
   warnings.addAll(read.warnings);
   const policy = options.onConflict ?? "keep";
-  const reserved = options.reservedIds ?? {};
 
   // Ids no new entity may take: those of the vault, of the document, and those handed out below.
   const taken: Record<IdKind, Set<string>> = {
-    projects: new Set(vault.projects.map((project) => project.id)),
     sessions: new Set(vault.sessions.map((session) => session.id)),
     messages: new Set(),
   };
@@ -319,7 +249,6 @@ function merge(
       taken.messages.add(message.id);
     }
   }
-  for (const project of doc.projects) taken.projects.add(project.id);
   for (const session of doc.sessions) {
     taken.sessions.add(session.id);
     for (const message of session.messages) taken.messages.add(message.id);
@@ -330,7 +259,7 @@ function merge(
     for (let attempt = 0; attempt < 16; attempt++) {
       const candidate = context.newId();
       const id = typeof candidate === "string" ? candidate.toLowerCase() : "";
-      if (isCanonicalUuid(id) && !taken[kind].has(id) && reserved[kind]?.has(id) !== true) {
+      if (isCanonicalUuid(id) && !taken[kind].has(id)) {
         taken[kind].add(id);
         return id;
       }
@@ -357,19 +286,28 @@ function merge(
     const index = projectIndex.get(incoming.id);
     const existing = index === undefined ? undefined : projects[index];
     if (index !== undefined && existing !== undefined) {
-      // 2a: a project with the same id exists.
-      // Open point in data-model.md 6.7: it names only the name. A newer copy replaces the whole
-      // project here; a refused rename changes nothing; equal content is reported as "unchanged".
+      // 2a: a project with the same id exists. corrections.md 2, point 9:
+      //   equal content                      -> "unchanged";
+      //   a later updated_at                 -> the whole project is replaced (name, name key,
+      //                                         created_at, updated_at, unknown properties), unless
+      //                                         the incoming name's key belongs to another project:
+      //                                         then nothing of the project changes, with a warning;
+      //   an equal or earlier updated_at
+      //   with different content             -> "kept" and reported, as for sessions (an equal
+      //                                         updated_at is a conflict).
       let outcome: ProjectOutcome = "kept";
+      let conflict = false;
+      const incomingTime = date(incoming.updated_at).getTime();
+      const existingTime = existing.updated_at.getTime();
       if (sameProject(incoming, existing, limits)) {
         outcome = "unchanged";
-      } else if (date(incoming.updated_at).getTime() > existing.updated_at.getTime()) {
+      } else if (incomingTime > existingTime) {
         const holder = projectByKey.get(key);
         if (holder !== undefined && holder !== existing.id) {
           warnings.add(
             "project_name_taken",
             `/projects/${i}/name`,
-            "Another project already has this name; the project keeps its old name.",
+            "Another project already has this name; nothing of the project was changed.",
           );
         } else {
           const oldKey = projectNameKey(existing.name);
@@ -378,33 +316,32 @@ function merge(
           projects[index] = toVaultProject(incoming, existing.id);
           outcome = "updated";
         }
+      } else if (incomingTime === existingTime) {
+        conflict = true;
+        warnings.add(
+          "conflict",
+          `/projects/${i}`,
+          "The stored project differs at the same updated_at; it was kept.",
+        );
       }
       projectTarget.set(incoming.id, existing.id);
-      projectResults.push({ incomingId: incoming.id, id: existing.id, outcome });
+      projectResults.push({ incomingId: incoming.id, id: existing.id, outcome, conflict });
       return;
     }
     const holder = projectByKey.get(key);
     if (holder !== undefined) {
       // 2b: a project with the same name key exists; use it.
       projectTarget.set(incoming.id, holder);
-      projectResults.push({ incomingId: incoming.id, id: holder, outcome: "merged" });
+      projectResults.push({ incomingId: incoming.id, id: holder, outcome: "merged", conflict: false });
       return;
     }
-    // 2c: insert it with the incoming id, unless that id belongs to another owner.
-    let id = incoming.id;
-    if (reserved.projects?.has(id) === true) {
-      id = freshId("projects");
-      warnings.add(
-        "id_replaced",
-        `/projects/${i}/id`,
-        "The id is in use elsewhere; the project got a new one.",
-      );
-    }
+    // 2c: insert it with the incoming id.
+    const id = incoming.id;
     projectIndex.set(id, projects.length);
     projects.push(toVaultProject(incoming, id));
     projectByKey.set(key, id);
     projectTarget.set(incoming.id, id);
-    projectResults.push({ incomingId: incoming.id, id, outcome: "added" });
+    projectResults.push({ incomingId: incoming.id, id, outcome: "added", conflict: false });
   });
 
   // Step 3: sessions.
@@ -417,27 +354,36 @@ function merge(
 
   /**
    * The ids the messages of an incoming session get in the vault session `owner`.
-   * Open point in data-model.md 6.7: it gives a new id only to what another owner already has. A
-   * message id held by another session of this vault gets the same treatment, or R2 would break.
+   * corrections.md 2, point 10: an incoming message id that a message of another session of the
+   * same user already holds gets a fresh id, with one warning per session. (R2 and the key of 7.2
+   * need message ids unique in a vault.)
    */
   const messageIdsFor = (
     incoming: InterchangeSession,
     owner: string,
     path: string,
     allNew: boolean,
-  ): string[] =>
-    incoming.messages.map((message, m) => {
+  ): string[] => {
+    let replaced = 0;
+    const ids = incoming.messages.map((message) => {
       if (allNew) return freshId("messages");
       const holder = messageOwner.get(message.id);
-      const elsewhere = holder === undefined ? reserved.messages?.has(message.id) === true : holder !== owner;
-      if (!elsewhere) return message.id;
-      warnings.add(
-        "id_replaced",
-        `${path}/messages/${m}/id`,
-        "The id is in use by a message of another session; the message got a new one.",
-      );
+      if (holder === undefined || holder === owner) return message.id;
+      replaced += 1;
       return freshId("messages");
     });
+    if (replaced > 0) {
+      warnings.add(
+        "id_replaced",
+        path,
+        replaced === 1
+          ? "1 message id is in use by a message of another session; that message got a new id."
+          : `${replaced} message ids are in use by messages of other sessions; those messages got new ids.`,
+        replaced,
+      );
+    }
+    return ids;
+  };
 
   const claim = (session: VaultSession): void => {
     for (const message of session.messages) messageOwner.set(message.id, session.id);
@@ -453,11 +399,7 @@ function merge(
     const existing = index === undefined ? undefined : sessions[index];
 
     if (index === undefined || existing === undefined) {
-      let id = incoming.id;
-      if (reserved.sessions?.has(id) === true) {
-        id = freshId("sessions");
-        warnings.add("id_replaced", `${path}/id`, "The id is in use elsewhere; the session got a new one.");
-      }
+      const id = incoming.id;
       const added = toVaultSession(
         incoming,
         id,
@@ -549,7 +491,8 @@ function merge(
     const copy = toVaultSession(
       incoming,
       copyId,
-      `${incoming.title}${policy.copyWithTitleSuffix}`,
+      // G1: the suffix comes from the caller; the title is stored cleaned, as the reader gives one.
+      cleanString(`${incoming.title}${policy.copyWithTitleSuffix}`),
       projectId,
       messageIdsFor(incoming, copyId, path, true),
     );

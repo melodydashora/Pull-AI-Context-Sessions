@@ -1,7 +1,7 @@
 // A consistency check for vaults, for tests and for code that builds vault values by other means
 // than the import (data-model.md 7.3 has the same check for the database).
 
-import { assemble, EMPTY_OBJECT, type JsonObject } from "./json.ts";
+import { assemble, EMPTY_OBJECT, type JsonObject, jsonEqual } from "./json.ts";
 import {
   type CappedList,
   createProblemLog,
@@ -21,7 +21,7 @@ import {
   PROJECT_KEY_SET,
   SESSION_KEY_SET,
 } from "./types.ts";
-import { checkDocument } from "./validate.ts";
+import { checkDocument, checkProjectAlone, checkSessionAlone } from "./validate.ts";
 import { flattenText, messageSegments, type Vault } from "./vault.ts";
 import { projectValue, sessionValue } from "./wire.ts";
 
@@ -29,7 +29,8 @@ export interface VaultCheck {
   /** True when the vault can be exported as it is and its derived values are right. */
   readonly ok: boolean;
   /**
-   * What is wrong. Rule "vault": a derived value, an `extra` bag or a blob is inconsistent; the path
+   * What is wrong. Rule "vault": a derived value, an `extra` bag or a blob is inconsistent, or a
+   * project or session is not in the form the reader produces (corrections.md 2, G1); the path
    * points into the vault value. Any other rule: what the vault would export breaks that rule of the
    * format; the path points into a document that lists projects and sessions in the vault's order.
    */
@@ -38,6 +39,9 @@ export interface VaultCheck {
   readonly warnings: NoticeList;
 }
 
+/** The project or session a problem path lies in: "/projects/3", "/sessions/12". Paths are made here, never by a file. */
+const PART_OF_PATH = /^\/(?:projects|sessions)\/[0-9]+(?=\/|$)/u;
+
 function hasKnownKey(extra: JsonObject, known: ReadonlySet<string>): boolean {
   return Object.keys(extra).some((key) => known.has(key));
 }
@@ -45,7 +49,9 @@ function hasKnownKey(extra: JsonObject, known: ReadonlySet<string>): boolean {
 /**
  * Check a vault against its own rules: ids, references, tags, text and the like as the format
  * demands them (strictly, without repair), plus the values the vault keeps beside the data
- * (`text`, `text_bytes`, `message_count`, `position`) and the hashes of the stored bytes.
+ * (`text`, `text_bytes`, `message_count`, `position`) and the hashes of the stored bytes; and the
+ * storage invariant of corrections.md 2, G1: every project and session is in the form the reader
+ * produces, so that reading the vault's own export back repairs nothing.
  * Never changes the vault and never throws.
  */
 export function checkVault(vault: Vault, options?: { readonly limits?: Partial<Limits> }): VaultCheck {
@@ -100,19 +106,46 @@ export function checkVault(vault: Vault, options?: { readonly limits?: Partial<L
         wrong(at, "The bytes do not have the SHA-256 they are stored under.");
     }
 
+    const projectValues = vault.projects.map(projectValue);
+    const sessionValues = vault.sessions.map((session) => sessionValue(session, () => undefined));
     const value = assemble<JsonObject>(
       {
         format: FORMAT_MARKER,
         version: FORMAT_VERSION,
         kind: "vault",
         exported_at: "1970-01-01T00:00:00.000Z",
-        projects: vault.projects.map(projectValue),
-        sessions: vault.sessions.map((session) => sessionValue(session, () => undefined)),
+        projects: projectValues,
+        sessions: sessionValues,
       },
       EMPTY_OBJECT,
     );
     const strict = checkDocument(value, { mode: "strict", limits });
     for (const problem of strict.problems.items) problems.add(problem);
+
+    // G1: what the vault would write must be what the reader makes of it. A project or session
+    // that already breaks a rule above is not named a second time; and when the list above was
+    // cut short, which parts it covers is not known.
+    if (strict.problems.total === strict.problems.items.length) {
+      const named = new Set<string>();
+      for (const problem of strict.problems.items) {
+        const part = PART_OF_PATH.exec(problem.path);
+        if (part !== null) named.add(part[0]);
+      }
+      projectValues.forEach((written, p) => {
+        if (named.has(`/projects/${p}`)) return;
+        const read = checkProjectAlone(written, limits).value;
+        if (read !== null && !jsonEqual(written, read)) {
+          wrong(`/projects/${p}`, "The project is not in the form the reader produces (G1).");
+        }
+      });
+      sessionValues.forEach((written, s) => {
+        if (named.has(`/sessions/${s}`)) return;
+        const read = checkSessionAlone(written, limits).value;
+        if (read !== null && !jsonEqual(written, read)) {
+          wrong(`/sessions/${s}`, "The session is not in the form the reader produces (G1).");
+        }
+      });
+    }
     const listed = problems.list();
     const total = listed.total + (strict.problems.total - strict.problems.items.length);
     return { ok: total === 0, problems: { items: listed.items, total }, warnings: strict.warnings };

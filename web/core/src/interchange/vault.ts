@@ -10,6 +10,9 @@
 // it as read-only (a Date can be changed through its setters; never call them on a stored date).
 //
 // What every vault must satisfy; checkVault tests all of it:
+//   - the storage invariant of corrections.md 2, G1: whatever is stored is in the form the reader
+//     produces. Every write path stores what normaliseSession and normaliseProject return
+//     (normalise.ts); the constructors below derive values and normalise nothing;
 //   - ids are canonical lower-case UUIDs, unique among projects, among sessions, and among all
 //     messages of the vault; a session's project_id is null or the id of a project of the vault;
 //   - what the format demands of a document holds for the stored values too: tags trimmed,
@@ -122,7 +125,8 @@ export interface VaultSession {
   readonly title: string;
   /**
    * Which assistant the conversation came from. Open list: "claude", "chatgpt", "gemini", "other";
-   * any other value is kept as written and behaves as "other". See providerBehaviour.
+   * any other value is kept as written and behaves as "other". See providerBehaviour. Stored as
+   * normalizeOpen gives it (G2), so a known provider is never stored in another spelling.
    */
   readonly provider: string;
   /** Free-text model label, "" when unknown. Never validated. */
@@ -227,7 +231,10 @@ export interface MessageInit {
   readonly extra?: JsonObject;
 }
 
-/** A message that is plain text, as a transcript importer produces it (data-model.md 8.6). */
+/**
+ * A message that is plain text, as a transcript importer produces it (data-model.md 8.6). The
+ * values are taken as they are: what is to be stored goes through normaliseSession (G1).
+ */
 export function textMessage(init: MessageInit & { readonly text: string }): VaultMessage {
   return {
     id: init.id,
@@ -281,7 +288,10 @@ export interface SessionInit {
   readonly extra?: JsonObject;
 }
 
-/** A session with `message_count` and `text_bytes` derived from its messages. */
+/**
+ * A session with `message_count` and `text_bytes` derived from its messages. The values are taken
+ * as they are: what is to be stored goes through normaliseSession (G1).
+ */
 export function makeSession(init: SessionInit): VaultSession {
   let textBytes = 0;
   for (const message of init.messages) textBytes += message.text_bytes;

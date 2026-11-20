@@ -84,7 +84,7 @@ function coreExportsFrom(part: string): Exported[] {
   return [...(CORE.get(`./${part}/index.ts`) ?? [])].sort((a, b) => (a.original < b.original ? -1 : 1));
 }
 
-/** The four names that differ, and the two the interchange module shares with the vault functions. */
+/** The three names that differ, and the two the interchange module shares with the vault functions. */
 const RENAMED: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   import: { JsonObject: "ParsedJsonObject" },
   interchange: { FORMAT_MARKER: "INTERCHANGE_FORMAT", FORMAT_VERSION: "INTERCHANGE_VERSION" },
@@ -92,7 +92,7 @@ const RENAMED: Readonly<Record<string, Readonly<Record<string, string>>>> = {
 };
 const LEFT_OUT: Readonly<Record<string, readonly string[]>> = {
   import: [],
-  // Exported from ./vault/ instead: the same values, in bounded time.
+  // Both parts export them and they are one function each: the index lists them once, from ./vault/.
   interchange: ["parseTags", "projectNameKey"],
   vault: [],
 };
@@ -121,11 +121,11 @@ describe("the index of the package exports the public API of the three parts", (
     },
   );
 
-  it("how many: 19 values and 24 types of the importer, 54 and 54 of the interchange module, 30 and 21 of the vault functions", () => {
+  it("how many: 19 values and 24 types of the importer, 59 and 60 of the interchange module, 30 and 21 of the vault functions", () => {
     const count = (part: string, kind: "type" | "value"): number =>
       coreExportsFrom(part).filter((item) => item.kind === kind).length;
     expect([count("import", "value"), count("import", "type")]).toEqual([19, 24]);
-    expect([count("interchange", "value"), count("interchange", "type")]).toEqual([54, 54]);
+    expect([count("interchange", "value"), count("interchange", "type")]).toEqual([59, 60]);
     expect([count("vault", "value"), count("vault", "type")]).toEqual([30, 21]);
   });
 
@@ -147,7 +147,7 @@ describe("the index of the package exports the public API of the three parts", (
         checked += 1;
       }
     }
-    expect(checked).toBe(19 + 54 + 30);
+    expect(checked).toBe(19 + 59 + 30);
     // With the three of the package itself, that is all there is.
     expect(Object.keys(core).sort()).toEqual(
       [
@@ -163,16 +163,39 @@ describe("the index of the package exports the public API of the three parts", (
     );
   });
 
-  it("the two names two parts share are the functions of ./vault/, which return what the others return", () => {
+  it("the two names two parts share are one function each: the reader and the screens cannot drift apart", () => {
     expect(core.parseTags).toBe(vault.parseTags);
     expect(core.projectNameKey).toBe(vault.projectNameKey);
-    expect(core.parseTags).not.toBe(interchange.parseTags);
-    for (const field of ["Garden, Bikes ,, garden,  Two Words , #hash", "", "# #a, A, a", ",,"]) {
-      expect(core.parseTags(field)).toEqual(interchange.parseTags(field));
+    expect(core.parseTags).toBe(interchange.parseTags);
+    expect(core.projectNameKey).toBe(interchange.projectNameKey);
+    // So is the composition both rest on (it lives in ./interchange/ and is exported by ./vault/).
+    expect(core.composedForm).toBe(vault.composedForm);
+    expect(core.parseTags("Garden, Bikes ,, garden,  Two Words , #hash, # #a")).toEqual([
+      "garden",
+      "bikes",
+      "two words",
+      "hash",
+      "a",
+    ]);
+    expect(core.projectNameKey(`  CAFE${String.fromCodePoint(0x301)} `)).toBe(
+      `caf${String.fromCodePoint(0xe9)}`,
+    );
+  });
+
+  it("the write paths and the constructor of the storage invariant are there (corrections.md 2, G1 and G2)", () => {
+    for (const name of [
+      "normaliseSession",
+      "normaliseProject",
+      "normalizeOpen",
+      "isOpenValueTooLong",
+      "createSessions",
+      "importDocument",
+    ]) {
+      expect(typeof Reflect.get(core, name), name).toBe("function");
     }
-    for (const name of ["  Garden ", `CAFE${String.fromCodePoint(0x301)}`, "", "Bike  workshop"]) {
-      expect(core.projectNameKey(name)).toBe(interchange.projectNameKey(name));
-    }
+    expect(core.MAX_OPEN_VALUE_CHARACTERS).toBe(200);
+    // Point 10: nothing in the API speaks of ids that other users hold.
+    expect(Object.keys(core).filter((name) => /reserved/i.test(name))).toEqual([]);
   });
 });
 
@@ -286,7 +309,7 @@ describe("the package as the server loads it", () => {
       encoding: "utf8",
     });
     expect(JSON.parse(output)).toEqual({
-      values: 3 + 19 + 54 + 30,
+      values: 3 + 19 + 59 + 30,
       label: "SessionVault 1.0.0 (build abc)",
       format: "sessionvault-interchange",
       version: 1,

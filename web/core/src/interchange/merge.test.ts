@@ -408,58 +408,27 @@ describe("6.7: conflicts (same id, different content, equal updated_at)", () => 
   });
 });
 
-describe("6.7: ids that are already in use (owner scoping)", () => {
-  it("a session id of another owner: the session gets a new id and is added", () => {
+describe("6.7: message ids that are already in use (corrections.md 2, point 10)", () => {
+  it("one vault is one user: there is no option for ids that other users hold, and the same file gives two vaults the same ids", () => {
+    const incoming = vaultDocument([project(1)], [session(1, { project_id: projectId(1) })]);
     const ctx = context();
-    const result = importOk(
-      emptyVault(),
-      vaultDocument([], [session(1), session(2)]),
-      {
-        reservedIds: { sessions: new Set([sessionId(1)]) },
-      },
-      ctx,
-    );
-    expect(result.report.sessions).toEqual([
-      { incomingId: sessionId(1), id: freshId(1), outcome: "added", conflict: false, copyId: null },
-      { incomingId: sessionId(2), id: sessionId(2), outcome: "added", conflict: false, copyId: null },
-    ]);
-    expect(result.report.warnings.items).toEqual([
-      expect.objectContaining({ code: "id_replaced", path: "/sessions/0/id" }),
-    ]);
-    expect(result.vault.sessions.map((s) => s.id)).toEqual([freshId(1), sessionId(2)]);
-    expect(result.vault.sessions[0]?.title).toBe("Session 1");
-    expect(ctx.calls()).toBe(1);
-  });
-
-  it("a project id of another owner: the project gets a new id and the sessions of the file follow it", () => {
-    const result = importOk(
-      emptyVault(),
-      vaultDocument(
-        [project(1), project(2)],
-        [session(1, { project_id: projectId(1) }), session(2, { project_id: projectId(2) })],
-      ),
-      { reservedIds: { projects: new Set([projectId(1)]) } },
-    );
-    expect(result.report.projects).toEqual([
-      { incomingId: projectId(1), id: freshId(1), outcome: "added" },
-      { incomingId: projectId(2), id: projectId(2), outcome: "added" },
-    ]);
-    expect(find(result.vault, 1)?.project_id).toBe(freshId(1));
-    expect(find(result.vault, 2)?.project_id).toBe(projectId(2));
-    expect(result.vault.projects.map((p) => [p.id, p.name])).toEqual([
-      [freshId(1), "Project 1"],
-      [projectId(2), "Project 2"],
-    ]);
-  });
-
-  it("a message id of another owner: the message gets a new id", () => {
-    const result = importOk(emptyVault(), vaultDocument([], [session(1)]), {
-      reservedIds: { messages: new Set([messageId(1, 1)]) },
-    });
-    expect(find(result.vault, 1)?.messages.map((m) => m.id)).toEqual([messageId(1, 0), freshId(1)]);
-    expect(result.report.warnings.items).toEqual([
-      expect.objectContaining({ code: "id_replaced", path: "/sessions/0/messages/1/id" }),
-    ]);
+    const mine = importOk(emptyVault(), incoming, undefined, ctx);
+    const yours = importOk(emptyVault(), incoming, undefined, ctx);
+    for (const result of [mine, yours]) {
+      expect(result.vault.projects.map((p) => p.id)).toEqual([projectId(1)]);
+      expect(result.vault.sessions.map((s) => s.id)).toEqual([sessionId(1)]);
+      expect(find(result.vault, 1)?.messages.map((m) => m.id)).toEqual([messageId(1, 0), messageId(1, 1)]);
+      expect(result.report.warnings.total).toBe(0);
+    }
+    // Nobody got a fresh id because of another user.
+    expect(ctx.calls()).toBe(0);
+    const options: DocumentImportOptions = {
+      // @ts-expect-error the option for ids reserved by other owners is gone (point 10)
+      reservedIds: { sessions: new Set([sessionId(1)]), messages: new Set([messageId(1, 0)]) },
+    };
+    const again = importOk(emptyVault(), incoming, options, ctx);
+    expect(again.vault.sessions.map((s) => s.id)).toEqual([sessionId(1)]);
+    expect(ctx.calls()).toBe(0);
   });
 
   it("a message id that a message of another session in the vault has: the incoming message gets a new id", () => {
@@ -473,6 +442,9 @@ describe("6.7: ids that are already in use (owner scoping)", () => {
     expect(find(second.vault, 2)?.messages.map((m) => m.id)).toEqual([freshId(1), messageId(2, 1)]);
     expect(find(second.vault, 1)?.messages.map((m) => m.id)).toEqual([messageId(1, 0), messageId(1, 1)]);
     expect(second.report.warnings.counts).toEqual({ id_replaced: 1 });
+    expect(second.report.warnings.items).toEqual([
+      expect.objectContaining({ code: "id_replaced", path: "/sessions/0", count: 1 }),
+    ]);
     // The export of such a vault is valid: message ids are unique in it (R2).
     const exported = exportDocument(
       second.vault,
@@ -481,6 +453,34 @@ describe("6.7: ids that are already in use (owner scoping)", () => {
       { includeBytes: false },
     );
     expect(exported.ok).toBe(true);
+  });
+
+  it("one warning per session, however many of its message ids were taken", () => {
+    const first = importOk(emptyVault(), vaultDocument([], [session(1), session(2)]));
+    const both = session(3, {
+      messages: [
+        message(1, 0, "id of session 1"),
+        message(1, 1, "another id of session 1"),
+        message(3, 2, "its own id"),
+        message(2, 0, "id of session 2", { index: 3 }),
+      ],
+    });
+    const one = session(4, { messages: [message(2, 1, "id of session 2", { index: 0 })] });
+    const none = session(5);
+    const second = importOk(first.vault, vaultDocument([], [both, one, none]));
+    expect(second.report.warnings.items).toEqual([
+      expect.objectContaining({ code: "id_replaced", path: "/sessions/0", count: 3 }),
+      expect.objectContaining({ code: "id_replaced", path: "/sessions/1", count: 1 }),
+    ]);
+    expect(second.report.warnings.counts).toEqual({ id_replaced: 2 });
+    expect(find(second.vault, 3)?.messages.map((m) => m.id)).toEqual([
+      freshId(1),
+      freshId(2),
+      messageId(3, 2),
+      freshId(3),
+    ]);
+    expect(find(second.vault, 4)?.messages.map((m) => m.id)).toEqual([freshId(4)]);
+    expect(find(second.vault, 5)?.messages.map((m) => m.id)).toEqual([messageId(5, 0), messageId(5, 1)]);
   });
 
   it("an update may keep the message ids the session already has", () => {
@@ -506,54 +506,44 @@ describe("6.7: ids that are already in use (owner scoping)", () => {
     expect(third.report.warnings.total).toBe(0);
   });
 
+  // A file whose only session reuses a message id of the stored session 1: a fresh id is needed.
+  const stored = () => importOk(emptyVault(), vaultDocument([], [session(1)])).vault;
+  const needsFreshId = vaultDocument([], [session(2, { messages: [message(1, 0, "taken id")] })]);
+
   it("refuses the whole import when the id generator gives nothing usable, without throwing", () => {
-    const options: DocumentImportOptions = { reservedIds: { sessions: new Set([sessionId(1)]) } };
-    for (const newId of [() => "not a uuid", () => sessionId(2), () => sessionId(1)]) {
+    for (const newId of [() => "not a uuid", () => messageId(1, 1), () => messageId(1, 0)]) {
       let calls = 0;
-      const start = emptyVault();
-      const result = importDocument(
-        start,
-        vaultDocument([], [session(1), session(2)]),
-        {
-          now: NOW,
-          newId: () => {
-            calls += 1;
-            return newId();
-          },
+      const start = stored();
+      const before = structuredClone(start);
+      const result = importDocument(start, needsFreshId, {
+        now: NOW,
+        newId: () => {
+          calls += 1;
+          return newId();
         },
-        options,
-      );
+      });
       expect(result.ok).toBe(false);
       if (!result.ok)
         expect(result.problems.items).toEqual([expect.objectContaining({ rule: "internal", path: "" })]);
-      expect(start).toEqual(emptyVault());
+      expect(start).toEqual(before);
       // Bounded: the generator is not asked forever.
       expect(calls).toBe(16);
     }
-    const throwing = importDocument(
-      emptyVault(),
-      vaultDocument([], [session(1)]),
-      {
-        now: NOW,
-        newId: () => {
-          throw new Error("no entropy");
-        },
+    const throwing = importDocument(stored(), needsFreshId, {
+      now: NOW,
+      newId: () => {
+        throw new Error("no entropy");
       },
-      options,
-    );
+    });
     expect(throwing.ok).toBe(false);
   });
 
   it("accepts an upper-case id from the generator and uses it in lower case", () => {
-    const result = importDocument(
-      emptyVault(),
-      vaultDocument([], [session(1)]),
-      { now: NOW, newId: () => freshId(9).toUpperCase() },
-      {
-        reservedIds: { sessions: new Set([sessionId(1)]) },
-      },
-    );
-    expect(result.ok && result.vault.sessions[0]?.id).toBe(freshId(9));
+    const result = importDocument(stored(), needsFreshId, {
+      now: NOW,
+      newId: () => freshId(9).toUpperCase(),
+    });
+    expect(result.ok && find(result.vault, 2)?.messages.map((m) => m.id)).toEqual([freshId(9)]);
   });
 });
 
@@ -620,7 +610,7 @@ describe("6.7 step 2: projects", () => {
       vaultDocument([project(1, { name: "Balcony garden", updated_at: T2, x_color: "red" })], []),
     );
     expect(result.report.projects).toEqual([
-      { incomingId: projectId(1), id: projectId(1), outcome: "updated" },
+      { incomingId: projectId(1), id: projectId(1), outcome: "updated", conflict: false },
     ]);
     expect(named(result.vault)).toEqual([
       [projectId(1), "Balcony garden"],
@@ -630,16 +620,25 @@ describe("6.7 step 2: projects", () => {
     expect(result.vault.projects[0]?.updated_at.toISOString()).toBe(T2);
     // The old name is free again.
     const reuse = importOk(result.vault, vaultDocument([project(3, { name: "garden" })], []));
-    expect(reuse.report.projects).toEqual([{ incomingId: projectId(3), id: projectId(3), outcome: "added" }]);
+    expect(reuse.report.projects).toEqual([
+      { incomingId: projectId(3), id: projectId(3), outcome: "added", conflict: false },
+    ]);
   });
 
-  it("2a: the same id with the same or an earlier updated_at keeps the stored project", () => {
+  it("2a: the same id with the same or an earlier updated_at keeps the stored project; the same updated_at is a conflict", () => {
     const vault = base();
-    for (const updated_at of [T1, "2026-04-01T00:00:00.000Z"]) {
+    for (const [updated_at, conflict] of [
+      [T1, true],
+      ["2026-04-01T00:00:00.000Z", false],
+    ] as const) {
       const result = importOk(vault, vaultDocument([project(1, { name: "Other name", updated_at })], []));
       expect(result.report.projects).toEqual([
-        { incomingId: projectId(1), id: projectId(1), outcome: "kept" },
+        { incomingId: projectId(1), id: projectId(1), outcome: "kept", conflict },
       ]);
+      expect(result.report.counts).toMatchObject({ projectsKept: 1, projectsUpdated: 0 });
+      expect(result.report.warnings.items).toEqual(
+        conflict ? [expect.objectContaining({ code: "conflict", path: "/projects/0" })] : [],
+      );
       expect(result.vault.projects).toEqual(vault.projects);
     }
   });
@@ -651,7 +650,7 @@ describe("6.7 step 2: projects", () => {
       vaultDocument([project(1, { name: "Garden", x_color: "green", updated_at: T3 })], []),
     );
     expect(result.report.projects).toEqual([
-      { incomingId: projectId(1), id: projectId(1), outcome: "unchanged" },
+      { incomingId: projectId(1), id: projectId(1), outcome: "unchanged", conflict: false },
     ]);
     expect(result.vault.projects[0]).toBe(vault.projects[0]);
   });
@@ -659,7 +658,9 @@ describe("6.7 step 2: projects", () => {
   it("2a: a new name that belongs to another project is refused: the old name stays, with a warning", () => {
     const vault = base();
     const result = importOk(vault, vaultDocument([project(1, { name: " BIKES ", updated_at: T2 })], []));
-    expect(result.report.projects).toEqual([{ incomingId: projectId(1), id: projectId(1), outcome: "kept" }]);
+    expect(result.report.projects).toEqual([
+      { incomingId: projectId(1), id: projectId(1), outcome: "kept", conflict: false },
+    ]);
     expect(result.report.warnings.items).toEqual([
       expect.objectContaining({ code: "project_name_taken", path: "/projects/0/name" }),
     ]);
@@ -674,8 +675,8 @@ describe("6.7 step 2: projects", () => {
     );
     const result = importOk(vault, incoming);
     expect(result.report.projects).toEqual([
-      { incomingId: projectId(8), id: projectId(1), outcome: "merged" },
-      { incomingId: projectId(9), id: projectId(2), outcome: "merged" },
+      { incomingId: projectId(8), id: projectId(1), outcome: "merged", conflict: false },
+      { incomingId: projectId(9), id: projectId(2), outcome: "merged", conflict: false },
     ]);
     expect(result.vault.projects).toEqual(vault.projects);
     expect(find(result.vault, 1)?.project_id).toBe(projectId(1));
@@ -688,7 +689,7 @@ describe("6.7 step 2: projects", () => {
     const first = importOk(emptyVault(), vaultDocument([project(1, { name: "Caf\u00E9" })], []));
     const second = importOk(first.vault, vaultDocument([project(2, { name: "CAFE\u0301" })], []));
     expect(second.report.projects).toEqual([
-      { incomingId: projectId(2), id: projectId(1), outcome: "merged" },
+      { incomingId: projectId(2), id: projectId(1), outcome: "merged", conflict: false },
     ]);
   });
 
@@ -698,7 +699,7 @@ describe("6.7 step 2: projects", () => {
       vaultDocument([project(5, { name: "apple pie ideas", updated_at: T2 })], []),
     );
     expect(result.report.projects).toEqual([
-      { incomingId: projectId(5), id: projectId(5), outcome: "added" },
+      { incomingId: projectId(5), id: projectId(5), outcome: "added", conflict: false },
     ]);
     expect(result.vault.projects[2]).toMatchObject({ id: projectId(5), name: "apple pie ideas" });
     expect(result.vault.projects[2]?.created_at.toISOString()).toBe(T1);
@@ -766,8 +767,8 @@ describe("6.7: duplicates inside one document", () => {
       expect.objectContaining({ code: "R11", path: "/projects/1/name" }),
     ]);
     expect(result.report.projects).toEqual([
-      { incomingId: projectId(1), id: projectId(1), outcome: "added" },
-      { incomingId: projectId(2), id: projectId(1), outcome: "merged" },
+      { incomingId: projectId(1), id: projectId(1), outcome: "added", conflict: false },
+      { incomingId: projectId(2), id: projectId(1), outcome: "merged", conflict: false },
     ]);
     expect(result.vault.projects.map((p) => p.name)).toEqual(["Garden"]);
     expect(result.vault.sessions.map((s) => s.project_id)).toEqual([projectId(1), projectId(1)]);

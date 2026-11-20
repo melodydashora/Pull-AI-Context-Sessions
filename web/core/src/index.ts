@@ -14,6 +14,9 @@
 //                         route "transcript":   createSessions(opened.result.sessions, ...)
 //   pasted text         importPaste(text, ...)  then createSessions
 //   a captured page     importCapture(input)    then createSessions
+//   any other write     normaliseSession(draft), normaliseProject(draft): an edit, a request, a
+//                       sync mutation. Whatever is stored is in the form the reader produces
+//                       (docs/corrections.md section 2, G1); the paths above end there too.
 // How its context gets out again:
 //   contextPackMarkdown(session, messages, { timeZone })   the pack to paste into any model
 //   exportDocument(vault, scope, ...)                      backup and transfer
@@ -21,9 +24,8 @@
 // Names are those of the three parts, with these exceptions:
 //   INTERCHANGE_FORMAT, INTERCHANGE_VERSION   FORMAT_MARKER and FORMAT_VERSION of ./interchange/
 //   ParsedJsonObject                          JsonObject of ./import/ (JsonObject is that of ./interchange/)
-//   parseTags, projectNameKey                 two parts have them: these are the ones of ./vault/.
-//                                             ./interchange/ keeps copies that return the same
-//                                             values and take far longer on input built for it.
+//   parseTags, projectNameKey                 two parts export them, and they are one function
+//                                             each: listed here once, from ./vault/.
 
 /** The product name as people see it. */
 export const APP_NAME = "SessionVault";
@@ -111,6 +113,7 @@ export {
 
 export {
   ATTACHMENT_KEYS,
+  type AttachmentDraft,
   type AttachmentSegment,
   attachmentKindBehaviour,
   type BundleEntry,
@@ -158,6 +161,7 @@ export {
   importDocument,
   isAttachmentSegment,
   isInterchangeDocument,
+  isOpenValueTooLong,
   isPlainText,
   isTextSegment,
   type JsonObject,
@@ -173,29 +177,38 @@ export {
   type KnownSegmentType,
   type Limits,
   MAX_INLINE_BYTES,
+  MAX_OPEN_VALUE_CHARACTERS,
   MESSAGE_KEYS,
+  type MessageDraft,
   type MessageInit,
   makeSession,
   messageSegments,
+  type NormalisedProject,
+  type NormalisedSession,
+  type NormaliseOptions,
   type Notice,
   type NoticeCode,
   type NoticeList,
+  normaliseProject,
+  normaliseSession,
   normaliseTags,
+  normalizeOpen,
   PROJECT_KEYS,
   type Problem,
+  type ProjectDraft,
   type ProjectMergeResult,
   type ProjectOutcome,
   parseTimestamp,
   providerBehaviour,
   type ReadOptions,
   type ReadResult,
-  type ReservedIds,
   type RuleId,
   readDocument,
   roleBehaviour,
   type SchemaKeyword,
   SESSION_KEYS,
   type SegmentBehaviour,
+  type SessionDraft,
   type SessionInit,
   type SessionMergeResult,
   type SessionOutcome,

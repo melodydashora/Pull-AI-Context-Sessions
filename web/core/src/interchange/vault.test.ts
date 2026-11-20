@@ -187,11 +187,16 @@ describe("parseTags (8.2)", () => {
     expect(parseTags("tag")).toEqual(["tag"]);
   });
 
-  it("is the function of the document, character for character", () => {
+  it("is the function of the document with the formula of corrections.md 2, point 1, character for character", () => {
+    // data-model.md 8.2 as printed, with the one expression that point 1 replaces.
     const reference = (input: string): string[] => {
       const out: string[] = [];
       for (const part of input.split(",")) {
-        const tag = part.trim().toLowerCase().replace(/^#+/, "").trim();
+        const tag = part
+          .trim()
+          .toLowerCase()
+          .replace(/^[#\s]+/, "")
+          .trim();
         if (tag !== "" && !out.includes(tag)) out.push(tag);
       }
       return out;
@@ -230,8 +235,9 @@ describe("normaliseTags (6.6 repair 4)", () => {
     expect(normaliseTags(["two words"])).toEqual(["two words"]);
   });
 
-  it("goes on where one application of parseTags stops short", () => {
-    expect(parseTags("# #a")).toEqual(["#a"]);
+  it("needs one application only: parseTags is idempotent (corrections.md 2, point 1)", () => {
+    // As printed in 8.2, "# #a" gave "#a" and the next reading "a".
+    expect(parseTags("# #a")).toEqual(["a"]);
     expect(normaliseTags(["# #a"])).toEqual(["a"]);
     expect(normaliseTags(["#\t# # b#", "# #"])).toEqual(["b#"]);
   });
@@ -241,6 +247,8 @@ describe("normaliseTags (6.6 repair 4)", () => {
     fc.assert(
       fc.property(fc.array(fc.string({ unit, maxLength: 16 }), { maxLength: 5 }), (elements) => {
         const tags = normaliseTags(elements);
+        // Repair 4 as corrections.md words it.
+        expect(tags).toEqual(parseTags(elements.join(",")));
         expect(tags).toEqual(untilStable(elements));
         expect(normaliseTags(tags)).toEqual(tags);
         for (const tag of tags) {
@@ -401,7 +409,7 @@ describe("suggested file names (6.4)", () => {
     expect(fileSystemSafe('a\\b/c:d*e?f"g<h>i|j')).toBe("a-b-c-d-e-f-g-h-i-j");
     expect(fileSystemSafe("tab\there\nand\u0000there\u007F\u0085")).toBe("tab-here-and-there--");
     expect(fileSystemSafe("ends with dots... ")).toBe("ends with dots");
-    expect(fileSystemSafe(" keeps leading space")).toBe(" keeps leading space");
+    expect(fileSystemSafe(" loses leading space")).toBe("loses leading space");
     expect(fileSystemSafe("")).toBe("session");
     expect(fileSystemSafe(" . . ")).toBe("session");
     expect(fileSystemSafe("..")).toBe("session");
@@ -424,7 +432,8 @@ describe("suggested file names (6.4)", () => {
       fc.property(fc.oneof(fc.string(), fc.string({ unit: "binary" })), (title) => {
         const safe = fileSystemSafe(title);
         expect(safe.length).toBeGreaterThan(0);
-        expect(utf8ByteLength(safe)).toBeLessThanOrEqual(120);
+        // 120 bytes, and one more for the "_" in front of a Windows device name (point 16).
+        expect(utf8ByteLength(safe)).toBeLessThanOrEqual(safe.startsWith("_") ? 121 : 120);
         for (const character of safe) {
           const code = character.codePointAt(0) ?? 0;
           expect(code >= 0x20 && (code < 0x7f || code > 0x9f)).toBe(true);

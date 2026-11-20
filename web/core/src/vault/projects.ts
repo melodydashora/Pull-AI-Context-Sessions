@@ -2,8 +2,8 @@
 // vault when trimmed and compared without regard to case (B2), and the list is in dictionary
 // order with natural numbers (B5: the Apple app lists by code point, "Zebra" before "apple").
 
+import { projectNameKey } from "../interchange/shared.ts";
 import { cleanString } from "../interchange/text.ts";
-import { composedForm } from "./compose.ts";
 import { compareIds } from "./order.ts";
 
 /** What the order and the name rule look at in a project. */
@@ -12,17 +12,10 @@ export interface NamedProject {
   readonly name: string;
 }
 
-/**
- * data-model.md 8.4: the value two project names are compared by (`projects.name_key`): trimmed,
- * in composed form, in lower case.
- *
- * The values are those of the function printed in 8.4, which interchange/shared.ts holds
- * unchanged. That one hands the name to the platform as it is, which takes minutes on a name
- * built for it (see composedForm); this one takes time in proportion to the length.
- */
-export function projectNameKey(name: string): string {
-  return composedForm(name.trim()).toLowerCase();
-}
+// data-model.md 8.4: the value two project names are compared by (`projects.name_key`): trimmed,
+// in composed form, in lower case. The core has one projectNameKey: the merge of an interchange
+// file (6.7 step 2) and the rule for creating and renaming a project compare by the same function.
+export { projectNameKey };
 
 /**
  * data-model.md 8.4: the order of the project list. Names are compared by the rules of `locale`

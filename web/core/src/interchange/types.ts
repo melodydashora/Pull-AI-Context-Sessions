@@ -9,6 +9,7 @@
 // schema.test.ts checks the key lists below against the schema's own property lists.
 
 import type { JsonValue } from "./json.ts";
+import { normalizeOpen } from "./shared.ts";
 
 /** Value of `format`: the marker that identifies the file type. Checked before anything else. */
 export const FORMAT_MARKER = "sessionvault-interchange";
@@ -59,16 +60,17 @@ const ATTACHMENT_KINDS: ReadonlyMap<string, KnownAttachmentKind> = new Map(
 );
 
 /**
- * The known provider a stored value behaves as. Compared trimmed and without case, as the context
- * pack of data-model.md 8.3 does; everything else behaves as "other".
+ * The known provider a value behaves as: the one it is stored as (corrections.md 2, G2), and
+ * "other" for everything else. For a stored value that is the exact comparison of the list filter
+ * (data-model.md 7.3), because storage holds no other spelling of a known provider (G1, point 14).
  */
 export function providerBehaviour(provider: string): KnownProvider {
-  return PROVIDERS.get(provider.trim().toLowerCase()) ?? FALLBACK_PROVIDER;
+  return PROVIDERS.get(normalizeOpen(provider, KNOWN_PROVIDERS, FALLBACK_PROVIDER)) ?? FALLBACK_PROVIDER;
 }
 
 /**
  * The known role a stored value behaves as. Compared exactly, as data-model.md 8.3 and the Apple
- * model do ("User" behaves as unknown); the reader folds known roles to lower case before storing.
+ * model do ("User" behaves as unknown); every write path stores known roles in lower case (G2).
  */
 export function roleBehaviour(role: string): KnownRole {
   return ROLES.get(role) ?? FALLBACK_ROLE;

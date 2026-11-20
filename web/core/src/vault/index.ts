@@ -12,10 +12,13 @@
 //   parseTags, projectComparator, buildSearchText, prepareQuery, ...   the small rules of 8.1 to 8.4
 //   composedForm          normalize("NFC") in bounded time, which 8.1 and 8.4 rest on
 //
+// parseTags, projectNameKey and composedForm exist once in the core, in ../interchange/, because
+// the reader and the merge need them; they are exported here under the same names.
+//
 // Everything is a pure function: the current time, new ids, the locale and the time zone are
 // arguments. Nothing here reads a clock, a random source or a setting of the machine.
 
-export { composedForm } from "./compose.ts";
+export { composedForm } from "../interchange/compose.ts";
 export {
   type ContextPackMessage,
   type ContextPackOptions,

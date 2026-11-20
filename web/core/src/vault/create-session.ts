@@ -1,26 +1,22 @@
 // Creating sessions from parser results (docs/data-model.md 8.6): the step between the transcript
 // importer and the vault, the equivalent of SessionImporter.insert in the Apple app.
 //
-// What is created is in the form the interchange reader gives a session (6.6), whatever the strings
-// of the parser result hold: such a session can always be stored (C9) and exported, and reading the
-// export back changes nothing. On what the importer returns none of this changes a character.
+// corrections.md section 2, G1: this is a write path, so what it creates goes through the one
+// normalising constructor of the core (normaliseSession) and is in the form the interchange reader
+// gives a session, whatever the strings of the parser result hold: such a session can always be
+// stored (C9) and exported, and reading the export back changes nothing. On what the importer
+// returns none of this changes a character.
 
 import type { ParsedSession } from "../import/index.ts";
 import {
-  FALLBACK_PROVIDER,
-  FALLBACK_ROLE,
   formatTimestamp,
-  KNOWN_PROVIDERS,
-  KNOWN_ROLES,
-  makeSession,
-  normaliseTags,
+  normaliseSession,
   parseTimestamp,
-  textMessage,
+  type SessionDraft,
   type Vault,
   type VaultSession,
 } from "../interchange/index.ts";
 import { isCanonicalUuid } from "../interchange/shapes.ts";
-import { cleanString, normaliseLineEndings } from "../interchange/text.ts";
 
 /** What creating a session needs from outside: the clock and the source of ids. */
 export interface NewSessionContext {
@@ -56,13 +52,11 @@ function drawId(newId: () => string, taken: Set<string>): string {
   throw new Error("The id generator gave no unused UUID; no session was created.");
 }
 
-/** 6.2 as the reader applies it: trimmed; a known value in lower case; empty becomes the fallback. */
-function openListValue(value: string, known: readonly string[], fallback: string): string {
-  const trimmed = cleanString(value).trim();
-  const folded = trimmed.toLowerCase();
-  if (trimmed === "") return fallback;
-  return known.includes(folded) ? folded : trimmed;
-}
+/**
+ * The size of a parser result is the size of the text it was parsed from, so the reader's bound
+ * on the number of values (made for files that claim more than they hold) does not apply.
+ */
+const WHOLE_RESULT = { maxNodes: Number.MAX_SAFE_INTEGER };
 
 /** The original date a parser found, in milliseconds; undefined when it found none (import-rules.md 2.7). */
 function originalDate(createdAt: string | null): number | undefined {
@@ -87,30 +81,36 @@ function build(
     // file is the newest and lists first.
     const now = batchTime + (count - 1 - i);
     const id = drawId(context.newId, taken.sessions);
-    const messages = item.messages.map((message, position) =>
-      textMessage({
-        id: drawId(context.newId, taken.messages),
-        position,
-        role: openListValue(message.role, KNOWN_ROLES, FALLBACK_ROLE),
-        // 6.6 repair 5 and R10; the importer's W1 has done both already.
-        text: normaliseLineEndings(cleanString(message.text)),
-      }),
-    );
-    return makeSession({
+    const draft: SessionDraft = {
       id,
-      title: cleanString(item.title),
-      provider: openListValue(item.provider, KNOWN_PROVIDERS, FALLBACK_PROVIDER),
+      title: item.title,
+      provider: item.provider,
       // 8.6 was written when no parser set these three; the context pack parser does (W14).
-      model: cleanString(item.model),
-      summary: cleanString(item.summary),
-      // The reader's form of the tag rule of 8.2: W14 neither trims as 8.2 does nor drops repeats.
-      tags: normaliseTags(item.tags.map((tag) => cleanString(tag))),
-      source_url: cleanString(item.sourceUrl),
+      model: item.model,
+      summary: item.summary,
+      // W14 neither trims as 8.2 does nor drops repeats; the constructor applies parseTags.
+      tags: item.tags,
+      source_url: item.sourceUrl,
       created_at: new Date(originalDate(item.createdAt) ?? now),
       imported_at: new Date(now),
       updated_at: new Date(now),
-      messages,
-    });
+      messages: item.messages.map((message) => ({
+        id: drawId(context.newId, taken.messages),
+        role: message.role,
+        text: message.text,
+      })),
+    };
+    // G1: the form the reader produces (strings cleaned, provider and roles by G2, tags by 8.2,
+    // LF line endings); the importer's W1 has done the cleaning already.
+    const normalised = normaliseSession(draft, { limits: WHOLE_RESULT });
+    if (!normalised.ok) {
+      const first = normalised.problems.items[0];
+      const where = first === undefined ? "" : `: ${first.rule} at "${first.path}"`;
+      throw new RangeError(
+        `A parser result holds a value no session can store${where}; no session was created.`,
+      );
+    }
+    return normalised.session;
   });
 }
 
@@ -131,8 +131,9 @@ function build(
  * Nothing is dropped here: the importer never returns a session without messages or a message
  * without text (W12). No attachment is made; the page snapshot of a capture is out of scope.
  *
- * Throws a RangeError when `now` is not a date a session can hold, and an Error when the
- * generator gives no unused UUID in 16 tries.
+ * Throws a RangeError when `now` is not a date a session can hold, or when a parser result holds
+ * a value the reader refuses (G2: a provider or a role of more than 200 characters, which no
+ * importer returns), and an Error when the generator gives no unused UUID in 16 tries.
  */
 export function createSessions(parsed: readonly ParsedSession[], context: NewSessionContext): VaultSession[] {
   return build(parsed, context, { sessions: new Set(), messages: new Set() });

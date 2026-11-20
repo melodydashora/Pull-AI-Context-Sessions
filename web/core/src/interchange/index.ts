@@ -5,6 +5,8 @@
 //   validateDocument  the strict check a writer's output must pass (6.8)
 //   importDocument    vault + document -> new vault + report (6.7)
 //   exportDocument    vault or one session -> document (6.8); documentText turns it into JSON text
+//   normaliseSession, normaliseProject   what every write path stores: the reader's form
+//                     (corrections.md section 2, G1)
 //   Vault, VaultSession, ...   the model the functions of section 8 are built on (vault.ts)
 //   checkVault        a consistency check for vault values, for tests
 
@@ -33,11 +35,21 @@ export {
   importDocument,
   type ProjectMergeResult,
   type ProjectOutcome,
-  type ReservedIds,
   type SessionMergeResult,
   type SessionOutcome,
 } from "./import.ts";
 export { EMPTY_OBJECT, type JsonObject, type JsonValue, jsonEqual } from "./json.ts";
+export {
+  type AttachmentDraft,
+  type MessageDraft,
+  type NormalisedProject,
+  type NormalisedSession,
+  type NormaliseOptions,
+  normaliseProject,
+  normaliseSession,
+  type ProjectDraft,
+  type SessionDraft,
+} from "./normalise.ts";
 export {
   type CappedList,
   DEFAULT_LIMITS,
@@ -58,7 +70,14 @@ export {
   validateDocument,
 } from "./reader.ts";
 export { sha256Hex } from "./sha256.ts";
-export { normaliseTags, parseTags, projectNameKey } from "./shared.ts";
+export {
+  isOpenValueTooLong,
+  MAX_OPEN_VALUE_CHARACTERS,
+  normaliseTags,
+  normalizeOpen,
+  parseTags,
+  projectNameKey,
+} from "./shared.ts";
 export { utf8ByteLength } from "./text.ts";
 export { dateToTimestamp, formatTimestamp, parseTimestamp, type TimestampReading } from "./timestamp.ts";
 export {

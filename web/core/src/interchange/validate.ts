@@ -8,6 +8,10 @@
 // Both ways run the same code, so the repaired form is by construction the form the strict check
 // accepts. The work is bounded: the first pass copies the input through an explicit stack with a
 // depth and a size limit, and everything after it walks the fixed structure of the format.
+//
+// corrections.md section 2 settles the open points of 6.6; each place below names its point.
+// Order of the repairs (point 3): string cleaning (repair 5) first, in the copy; then the others
+// in the order of the list, as each part of the document is checked.
 
 import { decodeBase64 } from "./base64.ts";
 import {
@@ -25,6 +29,7 @@ import {
   createNoticeLog,
   createProblemLog,
   type Limits,
+  type Notice,
   type NoticeList,
   type NoticeLog,
   type Problem,
@@ -42,9 +47,16 @@ import {
   hasVisibleCharacter,
   isCanonicalUuid,
   isSha256Hex,
+  isSha256HexOfAnyCase,
   isUuidOfAnyCase,
 } from "./shapes.ts";
-import { normaliseTags, projectNameKey } from "./shared.ts";
+import {
+  isOpenValueTooLong,
+  MAX_OPEN_VALUE_CHARACTERS,
+  normaliseTags,
+  normalizeOpen,
+  projectNameKey,
+} from "./shared.ts";
 import { cleanString, hasCarriageReturn, hasNulOrLoneSurrogate, normaliseLineEndings } from "./text.ts";
 import { parseTimestamp } from "./timestamp.ts";
 import {
@@ -106,8 +118,15 @@ interface Context {
   readonly inlineBytes: Map<string, Uint8Array>;
   /** R2: message ids seen so far in the whole document. */
   readonly messageIds: Set<string>;
+  /**
+   * G2: the objects of the copy whose `provider` or `role` was longer than 200 characters as
+   * written. The limit is judged before any normalisation, and cleaning can shorten a value.
+   */
+  readonly overlong: { readonly provider: Set<JsonObject>; readonly role: Set<JsonObject> };
   /** R3: ids of the document's projects; null while a session is checked on its own. */
   projectIds: ReadonlySet<string> | null;
+  /** Point 8: how many timestamps lost digits beyond the millisecond. */
+  cutTimestamps: number;
 }
 
 function createContext(options: CheckOptions): Context {
@@ -120,7 +139,9 @@ function createContext(options: CheckOptions): Context {
     destinationProjectIds: options.destinationProjectIds ?? null,
     inlineBytes: new Map(),
     messageIds: new Set(),
+    overlong: { provider: new Set(), role: new Set() },
     projectIds: null,
+    cutTimestamps: 0,
   };
 }
 
@@ -179,8 +200,8 @@ function isPlainObject(value: object): value is { readonly [key: string]: unknow
  * (R9). Returns undefined when there is nothing to go on with. Uses its own stack, so neither deep
  * nesting nor a cycle can exhaust the call stack, and counts every value against `maxNodes`.
  *
- * Open point in data-model.md 6.6: the list numbers this repair fifth. It runs first here, because a
- * tag such as " \u0000 a" would otherwise pass repair 4 and then fail R4.
+ * corrections.md 2, point 3: repair 5 runs first, before every other repair. A tag such as
+ * " \u0000 a" would otherwise pass repair 4 and then fail R4.
  */
 function cleanCopy(input: unknown, c: Context): JsonValue | undefined {
   const frames: Frame[] = [];
@@ -286,29 +307,25 @@ function cleanCopy(input: unknown, c: Context): JsonValue | undefined {
     const value = frame.source[key];
     // JSON.stringify leaves out a property whose value is undefined; so does this copy.
     if (value === undefined) continue;
-    let name = key;
     if (hasNulOrLoneSurrogate(key)) {
       if (c.repairing) {
-        name = cleanString(key);
-        c.repairs.add(
-          "string_cleaned",
+        // corrections.md 2, after point 16: a property NAME with U+0000 or a lone surrogate
+        // cannot be stored (PostgreSQL jsonb); the property is dropped, with a warning.
+        c.warnings.add(
+          "property_dropped",
           path(),
-          "Removed U+0000 or replaced a lone surrogate in a property name.",
+          "Dropped a property whose name contains U+0000 or a lone surrogate.",
         );
-      } else {
-        ruleProblem(c, "R9", path(), "The property name contains U+0000 or a lone surrogate.");
+        continue;
       }
+      ruleProblem(c, "R9", path(), "The property name contains U+0000 or a lone surrogate.");
     }
-    if (Object.hasOwn(frame.target, name)) {
-      c.repairs.add(
-        "property_dropped",
-        path(),
-        "Two property names were equal after cleaning; the later one was dropped.",
-      );
-      continue;
+    // G2: measured as written, before the cleaning below can shorten the value.
+    if ((key === "provider" || key === "role") && typeof value === "string" && isOpenValueTooLong(value)) {
+      c.overlong[key].add(frame.target);
     }
     const copy = convert(value);
-    if (copy !== undefined) frame.target[name] = copy;
+    if (copy !== undefined) frame.target[key] = copy;
   }
   return incomplete ? undefined : root;
 }
@@ -340,8 +357,9 @@ function required<T>(
  * when repairing (repair 3) and is a problem otherwise. A wrong value records a problem and gives
  * the fallback, which is then never used: a document with a problem is refused.
  *
- * Open point in data-model.md 6.6 repair 3: its list names some optional properties only. Null is
- * read as "absent" for all of them, also for generator, its fields and data_base64.
+ * corrections.md 2, point 6: null is read as absent for every optional property that version 1
+ * defines, generator, its fields and data_base64 included. (An unknown property with the value
+ * null never comes here: it is kept as written.)
  */
 function optional<T>(
   c: Context,
@@ -400,12 +418,19 @@ const checkId: Check<string> = (c, value, path) => {
   return undefined;
 };
 
-// Open point in data-model.md 6.6 repair 1: "all ids" is not taken to include hashes; an upper-case
-// sha256 is refused.
+/**
+ * definitions.sha256, and repair 1 for hashes. corrections.md 2, point 5: repair 1 also lower-cases
+ * sha256 values, in attachment descriptors and in attachment segments.
+ */
 const checkSha256: Check<string> = (c, value, path) => {
   const text = checkString(c, value, path);
   if (text === undefined) return undefined;
-  if (isSha256Hex(text)) return text;
+  let hash = text;
+  if (c.repairing && !isSha256Hex(hash) && isSha256HexOfAnyCase(hash)) {
+    hash = hash.toLowerCase();
+    c.repairs.add("id_lowercased", path, "Wrote the hash in lower case.");
+  }
+  if (isSha256Hex(hash)) return hash;
   schemaProblem(c, path, "pattern", "Expected 64 lower-case hexadecimal characters.");
   return undefined;
 };
@@ -430,34 +455,40 @@ const checkStamp: Check<Stamp> = (c, value, path) => {
     return undefined;
   }
   if (!c.repairing) return { text, ms: reading.ms };
-  if (reading.lossy) {
-    c.repairs.add("timestamp_precision", path, "Cut the timestamp to milliseconds.");
-  }
+  // corrections.md 2, point 8: cut, never rounded; reported once for the whole document (outcome).
+  if (reading.lossy) c.cutTimestamps += 1;
   return { text: reading.canonical, ms: reading.ms };
 };
 
 /**
- * Repair 2 for `provider` and `role` (6.2): a known value is matched trimmed and without case and
- * stored in lower case; any other value is stored trimmed; an empty one becomes the fallback.
+ * `provider` and `role` (6.2). corrections.md 2, G2: a value longer than 200 characters is refused
+ * before any normalisation, by readers and writers alike; repair 2 is normalizeOpen.
  */
 function openListValue(
   c: Context,
   object: JsonObject,
-  key: string,
+  key: "provider" | "role",
   path: string,
   known: readonly string[],
   fallback: string,
 ): string | undefined {
   const text = required(c, object, key, path, checkString);
   if (text === undefined) return undefined;
+  if (c.overlong[key].has(object) || isOpenValueTooLong(text)) {
+    ruleProblem(
+      c,
+      "limit",
+      `${path}/${key}`,
+      `The value is longer than ${MAX_OPEN_VALUE_CHARACTERS} characters.`,
+    );
+    return undefined;
+  }
   if (!c.repairing) {
     if (text.length > 0) return text;
     schemaProblem(c, `${path}/${key}`, "minLength", "The string must not be empty.");
     return undefined;
   }
-  const trimmed = text.trim();
-  const folded = trimmed.toLowerCase();
-  const value = trimmed === "" ? fallback : known.includes(folded) ? folded : trimmed;
+  const value = normalizeOpen(text, known, fallback);
   if (value !== text) c.repairs.add("value_folded", `${path}/${key}`, `Normalised the value of "${key}".`);
   return value;
 }
@@ -549,19 +580,23 @@ function checkSegments(
   const segments: InterchangeSegment[] = [];
   let complete = true;
   let adjacentText = false;
+  // The segment right before this one, when it is a sound one: a segment with a problem of its
+  // own must not make its two neighbours look adjacent.
+  let previous: InterchangeSegment | undefined;
   for (let i = 0; i < raw.length; i++) {
     const item = raw[i];
     const segment = item === undefined ? undefined : checkSegment(c, item, `${path}/${i}`);
     if (segment === undefined) {
       complete = false;
+      previous = undefined;
       continue;
     }
-    const previous = segments[segments.length - 1];
     if (previous !== undefined && isTextSegment(previous) && isTextSegment(segment)) {
       adjacentText = true;
       if (!c.repairing) ruleProblem(c, "R7", `${path}/${i}`, "Two text segments follow each other.");
     }
     segments.push(segment);
+    previous = segment;
   }
   if (!complete) return undefined;
   if (adjacentText && c.repairing) {
@@ -589,8 +624,8 @@ interface MessageDraft {
 /**
  * message.index. A reader only needs a number it can sort by (repair 6 renumbers); a writer needs
  * the schema's integer.
- * Open point in data-model.md 6.6 repair 6: it does not say what a missing or non-numeric index is.
- * Here it stays a problem: renumbering would hide it.
+ * corrections.md 2, point 4: an index that is missing or no finite number stays a problem, and
+ * then nothing in that session is renumbered (checkMessages).
  */
 const checkIndex: Check<number> = (c, value, path) => {
   if (typeof value !== "number") {
@@ -626,7 +661,8 @@ function checkMessage(c: Context, raw: JsonValue, path: string): MessageDraft | 
   const segments = required(c, raw, "segments", path, checkSegments);
   const createdAt = optional<Stamp | undefined>(c, raw, "created_at", path, checkStamp, undefined);
   let model = optional<string | undefined>(c, raw, "model", path, checkString, undefined);
-  // An empty model on a message means "not set": the canonical form leaves it out (6.8).
+  // corrections.md 2, point 13: "" or null on a message is read as absent; the canonical form
+  // leaves it out, and so does the writer (6.8).
   if (model === "" && c.repairing) model = undefined;
   if (c.problems.total !== before) return undefined;
   if (id === undefined || index === undefined || role === undefined || segments === undefined)
@@ -656,7 +692,19 @@ function buildMessage(draft: MessageDraft, index: number): InterchangeMessage {
   );
 }
 
-/** R6 and repair 6: `messages[i].index === i`. */
+/** The `index` of a message as the copy holds it, when it is a number. The copy holds finite numbers only. */
+function writtenIndex(item: JsonValue | undefined): number | undefined {
+  if (!isJsonObject(item)) return undefined;
+  const index = item.index;
+  return typeof index === "number" ? index : undefined;
+}
+
+/**
+ * R6 and repair 6: `messages[i].index === i`.
+ * corrections.md 2, point 4: the repair sorts and renumbers only when every message of the session
+ * has a finite number as index (ties by array position; a fraction or a negative number sorts and
+ * is mended). Otherwise nothing in that session is renumbered and validation refuses the document.
+ */
 function checkMessages(
   c: Context,
   raw: readonly JsonValue[],
@@ -669,6 +717,17 @@ function checkMessages(
     const draft = item === undefined ? undefined : checkMessage(c, item, `${path}/${i}`);
     if (draft === undefined) complete = false;
     else drafts.push(draft);
+  }
+  if (c.repairing && !raw.every((item) => writtenIndex(item) !== undefined)) {
+    // Not every index is a finite number (each such place is a problem already): no message of
+    // this session is renumbered, so R6 holds or fails for the others as they are written.
+    raw.forEach((item, i) => {
+      const index = writtenIndex(item);
+      if (index !== undefined && index !== i) {
+        ruleProblem(c, "R6", `${path}/${i}/index`, "The index is not the position in the array.");
+      }
+    });
+    return undefined;
   }
   if (!complete) return undefined;
   const inOrder = drafts.every((draft, i) => draft.index === i);
@@ -754,10 +813,19 @@ function checkAttachment(
   // Repair 3: without its own date an attachment takes the session's imported_at.
   const createdAt = optional<Stamp | undefined>(c, raw, "created_at", path, checkStamp, sessionImportedAt);
 
+  // Repair 9 as corrections.md 2, point 7 words it: data_base64 that is not a string, cannot be
+  // decoded, or does not match byte_length or sha256 is removed with a warning; the descriptor
+  // stays. (A null is read as absent, point 6.) A writer's data must be right: schema and R5.
   let data: string | undefined;
   const rawData = raw.data_base64;
   if (rawData === null && c.repairing) {
     c.repairs.add("null_default", `${path}/data_base64`, '"data_base64" was null; the bytes are missing.');
+  } else if (rawData !== undefined && typeof rawData !== "string" && c.repairing) {
+    c.warnings.add(
+      "bytes_discarded",
+      `${path}/data_base64`,
+      "Discarded the inline bytes: the data is not a string.",
+    );
   } else if (rawData !== undefined) {
     data = checkString(c, rawData, `${path}/data_base64`);
     if (data !== undefined && !c.repairing && !hasBase64Shape(data)) {
@@ -769,8 +837,6 @@ function checkAttachment(
       if (typeof bytes !== "string") {
         if (c.repairing) c.inlineBytes.set(sha256, bytes);
       } else if (c.repairing) {
-        // Repair 9: the descriptor stays, the bytes count as missing.
-        // Open point in data-model.md 6.6: text that is no base64 at all is treated the same way.
         c.warnings.add(
           "bytes_discarded",
           `${path}/data_base64`,
@@ -921,8 +987,8 @@ function checkSession(
       ruleProblem(c, "R3", `${path}/project_id`, "The file lists no project with this id.");
     } else if (c.destinationProjectIds === null || !c.destinationProjectIds.has(projectId)) {
       // Repair 8: resolves neither in the document nor in the destination vault.
-      // data-model.md 6.6 contradicts itself here: R3 wants the project in the document, repair 8
-      // keeps an id that only the destination vault knows. Repair 8 is followed.
+      // corrections.md 2, point 2: repair 8 stands. R3 is the writer's rule; a reader checks it
+      // after repair 8 and counts the projects of the destination vault as present.
       c.warnings.add(
         "project_missing",
         `${path}/project_id`,
@@ -1159,11 +1225,35 @@ function checkDocumentValue(c: Context, raw: JsonValue): InterchangeDocument | u
   );
 }
 
+/**
+ * What was repaired. corrections.md 2, point 8: timestamps cut to milliseconds give one repair
+ * line for the whole document, with the count. It stands first, so that the cap on listed
+ * notices never hides it.
+ */
+function repairsOf(c: Context): NoticeList {
+  const list = c.repairs.list();
+  if (c.cutTimestamps === 0) return list;
+  const line: Notice = {
+    code: "timestamp_precision",
+    path: "",
+    message:
+      c.cutTimestamps === 1
+        ? "Cut 1 timestamp to milliseconds."
+        : `Cut ${c.cutTimestamps} timestamps to milliseconds.`,
+    count: c.cutTimestamps,
+  };
+  return {
+    items: [line, ...list.items].slice(0, c.limits.maxListed),
+    total: list.total + 1,
+    counts: { ...list.counts, timestamp_precision: 1 },
+  };
+}
+
 function outcome(c: Context, doc: InterchangeDocument | undefined): CheckOutcome {
   return {
     doc: c.problems.total === 0 && doc !== undefined ? doc : null,
     problems: c.problems.list(),
-    repairs: c.repairs.list(),
+    repairs: repairsOf(c),
     warnings: c.warnings.list(),
     inlineBytes: c.inlineBytes,
   };
@@ -1181,21 +1271,57 @@ export function checkDocument(input: unknown, options: CheckOptions): CheckOutco
   return outcome(c, doc);
 }
 
-/**
- * Check one session on its own, in "repair" mode: the form the reader would give it. Every
- * project id counts as resolving. Null when the value is not an acceptable session.
- */
-export function canonicalSession(input: unknown, limits: Limits): InterchangeSession | null {
-  const c = createContext({ mode: "repair", limits });
-  const copy = cleanCopy(input, c);
-  const session = copy === undefined ? undefined : checkSession(c, copy, "", () => {});
-  return c.problems.total === 0 && session !== undefined ? session : null;
+/** What checking one session or one project on its own gave. Paths start at that object. */
+export interface PartOutcome<T> {
+  /** The part in the form the reader gives it, or null when there are problems. */
+  readonly value: T | null;
+  readonly problems: CappedList<Problem>;
+  readonly repairs: NoticeList;
+  readonly warnings: NoticeList;
 }
 
-/** Check one project on its own, in "repair" mode. Null when the value is not an acceptable project. */
-export function canonicalProject(input: unknown, limits: Limits): InterchangeProject | null {
+function partOutcome<T>(c: Context, value: T | undefined): PartOutcome<T> {
+  if (value === undefined && c.problems.total === 0) {
+    ruleProblem(c, "internal", "", "The input could not be checked.");
+  }
+  return {
+    value: c.problems.total === 0 && value !== undefined ? value : null,
+    problems: c.problems.list(),
+    repairs: repairsOf(c),
+    warnings: c.warnings.list(),
+  };
+}
+
+/**
+ * Check one session on its own, in "repair" mode: the form the reader would give it.
+ * `projectIds` are the projects the session may belong to (repair 8); left out, every project id
+ * counts as resolving.
+ */
+export function checkSessionAlone(
+  input: unknown,
+  limits: Limits,
+  projectIds?: ReadonlySet<string>,
+): PartOutcome<InterchangeSession> {
+  const c = createContext({ mode: "repair", limits, destinationProjectIds: projectIds });
+  // A session on its own comes with no project list: only `projectIds` can resolve its project.
+  if (projectIds !== undefined) c.projectIds = new Set();
+  const copy = cleanCopy(input, c);
+  return partOutcome(c, copy === undefined ? undefined : checkSession(c, copy, "", () => {}));
+}
+
+/** Check one project on its own, in "repair" mode: the form the reader would give it. */
+export function checkProjectAlone(input: unknown, limits: Limits): PartOutcome<InterchangeProject> {
   const c = createContext({ mode: "repair", limits });
   const copy = cleanCopy(input, c);
-  const project = copy === undefined ? undefined : checkProject(c, copy, "", () => {});
-  return c.problems.total === 0 && project !== undefined ? project : null;
+  return partOutcome(c, copy === undefined ? undefined : checkProject(c, copy, "", () => {}));
+}
+
+/** The form the reader would give one session, or null when the value is not an acceptable session. */
+export function canonicalSession(input: unknown, limits: Limits): InterchangeSession | null {
+  return checkSessionAlone(input, limits).value;
+}
+
+/** The form the reader would give one project, or null when the value is not an acceptable project. */
+export function canonicalProject(input: unknown, limits: Limits): InterchangeProject | null {
+  return checkProjectAlone(input, limits).value;
 }

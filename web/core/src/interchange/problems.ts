@@ -17,7 +17,8 @@ import {
 /**
  * The rule a problem breaks.
  * - "json": the input is not JSON text, or holds something JSON cannot (a function, NaN, a cycle).
- * - "limit": nested too deeply or too large to check (see Limits).
+ * - "limit": nested too deeply or too large to check (see Limits), or a `provider` or message `role`
+ *   longer than 200 characters (corrections.md 2, G2).
  * - "format", "version": the first two checks of data-model.md 6.1.
  * - "schema": a structural rule of docs/interchange-schema-v1.json; `keyword` names which.
  * - "R1" to "R10": data-model.md 6.6. R11 and R12 are warnings only: see NoticeCode.
@@ -75,22 +76,26 @@ export interface Problem {
 /**
  * What a repair or a warning is about.
  *
- * Repairs, the reader's list of data-model.md 6.6:
- * - "id_lowercased" (1), "value_folded" (2: provider or role folded, trimmed, or empty made the
- *   fallback), "null_default" (3: a null stood where a default applies), "tags_normalised" (4),
- *   "string_cleaned" (5: U+0000 removed, lone surrogate replaced), "line_endings" (5: CR in a text
- *   segment), "messages_renumbered" (6), "segments_merged" (7).
- * - "timestamp_precision": digits beyond the millisecond were cut off (6.1).
- * - "property_dropped": two property names became equal after cleaning; the later one was dropped.
+ * Repairs, the reader's list of data-model.md 6.6 as corrections.md section 2 settles it:
+ * - "id_lowercased" (1: an id, or the sha256 of an attachment or attachment segment),
+ *   "value_folded" (2: provider or role normalised by G2), "null_default" (3: a null stood where a
+ *   default applies), "tags_normalised" (4), "string_cleaned" (5: U+0000 removed, lone surrogate
+ *   replaced), "line_endings" (5: CR in a text segment), "messages_renumbered" (6),
+ *   "segments_merged" (7).
+ * - "timestamp_precision": digits beyond the millisecond were cut off. One line for the whole
+ *   document, first in the list, whose `count` says how many timestamps (point 8).
  *
  * Warnings:
  * - "project_missing" (repair 8), "bytes_discarded" (repair 9).
+ * - "property_dropped": a property whose NAME holds U+0000 or a lone surrogate was dropped with
+ *   its value; no store can hold such a name.
  * - "R11" (project names equal when trimmed and compared without case), "R12" (updated_at earlier
  *   than imported_at).
  * - Import (6.7): "project_name_taken" (step 2a: the new name belongs to another project),
- *   "id_replaced" (an incoming id was already used elsewhere and got a fresh one), "conflict"
- *   (same id, different content, equal updated_at), "bytes_rejected" (bytes that came with the
- *   document do not match their descriptor).
+ *   "id_replaced" (message ids of an incoming session were held by messages of other sessions
+ *   and got fresh ones: one line per session, whose `count` says how many, point 10),
+ *   "conflict" (same id, different content, equal updated_at: a session or a project),
+ *   "bytes_rejected" (bytes that came with the document do not match their descriptor).
  * - Export (6.8): "bytes_omitted" (stored bytes do not match their descriptor or are too large to
  *   travel inline), "vault_repaired" (the vault held something a document may not; the export wrote
  *   the repaired value).
@@ -124,6 +129,11 @@ export interface Notice {
   readonly path: string;
   /** For people. Never quotes a value of the document. */
   readonly message: string;
+  /**
+   * Present on a line that stands for several places: how many. The timestamps cut to milliseconds
+   * in one document (point 8), the message ids replaced in one session (point 10).
+   */
+  readonly count?: number;
 }
 
 /** A list that stays short however large or hostile the input is. */
@@ -187,7 +197,8 @@ export function createProblemLog(maxListed: number): ProblemLog {
 
 /** Collects repairs or warnings; keeps the first `maxListed` and counts every code. */
 export interface NoticeLog {
-  add(code: NoticeCode, path: string, message: string): void;
+  /** `count`: for a line that stands for several places, how many (Notice.count). */
+  add(code: NoticeCode, path: string, message: string, count?: number): void;
   /** Take over everything another list holds, as far as there is room. */
   addAll(other: NoticeList): void;
   readonly total: number;
@@ -203,9 +214,11 @@ export function createNoticeLog(maxListed: number): NoticeLog {
     total += by;
   };
   return {
-    add(code, path, message) {
+    add(code, path, message, places) {
       count(code, 1);
-      if (items.length < maxListed) items.push({ code, path, message });
+      if (items.length < maxListed) {
+        items.push(places === undefined ? { code, path, message } : { code, path, message, count: places });
+      }
     },
     addAll(other) {
       for (const [code, by] of Object.entries(other.counts)) {

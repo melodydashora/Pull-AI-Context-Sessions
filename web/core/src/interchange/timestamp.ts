@@ -1,5 +1,8 @@
 // Interchange timestamps (data-model.md 6.1): RFC 3339, UTC, literal Z, optional fraction of 1 to 9
 // digits. Writers emit exactly three fraction digits. Stored instants have millisecond precision.
+//
+// corrections.md 2, point 8: digits beyond the millisecond are cut, never rounded; hour 24 and
+// second 60 are refused; the year is 0001 to 9999.
 
 /** What reading a timestamp string gave. */
 export type TimestampReading =
@@ -26,8 +29,8 @@ const TIMESTAMP_PATTERN = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2
 const LONGEST_TIMESTAMP = 30;
 
 const MS_PER_DAY = 86_400_000;
-/** 0000-01-01T00:00:00.000Z and 9999-12-31T23:59:59.999Z: the range the four-digit year can express. */
-const MIN_MS = -62_167_219_200_000;
+/** 0001-01-01T00:00:00.000Z and 9999-12-31T23:59:59.999Z: the years 0001 to 9999 (point 8). */
+const MIN_MS = -62_135_596_800_000;
 const MAX_MS = 253_402_300_799_999;
 
 function isLeapYear(year: number): boolean {
@@ -58,8 +61,9 @@ export function hasTimestampShape(text: string): boolean {
 /**
  * Read a timestamp. The engine's own date parser is not used, because it accepts dates such as
  * 30 February.
- * Open points in data-model.md 6.1 and R1: hour 24 and second 60 are refused here (no stored
- * millisecond value can hold them), and digits beyond the millisecond are cut off, not rounded.
+ * corrections.md 2, point 8: the year 0000, hour 24 and second 60 are refused as no real calendar
+ * instant (R1), and digits beyond the millisecond are cut off, never rounded: the instant read is
+ * never later than the one written.
  */
 export function parseTimestamp(text: string): TimestampReading {
   if (!hasTimestampShape(text)) return { ok: false, reason: "pattern" };
@@ -69,7 +73,7 @@ export function parseTimestamp(text: string): TimestampReading {
   const hour = Number(text.slice(11, 13));
   const minute = Number(text.slice(14, 16));
   const second = Number(text.slice(17, 19));
-  if (month < 1 || month > 12 || day < 1 || day > daysInMonth(year, month)) {
+  if (year < 1 || month < 1 || month > 12 || day < 1 || day > daysInMonth(year, month)) {
     return { ok: false, reason: "calendar" };
   }
   if (hour > 23 || minute > 59 || second > 59) return { ok: false, reason: "calendar" };
@@ -87,10 +91,16 @@ export function parseTimestamp(text: string): TimestampReading {
   return { ok: true, ms, canonical, lossy };
 }
 
-/** Write an instant as writers must: three fraction digits. Null when it is outside years 0000 to 9999. */
+/**
+ * Write an instant as writers must: three fraction digits. Null when it is outside the years 0001
+ * to 9999. A fraction of a millisecond is cut, never rounded (point 8): the text is never later
+ * than the instant.
+ */
 export function formatTimestamp(ms: number): string | null {
-  if (!Number.isFinite(ms) || ms < MIN_MS || ms > MAX_MS) return null;
-  return new Date(ms).toISOString();
+  if (!Number.isFinite(ms)) return null;
+  const whole = Math.floor(ms);
+  if (whole < MIN_MS || whole > MAX_MS) return null;
+  return new Date(whole).toISOString();
 }
 
 /** The interchange text of a stored date, or null when the date is invalid or out of range. */

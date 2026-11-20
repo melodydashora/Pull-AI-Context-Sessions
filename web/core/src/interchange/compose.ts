@@ -1,5 +1,7 @@
 // Unicode Normalization Form C in bounded time, for the two rules of docs/data-model.md that
-// compare text in composed form: search (8.1) and project names (8.4).
+// compare text in composed form: search (8.1) and project names (8.4). The reader and the merge
+// compare project names of a stranger's file (R11, 6.7 step 2), so the one implementation lives in
+// this folder and the vault functions take it from here.
 //
 // The result is exactly that of String.prototype.normalize("NFC"). Called on its own, that method
 // sorts a run of combining marks by insertion: 400,000 marks in the wrong order take minutes, and a

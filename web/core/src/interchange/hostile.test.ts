@@ -222,6 +222,7 @@ describe("wrong types at every level", () => {
   it("a value of the wrong type at any place is reported at that place, and never thrown about", () => {
     let refused = 0;
     let defaulted = 0;
+    let discarded = 0;
     for (const path of paths) {
       const demand = demandedType(path, original);
       if (demand === undefined) continue;
@@ -240,6 +241,22 @@ describe("wrong types at every level", () => {
           expect(blamed, label).toEqual([]);
           if (!read.ok) expect(rules(read.problems.items), label).toEqual(["R7"]);
           else defaulted += 1;
+          continue;
+        }
+        if (path[path.length - 1] === "data_base64") {
+          // corrections.md 2, point 7 (repair 9): data_base64 that is not a string is removed
+          // with a warning and the descriptor stays. Only a writer is refused for it.
+          const at = pointer(path);
+          expect(read.ok, label).toBe(true);
+          if (read.ok) {
+            expect(
+              read.warnings.items.map((warning) => `${warning.code} ${warning.path}`),
+              label,
+            ).toEqual([`bytes_discarded ${at}`]);
+          }
+          expect(validateDocument(document).ok, label).toBe(false);
+          expect(ajvValidate(document), label).toBe(false);
+          discarded += 1;
           continue;
         }
         expect(read.ok, label).toBe(false);
@@ -271,6 +288,8 @@ describe("wrong types at every level", () => {
     }
     expect(refused).toBeGreaterThan(2000);
     expect(defaulted).toBeGreaterThan(40);
+    // Two attachments of the example carry bytes; seven samples are neither a string nor null.
+    expect(discarded).toBe(2 * 7);
   });
 
   it("any sample value at any place, also inside unknown properties, gives a verdict that Ajv shares", () => {
@@ -930,19 +949,21 @@ describe("huge strings", () => {
         },
         true,
       ],
+      // corrections.md 2, G2: a provider or a role of more than 200 characters is refused before
+      // any normalisation, also when trimming would leave nothing.
       [
         "provider of spaces",
         (d) => {
           d.sessions[0].provider = " ".repeat(MEGA);
         },
-        true,
+        false,
       ],
       [
         "role",
         (d) => {
           d.sessions[0].messages[0].role = big;
         },
-        true,
+        false,
       ],
       [
         "project name of spaces",

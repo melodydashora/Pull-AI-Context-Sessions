@@ -399,7 +399,7 @@ describe("8.1 search: the functions here return what the printed ones return", (
   });
 });
 
-describe("8.2 tags: parseTags returns what the printed one returns", () => {
+describe("8.2 tags: parseTags returns what the printed one returns, with the expression of corrections.md 2, point 1", () => {
   // Tags from a small pool, so that repeats, leading "#" and empty parts are common.
   const part = fc.oneof(
     {
@@ -413,14 +413,48 @@ describe("8.2 tags: parseTags returns what the printed one returns", () => {
     .tuple(fc.array(part, { maxLength: 7, size: "max" }), fc.constantFrom(",", ", ", " ,", ",,"))
     .map(([parts, separator]) => parts.join(separator));
 
-  it("on fields of every kind, and so does the copy the interchange module keeps", () => {
+  // The expression 8.2 prints, and the one corrections.md 2, point 1 decides in its place. Until
+  // the decision is written into data-model.md, the document prints the first and corrections.md
+  // gives the second; afterwards the document prints the second.
+  const FIRST_PRINTED = '.replace(/^#+/, "")';
+  const DECIDED = '.replace(/^[#\\s]+/, "")';
+  const block82 = BLOCKS[1] ?? "";
+  const CORRECTIONS = new TextDecoder("utf-8", { fatal: true }).decode(
+    readFileSync(new URL("corrections.md", DOCS)),
+  );
+
+  /** parseTags as the document prints it, with the decided expression in place. */
+  const decidedParseTags = ((): ((input: string) => unknown) => {
+    const script = ts.transpileModule(block82.replace(FIRST_PRINTED, DECIDED), {
+      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    }).outputText;
+    const module = {};
+    const load: unknown = vm.runInThisContext(`(function (exports) {${script}\n})`);
+    if (typeof load !== "function") throw new Error("the printed code did not compile to a function");
+    Reflect.apply(load, undefined, [module]);
+    const value: unknown = Reflect.get(module, "parseTags");
+    if (typeof value !== "function") throw new Error("block 8.2 prints no parseTags");
+    return (input) => Reflect.apply(value, undefined, [input]);
+  })();
+
+  it("the decided expression is the one of the documents: 8.2 prints it, or corrections.md gives it for 8.2", () => {
+    expect(block82).toContain("export function parseTags(input: string): string[]");
+    if (block82.includes(DECIDED)) {
+      expect(block82).not.toContain(FIRST_PRINTED);
+    } else {
+      expect(block82).toContain(`part.trim().toLowerCase()${FIRST_PRINTED}.trim()`);
+      expect(CORRECTIONS).toContain(`part.trim().toLowerCase()${DECIDED}.trim()`);
+    }
+  });
+
+  it("on fields of every kind; the interchange module and the vault functions share the one function", () => {
+    expect(interchangeParseTags).toBe(parseTags);
     const seen = { none: 0, several: 0, hash: 0, repeat: 0 };
     check(
       fc.property(field, (input) => {
-        const expected = doc.parseTags(input);
+        const expected = decidedParseTags(input);
         const tags = parseTags(input);
         expect(tags).toEqual(expected);
-        expect(interchangeParseTags(input)).toEqual(expected);
         if (tags.length === 0) seen.none += 1;
         if (tags.length > 1) seen.several += 1;
         const parts = input.split(",").map((part) => part.trim().toLowerCase());
@@ -434,6 +468,40 @@ describe("8.2 tags: parseTags returns what the printed one returns", () => {
     );
     // The generated fields really had empty results, several tags, leading "#" and repeats.
     for (const count of Object.values(seen)) expect(count).toBeGreaterThan(100);
+  });
+
+  it("departure decided in corrections.md 2, point 1: where the first printed one needs several passes, this one needs one", () => {
+    if (block82.includes(DECIDED)) return; // The document prints the decided expression already.
+    const firstPrinted = (input: string): string[] => {
+      const value = doc.parseTags(input);
+      if (!Array.isArray(value)) throw new Error("the printed parseTags returned no array");
+      return value.map((tag) => String(tag));
+    };
+    // The example of the decision: "# #a" gave "#a", and "#a" gave "a".
+    expect(firstPrinted("# #a")).toEqual(["#a"]);
+    expect(firstPrinted("#a")).toEqual(["a"]);
+    expect(parseTags("# #a")).toEqual(["a"]);
+    const seen = { differs: 0, same: 0 };
+    check(
+      fc.property(field, (input) => {
+        // The first printed function, applied to its own result until that no longer changes.
+        let settled = firstPrinted(input);
+        for (let pass = 0; pass < 50; pass++) {
+          const next = firstPrinted(settled.join(","));
+          if (next.length === settled.length && next.every((tag, i) => tag === settled[i])) break;
+          settled = next;
+        }
+        const tags = parseTags(input);
+        expect(tags).toEqual(settled);
+        // One pass is the fixed point here.
+        expect(parseTags(tags.join(","))).toEqual(tags);
+        if (firstPrinted(input).join(",") === tags.join(",")) seen.same += 1;
+        else seen.differs += 1;
+      }),
+      3000,
+    );
+    expect(seen.differs).toBeGreaterThan(20);
+    expect(seen.same).toBeGreaterThan(1000);
   });
 });
 

@@ -144,7 +144,6 @@ function findings(source: Source): string[] {
 describe("the non-test sources of the vault functions and the index of the package", () => {
   it("are all found", () => {
     expect(VAULT_SOURCES).toEqual([
-      "compose.ts",
       "context-pack.ts",
       "create-session.ts",
       "index.ts",

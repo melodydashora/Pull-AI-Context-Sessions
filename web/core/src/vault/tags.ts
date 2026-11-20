@@ -2,26 +2,11 @@
 
 import { compareCodePoints } from "./order.ts";
 
-/**
- * data-model.md 8.2: the tags of the comma-separated tag field. Trim, lower-case, strip leading
- * "#", drop empty tags and repeats (B3); the order of first appearance is kept.
- *
- * The results are those of the function printed in 8.2, which interchange/shared.ts holds
- * unchanged. That one looks every tag up in the list built so far and needs time quadratic in the
- * number of different tags; this one remembers them in a Set, so a long field costs linear time.
- */
-export function parseTags(input: string): string[] {
-  const out: string[] = [];
-  const seen = new Set<string>();
-  for (const part of input.split(",")) {
-    const tag = part.trim().toLowerCase().replace(/^#+/, "").trim();
-    if (tag !== "" && !seen.has(tag)) {
-      seen.add(tag);
-      out.push(tag);
-    }
-  }
-  return out;
-}
+// data-model.md 8.2 with corrections.md 2, point 1: the tags of the comma-separated tag field.
+// Trim, lower-case, strip the leading run of "#" and white space, drop empty tags and repeats
+// (B3); the order of first appearance is kept. The core has one parseTags: the reader's repair 4
+// and the tag field of the screens use the same function, so a stored tag is one the field gives.
+export { parseTags } from "../interchange/shared.ts";
 
 /** data-model.md 8.2: what the tag field shows for stored tags, `tags.join(", ")`. */
 export function formatTags(tags: readonly string[]): string {

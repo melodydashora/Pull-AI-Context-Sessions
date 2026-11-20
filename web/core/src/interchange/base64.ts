@@ -62,10 +62,11 @@ export function encodeBase64(bytes: Uint8Array): string {
 }
 
 /**
- * Base64 to bytes, or null when the text is not base64. Accepted: the standard alphabet, then no
- * padding or the padding that completes a group of four. White space, line breaks and the URL
- * alphabet are refused. Unused bits in the last character are ignored; the caller compares the
- * result with a hash anyway (R5).
+ * Base64 to bytes, or null when the text cannot be decoded. corrections.md 2, point 7: a reader
+ * accepts padding as optional. Accepted are only the characters A-Z a-z 0-9 + /, then at most two
+ * "="; without the "=" the length is not 1 modulo 4. White space, line breaks and the URL-safe
+ * alphabet are refused. Whether the "=" complete a group of four is not asked, and unused bits in
+ * the last character are ignored: length and hash judge the bytes (R5).
  */
 export function decodeBase64(text: string): Uint8Array | null {
   let end = text.length;
@@ -76,7 +77,6 @@ export function decodeBase64(text: string): Uint8Array | null {
   }
   const rest = end % 4;
   if (rest === 1) return null;
-  if (padding > 0 && (end + padding) % 4 !== 0) return null;
   const whole = end - rest;
   const out = new Uint8Array((whole / 4) * 3 + (rest === 0 ? 0 : rest - 1));
   let at = 0;

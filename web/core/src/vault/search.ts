@@ -5,7 +5,7 @@
 // Every function returns what the function of that name printed in 8.1 returns. Two of them do
 // less work than the printed ones on input built to be slow: see composedForm and matchesSearch.
 
-import { composedForm } from "./compose.ts";
+import { composedForm } from "../interchange/compose.ts";
 
 /** What search looks at in a session. */
 export interface SearchableSession {

@@ -122,14 +122,14 @@ Reported by the builder while implementing the transcript importer. The 57 fixtu
 
 Rules (import-rules.md):
 
-1. **W2, UTF-16** is decoded leniently: an odd last byte is ignored, and an unpaired surrogate becomes U+FFFD. The rule against a non-fatal decoder is about UTF-8, where a failure is what tells UTF-8 from windows-1252.
+1. **W2, UTF-16** is decoded leniently: decode the bytes in pairs; an odd last byte is ignored; an unpaired surrogate becomes U+FFFD. (Wording settled between the two sessions on 2026-11-20. `TextDecoder` alone does not do this: for an odd last byte it appends U+FFFD, measured on Node 24 and 25, and the reference port, which uses it, differs from the rule there until it is corrected in its web mode.) The rule against a non-fatal decoder is about UTF-8, where a failure is what tells UTF-8 from windows-1252.
 2. **W2, UTF-16 without a mark** needs at least two byte pairs before the zero-byte test applies.
 3. **W2, a UTF-8 mark followed by invalid UTF-8** falls through to the rows below with all its bytes. The user then sees the windows-1252 flag, and the three mark bytes as characters at the start, in the review step.
-4. **W1 is idempotent.** Step 1 removes every leading U+FEFF, not one. Every entry point applies W1, and `parseText` applies it again; twice changes nothing.
+4. **W1 is idempotent.** Step 1 removes the leading run of U+FEFF and U+0000: every U+FEFF at the start, also one that stands behind a U+0000. (Wording settled between the two sessions on 2026-11-20: "every leading U+FEFF" alone is not idempotent, because the later step that removes U+0000 can uncover another U+FEFF.) Every entry point applies W1, and `parseText` applies it again; twice changes nothing.
 5. **W4, `create_time`** gives a date only when it is a finite number whose instant lies in the years 0001 to 9999. For the order of nodes the number is used whenever it is finite.
 6. **W10, a capture title** is never blank and never holds U+0000. Every candidate goes through W1 and the full trim; the first that is not empty wins: typed name, detected title, the last non-empty path segment of the link (percent-decoded; if decoding fails, as written), the link itself, and last the constant `Captured session`.
 7. **W1 applies to every stored string**, also the title passed by the caller, the source link and the file-name stem.
-8. **"Empty" means empty after the full trim** wherever a W rule tests a title or a message for emptiness. A message of only U+000B, U+000C, U+0085, U+2028 or U+2029 is no message, and such a title falls back. What is stored for a message that is not empty does not change.
+8. **"Empty" means empty after the full trim** wherever a W rule tests a title or a message for emptiness. A message of only U+000B, U+000C, U+0085, U+2028 or U+2029 is no message, and such a title falls back. What is stored for a message that is not empty does not change, except what W6 says about text on a header line.
 9. **W8, marker words** are matched with ASCII case folding only. The claim about the Apple app becomes "identical for ASCII text". What Swift does for the builder's example (a marker spelled with U+0130) was not measured for this file.
 10. **`importFile` has a fourth outcome, `interchange`,** that carries the parsed document for a file whose `format` is `sessionvault-interchange`; the caller hands it to the interchange reader. It is never reported as `unrecognised_json`. `decodeBytes` returns the text as decoded, before W1.
 

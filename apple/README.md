@@ -6,7 +6,7 @@ Part of the [Pull-AI-Context-Sessions](https://github.com/melodydashora/Pull-AI-
 
 ## What it does
 
-- **Vault** — sessions stored locally with SwiftData. Browse by project folder (Vecto, Med, …), provider, tag, or pinned; search titles, summaries, and tags. A **Timeline** view shows every session grouped by month across all models, and each session's original date is editable.
+- **Vault** — sessions stored locally with SwiftData. Browse by project folder (Work, Research, …), provider, tag, or pinned; search titles, summaries, and tags. A **Timeline** view shows every session grouped by month across all models, and each session's original date is editable.
 - **Import** — four paths:
   - **From Link**: paste a shared session URL (e.g. `claude.ai/code/session_…`), log in as yourself in the built-in browser, press Capture — the app scroll-harvests the whole conversation and cleans it into a role-labeled transcript. claude.ai share pages get dedicated cleaning: boilerplate, truncated previews, duplicate lines, and timestamps are stripped, and "You said: / Claude responded:" headers become proper User/Assistant roles.
   - `.md` files written by `pull_sessions.py`

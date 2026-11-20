@@ -96,7 +96,7 @@ struct RootView: View {
             }
             Button("Cancel", role: .cancel) { newProjectName = "" }
         } message: {
-            Text("Group sessions by what you're working on — e.g. Vecto, Med, SessionVault.")
+            Text("Group sessions by what you're working on — e.g. Work, Research, Home.")
         }
         .alert("Rename Project", isPresented: renameAlertBinding, presenting: projectToRename) { project in
             TextField("Project name", text: $renameText)

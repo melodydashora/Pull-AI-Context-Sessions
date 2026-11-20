@@ -8,7 +8,7 @@ import { parseText } from "./parse-text.ts";
 import { parseUrl, percentDecode } from "./platform.ts";
 import { providerForUrl, providerFromLabels } from "./provider.ts";
 import { imported, rejected } from "./result.ts";
-import { isBlank, normaliseText, splitLines, trimFull } from "./text.ts";
+import { normaliseText, splitLines, trimFull } from "./text.ts";
 import type {
   CaptureImportResult,
   CaptureInput,
@@ -17,41 +17,59 @@ import type {
   ParsedSession,
 } from "./types.ts";
 
-// W10: the last non-empty path segment of the link, percent-decoded. null when the link has
-// none. W1 on the decoded text, which can hold what the link itself cannot (C5).
+/** corrections.md 3, point 6: the title of a capture when every other candidate is empty. */
+const LAST_TITLE = "Captured session";
+
+// corrections.md 3, point 6: every candidate goes through W1 and the full trim. The decoded
+// path segment needs W1 too: it can hold what the link itself cannot, U+0000 for one (C5).
+function titleCandidate(value: string): string {
+  return trimFull(normaliseText(value));
+}
+
+// W10: the last non-empty path segment of the link, percent-decoded; as written if decoding
+// fails. null when the link has none: it is no URL, or its path holds nothing but slashes.
 function lastPathSegment(sourceUrl: string): string | null {
   const url = parseUrl(sourceUrl);
   if (url === null) return null;
-  const segments = url.pathname.split("/").filter((segment) => segment !== "");
-  const last = segments[segments.length - 1];
-  if (last === undefined) return null;
-  return normaliseText(percentDecode(last) ?? last);
+  const path = url.pathname;
+  let end = path.length;
+  while (end > 0 && path.charCodeAt(end - 1) === 0x2f) end--;
+  if (end === 0) return null;
+  const segment = path.slice(path.lastIndexOf("/", end - 1) + 1, end);
+  return percentDecode(segment) ?? segment;
 }
 
 /**
- * W10: the first non-empty of the typed name, the detected title, the last path segment of
- * the link, the link. A capture of `https://host/` is called by its link, not `/` (D13).
- * D13 also rules out a title that is empty or all white space, so a blank candidate does not
- * count, and a capture with a blank link is an "Imported session" (W8).
+ * W10 with corrections.md 3, point 6: the first candidate that is not empty after W1 and the
+ * full trim: the typed name, the detected title, the last non-empty path segment of the link,
+ * the link itself, and last the constant "Captured session". So a title is never blank and
+ * never holds U+0000 (D13), and a capture of `https://host/` is called by its link, not `/`.
  */
 function captureTitle(typedName: string, detectedTitle: string, sourceUrl: string): string {
-  const typed = trimFull(typedName);
+  const typed = titleCandidate(typedName);
   if (typed !== "") return typed;
-  const detected = trimFull(detectedTitle);
+  const detected = titleCandidate(detectedTitle);
   if (detected !== "") return detected;
   const segment = lastPathSegment(sourceUrl);
-  if (segment !== null && !isBlank(segment)) return segment;
-  return isBlank(sourceUrl) ? "Imported session" : sourceUrl;
+  if (segment !== null) {
+    const fromPath = titleCandidate(segment);
+    if (fromPath !== "") return fromPath;
+  }
+  const link = titleCandidate(sourceUrl);
+  return link === "" ? LAST_TITLE : link;
 }
 
 // W10, kind "turns". The order of the steps on a turn is fixed: header lines and the chrome
 // test on the raw turn, then the cleaner, then the full trim, then the leading marker.
+// A dropped turn that `keepDropped` puts back is then treated like any kept turn, so one that
+// holds nothing but furniture lines still gives no message.
 function sessionFromTurns(
   turns: readonly string[],
   title: string,
   sourceUrl: string,
+  keepDropped: readonly number[] | undefined,
 ): { readonly session: ParsedSession | null; readonly dropped: DroppedTurn[] } {
-  const { kept, dropped } = stripChrome(turns);
+  const { kept, dropped } = stripChrome(turns, keepDropped);
   const messages: ParsedMessage[] = [];
   const labels: string[] = [];
   for (const turn of kept) {
@@ -103,6 +121,10 @@ function stringOr(value: unknown, fallback: string): string {
  * never applied to harvested turns (capture.md 7.4). Page text then goes to the text parsers;
  * turns lose leading and trailing page chrome, which is reported in `droppedTurns`, and are
  * cleaned one by one. Nothing left: `no_conversation_found`.
+ *
+ * `keepDropped` (W10 `keep_dropped`, kind "turns" only) puts dropped turns back: the user
+ * interface shows `droppedTurns` and repeats the call with the indexes the user chose.
+ * `droppedTurns` then holds only the turns that stay dropped.
  */
 export function importCapture(input: CaptureInput): CaptureImportResult {
   // Callers outside the type system: anything but a list of strings is no capture.
@@ -119,18 +141,14 @@ export function importCapture(input: CaptureInput): CaptureImportResult {
     return rejected("sign_in_suspected");
   }
 
-  // W1 on the link and the names too: they are stored with the session (C5).
+  // corrections.md 3, point 7: W1 on the link too, which is stored with the session (C5).
   const sourceUrl = normaliseText(stringOr(input.sourceUrl, ""));
-  const title = captureTitle(
-    normaliseText(stringOr(input.typedName, "")),
-    normaliseText(stringOr(input.detectedTitle, "")),
-    sourceUrl,
-  );
+  const title = captureTitle(stringOr(input.typedName, ""), stringOr(input.detectedTitle, ""), sourceUrl);
 
   if (kind === "page-text") {
     const session = sessionFromPageText(turns.join("\n"), title, sourceUrl);
     return session === null ? rejected("no_conversation_found") : imported([session]);
   }
-  const { session, dropped } = sessionFromTurns(turns, title, sourceUrl);
+  const { session, dropped } = sessionFromTurns(turns, title, sourceUrl, input.keepDropped);
   return session === null ? rejected("no_conversation_found", [], dropped) : imported([session], [], dropped);
 }

@@ -2,18 +2,30 @@
 // W12 and W14 beyond what the golden fixtures already pin down. All content is invented.
 
 import { describe, expect, it } from "vitest";
+import { parseChatGPTExport } from "./chatgpt-export.ts";
 import { cleanTranscriptLines } from "./cleaner.ts";
 import { parseContextPack } from "./context-pack.ts";
 import { parseGenericText } from "./generic-text.ts";
+import { importCapture } from "./import-capture.ts";
 import { parseText } from "./parse-text.ts";
 import { parsePullerMarkdown } from "./puller-markdown.ts";
 import { parseSharePageText } from "./share-page.ts";
 import type { ParsedSession } from "./types.ts";
 
 const chr = (...codes: number[]): string => String.fromCodePoint(...codes);
+const VT = chr(0x0b);
+const FF = chr(0x0c);
+const NEL = chr(0x85);
 const NBSP = chr(0xa0);
 const ZWSP = chr(0x200b);
 const LS = chr(0x2028);
+const PS = chr(0x2029);
+
+/**
+ * corrections.md 3, point 8: the five characters the full trim removes and the inline trim keeps,
+ * apart from LF and CR, which no line holds. A text of these alone is blank but not empty.
+ */
+const BLANK_NOT_EMPTY = [VT, FF, NEL, LS, PS, `${LS} ${NEL}${VT}`];
 
 const lines = (text: string): string[] => text.split("\n");
 const clean = (text: string): string => cleanTranscriptLines(lines(text)).join("\n");
@@ -638,5 +650,83 @@ describe("2.2 detection order", () => {
         for (const message of session.messages) expect(message.text).not.toBe("");
       }
     }
+  });
+});
+
+describe("corrections.md 3, point 8: 'empty' means empty after the full trim", () => {
+  const share = (text: string, title = "Pasted session") => parseSharePageText(lines(text), title);
+  const pull = (text: string, title = "file-stem") => parsePullerMarkdown(lines(text), title);
+  const generic = (text: string, title = "notes") => parseGenericText(text, lines(text), title);
+  const pack = (title: string, message: string) =>
+    parseContextPack(
+      lines(
+        `# Context pack: ${title}\n\n## Transcript\n\n**User:**\n\n${message}\n\n---\n\n**Assistant:**\n\na\n\n---\n`,
+      ),
+    );
+  const exportOf = (title: string, parts: string[]): unknown => ({
+    title,
+    mapping: {
+      a: { message: { author: { role: "user" }, content: { parts } } },
+      b: { message: { author: { role: "assistant" }, content: { parts: ["a"] } } },
+    },
+  });
+
+  it.each(BLANK_NOT_EMPTY)("W6: header-line text %j alone is no message", (blank) => {
+    // The header-line text is only inline-trimmed, which keeps these characters.
+    expect(turns(share(`You said: ${blank}\nClaude responded: a\nb`))).toEqual([["assistant", "b"]]);
+    expect(turns(share(`You said: q\nq\nClaude responded: ${blank}`))).toEqual([["user", "q"]]);
+    // No turn is left: the parser does not apply, and the generic parser stores no blank message either.
+    expect(share(`You said: ${blank}`)).toBeNull();
+    expect(turns(only(parseText(`You said: ${blank}`, "x")))).toEqual([["unknown", "You said:"]]);
+  });
+
+  it("W6: what is stored for a header-line text that is not empty does not change", () => {
+    expect(turns(share(`You said: x${LS}\nClaude responded: ${NEL}y\nYou said: q${VT}r`))).toEqual([
+      ["user", `x${LS}`],
+      ["assistant", `${NEL}y`],
+      ["user", `q${VT}r`],
+    ]);
+  });
+
+  it.each(BLANK_NOT_EMPTY)("W5: a puller title of %j alone falls back to the caller's title", (blank) => {
+    expect(only(pull(`# ${blank}\nSource: x\n\nq`, "  from the file  ") ?? []).title).toBe("from the file");
+    expect(only(pull(`# ${blank}\nSource: x\n\nq`, blank) ?? []).title).toBe("Imported session");
+  });
+
+  it("W5: a puller title that is not empty is stored as before, inline-trimmed", () => {
+    expect(only(pull(`#  t${LS} \nSource: x\n\nq`) ?? []).title).toBe(`t${LS}`);
+    expect(only(pull(`# ${NEL}t\nSource: x\n\nq`) ?? []).title).toBe(`${NEL}t`);
+  });
+
+  it.each(BLANK_NOT_EMPTY)("a message of %j alone is no message, whichever rule reads it", (blank) => {
+    // W5: a block of it, and a label followed by it.
+    const pulled = pull(`# t\nSource: x\n\n${blank}\n\n---\n\nUser: ${blank}\n\n---\n\nUser: q`);
+    expect(turns(only(pulled ?? []))).toEqual([["user", "q"]]);
+    expect(pull(`# t\nSource: x\n\n${blank}\n`)).toEqual([]);
+    // W8: after a marker, and as the whole text.
+    expect(turns(generic(`User: ${blank}\n${blank}\nAssistant: a`))).toEqual([["assistant", "a"]]);
+    expect(generic(`${blank}\n${blank}`)).toBeNull();
+    expect(parseText(blank, "x")).toEqual([]);
+    // W14: the text under a role line.
+    expect(turns(pack("T", blank))).toEqual([["assistant", "a"]]);
+    // W4: the joined parts of a node.
+    const exported = parseChatGPTExport(exportOf("T", [blank, ` ${blank}`]));
+    expect(exported?.map(turns)).toEqual([[["assistant", "a"]]]);
+    // W10: a captured turn of it, and a label followed by it.
+    const captured = importCapture({
+      sourceUrl: "https://example.invalid/x",
+      detectedTitle: null,
+      typedName: "",
+      kind: "turns",
+      turns: [blank, `Assistant\n${blank}`, "User: q"],
+    });
+    expect(turns(captured.sessions[0])).toEqual([["user", "q"]]);
+  });
+
+  it.each(BLANK_NOT_EMPTY)("a title of %j alone falls back, whichever rule reads it", (blank) => {
+    expect(generic("x", blank)?.title).toBe("Imported session"); // W8
+    expect(share("You said:\nq", blank)?.title).toBe("Imported session"); // W6
+    expect(pack(blank, "q")?.title).toBe("Imported session"); // W14
+    expect(parseChatGPTExport(exportOf(blank, ["q"]))?.[0]?.title).toBe("ChatGPT conversation"); // W4
   });
 });

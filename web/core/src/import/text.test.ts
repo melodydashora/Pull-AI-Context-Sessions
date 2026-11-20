@@ -214,11 +214,85 @@ describe("2.3 length (Swift String.count) and W15", () => {
   });
 });
 
+/** Texts made of what W1 acts on: marks, U+0000, CR, LF, surrogates, and a little of anything else. */
+const W1_PIECES = [BOM, BOM, NUL, NUL, "\r", "\n", HIGH, LOW, BICYCLE, "a", " "];
+const textForW1 = fc
+  .array(
+    fc.oneof(
+      { weight: 5, arbitrary: fc.constantFrom(...W1_PIECES) },
+      { weight: 1, arbitrary: fc.string({ unit: "binary", maxLength: 3 }) },
+    ),
+    { maxLength: 14 },
+  )
+  .map((pieces) => pieces.join(""));
+
+/** One pass of the four steps exactly as corrections.md 3, point 4, words them. Slow; for tests only. */
+function fourStepsOnce(text: string): string {
+  let result = text;
+  while (result.startsWith(BOM)) result = result.slice(1);
+  result = result.replace(/\r\n?/g, "\n").replaceAll(NUL, "");
+  return result.replace(LONE_SURROGATES, REPLACEMENT);
+}
+
 describe("W1 normalise text at the boundary", () => {
-  it("(1) removes one leading U+FEFF, and only one, and only at the start", () => {
+  it("(1) removes EVERY leading U+FEFF, and only at the start (corrections.md 3, point 4)", () => {
     expect(normaliseText(`${BOM}abc`)).toBe("abc");
-    expect(normaliseText(`${BOM}${BOM}abc`)).toBe(`${BOM}abc`);
+    expect(normaliseText(`${BOM}${BOM}abc`)).toBe("abc");
+    expect(normaliseText(`${BOM.repeat(7)}abc`)).toBe("abc");
+    expect(normaliseText(BOM.repeat(3))).toBe("");
     expect(normaliseText(`a${BOM}bc`)).toBe(`a${BOM}bc`);
+    expect(normaliseText(` ${BOM}abc`)).toBe(` ${BOM}abc`);
+    expect(normaliseText(`${BOM}\n${BOM}abc`)).toBe(`\n${BOM}abc`);
+  });
+
+  it("is idempotent: applying it twice changes nothing (corrections.md 3, point 4)", () => {
+    const samples = [
+      `${BOM}${BOM}a`,
+      `${NUL}${BOM}a`,
+      `${BOM}${NUL}${BOM}${NUL}${BOM}a`,
+      `${NUL}${NUL}${BOM}`,
+      `\r${BOM}a`,
+      `${BOM}\r\n${BOM}a`,
+      `${HIGH}${NUL}${LOW}`,
+      `${BOM}${HIGH}`,
+      `a\r${NUL}\nb`,
+      "",
+    ];
+    for (const sample of samples) {
+      const once = normaliseText(sample);
+      expect(normaliseText(once), JSON.stringify(sample)).toBe(once);
+    }
+    let withLeadingMarks = 0;
+    fc.assert(
+      fc.property(textForW1, (value) => {
+        if (value.startsWith(BOM) || value.startsWith(NUL)) withLeadingMarks++;
+        const once = normaliseText(value);
+        expect(normaliseText(once)).toBe(once);
+        expect(normaliseText(normaliseText(once))).toBe(once);
+        // What makes a second pass idle: no mark at the start, nothing left for steps 2 to 4.
+        expect(once.startsWith(BOM)).toBe(false);
+      }),
+      { seed: 20261120, numRuns: 3000 },
+    );
+    expect(withLeadingMarks).toBeGreaterThan(500);
+  });
+
+  it("a U+0000 in front of a mark does not hide it: the result is that of the four steps applied twice", () => {
+    // Read to the letter, one pass leaves the mark at the start and a second pass removes it.
+    expect(fourStepsOnce(`${NUL}${BOM}a`)).toBe(`${BOM}a`);
+    expect(fourStepsOnce(fourStepsOnce(`${NUL}${BOM}a`))).toBe("a");
+    expect(normaliseText(`${NUL}${BOM}a`)).toBe("a");
+    expect(normaliseText(`${BOM}${NUL}${NUL}${BOM}${BOM}a${BOM}`)).toBe(`a${BOM}`);
+    // Only at the start: elsewhere the steps keep their order (a CR is replaced before a U+0000 goes).
+    expect(normaliseText(`${NUL}\r${NUL}\n${BOM}`)).toBe(`\n\n${BOM}`);
+    fc.assert(
+      fc.property(textForW1, (value) => {
+        expect(normaliseText(value)).toBe(fourStepsOnce(fourStepsOnce(value)));
+        // And one pass to the letter is all it takes whenever no U+0000 stands before a mark.
+        if (!fourStepsOnce(value).startsWith(BOM)) expect(normaliseText(value)).toBe(fourStepsOnce(value));
+      }),
+      { seed: 20261120, numRuns: 3000 },
+    );
   });
 
   it("(2) replaces CR LF by LF, then every remaining CR by LF", () => {
@@ -275,8 +349,8 @@ describe("W1 normalise text at the boundary", () => {
         expect(normal.includes("\r")).toBe(false);
         expect(normal.includes(NUL)).toBe(false);
         expect(normal.replace(LONE_SURROGATES, "")).toBe(normal);
-        // A second pass changes nothing, except that it would remove one more leading U+FEFF.
-        if (!normal.startsWith(BOM)) expect(normaliseText(normal)).toBe(normal);
+        // A second pass changes nothing at all (corrections.md 3, point 4).
+        expect(normaliseText(normal)).toBe(normal);
       }),
       { seed: 20261120, numRuns: 1000 },
     );

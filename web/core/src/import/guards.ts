@@ -101,10 +101,27 @@ export function stripLeadingHeaderLines(text: string): string {
 }
 
 export interface ChromeStripResult {
-  /** The turns that stay, the first one without its header lines. */
+  /**
+   * The turns that stay, in input order: the first one the scan kept without its header
+   * lines, and among them every dropped turn that `keepDropped` put back.
+   */
   readonly kept: string[];
-  /** The turns removed as page chrome, in input order. */
+  /** The turns removed as page chrome that stay removed, in input order. */
   readonly dropped: DroppedTurn[];
+}
+
+// W10 "restore": `keep_dropped` is a list of input indexes, empty when absent. Whatever is
+// no index of a turn names no dropped turn and is ignored; so is a value of another type
+// from a caller outside the type system. A set, so that a long list costs one pass.
+function restoredIndexes(keepDropped: unknown, turnCount: number): ReadonlySet<number> {
+  const indexes = new Set<number>();
+  if (!Array.isArray(keepDropped)) return indexes;
+  for (const value of keepDropped) {
+    if (typeof value === "number" && Number.isInteger(value) && value >= 0 && value < turnCount) {
+      indexes.add(value);
+    }
+  }
+  return indexes;
 }
 
 /**
@@ -112,8 +129,11 @@ export interface ChromeStripResult {
  * From the front: header lines are stripped first and the rest is judged (D4, fixture 42);
  * a chrome turn is dropped, the first other turn is kept without its header lines.
  * From the end: turns are dropped while they are chrome, never the first kept turn.
+ * Restore: `keepDropped` does not change the two scans. Afterwards every dropped turn whose
+ * index is in the list goes back to its place in input order: one dropped from the front as
+ * `stripLeadingHeaderLines` left it, one dropped from the end as it is.
  */
-export function stripChrome(turns: readonly string[]): ChromeStripResult {
+export function stripChrome(turns: readonly string[], keepDropped?: readonly number[]): ChromeStripResult {
   let first = 0;
   let firstStripped: string | null = null;
   while (first < turns.length) {
@@ -127,15 +147,19 @@ export function stripChrome(turns: readonly string[]): ChromeStripResult {
   let end = turns.length;
   while (end - 1 > first && isChromeTurn(turns[end - 1] ?? "")) end--;
 
+  const restored = restoredIndexes(keepDropped, turns.length);
+  const kept: string[] = [];
   const dropped: DroppedTurn[] = [];
-  for (let index = 0; index < first; index++) {
-    dropped.push({ position: "leading", index, text: turns[index] ?? "" });
+  for (let index = 0; index < turns.length; index++) {
+    const turn = turns[index] ?? "";
+    if (index >= first && index < end) {
+      kept.push(index === first && firstStripped !== null ? firstStripped : turn);
+    } else if (restored.has(index)) {
+      kept.push(index < first ? stripLeadingHeaderLines(turn) : turn);
+    } else {
+      dropped.push({ position: index < first ? "leading" : "trailing", index, text: turn });
+    }
   }
-  for (let index = end; index < turns.length; index++) {
-    dropped.push({ position: "trailing", index, text: turns[index] ?? "" });
-  }
-  const kept = turns.slice(first, end);
-  if (firstStripped !== null && kept.length > 0) kept[0] = firstStripped;
   return { kept, dropped };
 }
 
@@ -151,7 +175,14 @@ export function looksLikeSignInWall(turns: readonly string[]): boolean {
 /**
  * The page-chrome stripper of W10 for the turns of a capture. W1 is applied to each string
  * first; `dropped` holds the normalised texts with their positions in the input.
+ *
+ * `keepDropped` (W10 `keep_dropped`) lists input indexes of dropped turns that the user wants
+ * back: each returns to its place among `kept` and leaves `dropped`. An index that names no
+ * dropped turn is ignored.
  */
-export function stripChromeTurns(turns: readonly string[]): ChromeStripResult {
-  return stripChrome(turns.map(normaliseText));
+export function stripChromeTurns(
+  turns: readonly string[],
+  keepDropped?: readonly number[],
+): ChromeStripResult {
+  return stripChrome(turns.map(normaliseText), keepDropped);
 }

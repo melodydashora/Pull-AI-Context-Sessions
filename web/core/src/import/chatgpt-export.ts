@@ -20,13 +20,13 @@ function member(object: JsonObject, key: string): unknown {
   return Object.hasOwn(object, key) ? object[key] : undefined;
 }
 
-/** First and last millisecond that RFC 3339 can write: years 0000 to 9999. */
-const EARLIEST_MS = -62_167_219_200_000;
+/** First and last millisecond of the years 0001 to 9999: 0001-01-01T00:00:00.000Z, 9999-12-31T23:59:59.999Z. */
+const EARLIEST_MS = -62_135_596_800_000;
 const LATEST_MS = 253_402_300_799_999;
 
-// W4: `create_time` counts only when it is a finite number; seconds since 1970, milliseconds kept.
-// A number outside the years 0000 to 9999 has no RFC 3339 form (README "Result format") and
-// counts as no date.
+// W4 with corrections.md 3, point 5: `create_time` gives a date only when it is a finite number
+// whose instant lies in the years 0001 to 9999 (the years a timestamp of the interchange format
+// can have). Seconds since 1970; milliseconds kept, what lies below them cut.
 function timestampOf(value: unknown): string | null {
   if (typeof value !== "number") return null;
   const milliseconds = Math.floor(value * 1000);
@@ -34,11 +34,13 @@ function timestampOf(value: unknown): string | null {
   return new Date(milliseconds).toISOString();
 }
 
-// W4: `message.create_time` when it is a number, else 0.
+// W4 with corrections.md 3, point 5: for the ORDER of nodes `message.create_time` is used
+// whenever it is a finite number, also one that is far outside the years a date can have.
+// Anything else, an infinite number included, counts as 0.
 function messageTime(mappingNode: JsonObject): number {
   const message = member(mappingNode, "message");
   const time = isJsonObject(message) ? member(message, "create_time") : undefined;
-  return typeof time === "number" ? time : 0;
+  return typeof time === "number" && Number.isFinite(time) ? time : 0;
 }
 
 // 2.5.1: the branch that ends at `current_node`, oldest node first. W4: a set of visited ids
@@ -63,7 +65,16 @@ function sameKeys(textOrder: readonly string[], own: readonly string[]): boolean
   return textOrder.every((key) => ownSet.has(key));
 }
 
-const DIGITS_ONLY = /^[0-9]+$/;
+// True for a key made of ASCII digits only: what JSON.parse may have moved to the front.
+// A loop, not a pattern: a key is as long as a stranger makes it.
+function isDigitsOnly(key: string): boolean {
+  if (key === "") return false;
+  for (let index = 0; index < key.length; index++) {
+    const code = key.charCodeAt(index);
+    if (code < 0x30 || code > 0x39) return false;
+  }
+  return true;
+}
 
 type KeysOfMapping = (mapping: JsonObject, conversation: number) => string[];
 
@@ -73,7 +84,7 @@ function keysInTextOrder(jsonText: string | undefined): KeysOfMapping {
   let orders: Map<number, string[]> | null = null;
   return (mapping, conversation) => {
     const own = Object.keys(mapping);
-    if (jsonText === undefined || !own.some((key) => DIGITS_ONLY.test(key))) return own;
+    if (jsonText === undefined || !own.some(isDigitsOnly)) return own;
     orders ??= readMappingKeyOrders(jsonText);
     const textOrder = [...new Set(orders.get(conversation) ?? [])];
     // Used only when it names exactly the keys the parsed object has.
@@ -89,8 +100,8 @@ function nodesByTime(mapping: JsonObject, keys: readonly string[]): JsonObject[]
     const value = member(mapping, key);
     if (isJsonObject(value)) entries.push({ value, time: messageTime(value), position: entries.length });
   }
-  // Two infinite times differ by NaN, which counts as a tie.
-  entries.sort((a, b) => a.time - b.time || a.position - b.position);
+  // The times are finite, so their order is total; equal times fall back to the position.
+  entries.sort((a, b) => (a.time < b.time ? -1 : a.time > b.time ? 1 : a.position - b.position));
   return entries.map((entry) => entry.value);
 }
 

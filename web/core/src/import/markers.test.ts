@@ -154,16 +154,122 @@ describe("D18 accidents of the string library are not copied", () => {
     expect(marker(`User:${COMBINING_ACUTE} q`)).toEqual(["user", `${COMBINING_ACUTE} q`]);
   });
 
-  it("matches the names without regard to case, as lower-casing the whole line does", () => {
-    expect(marker("cLaUdE rEsPoNdEd: x")).toEqual(["assistant", "x"]);
-    // "I with dot above" lower-cases to "i" plus a combining dot: the match is the "ignore the rest" of D18.
-    expect(marker(`A${CAPITAL_I_WITH_DOT}: x`)).toEqual(["assistant", "x"]);
-  });
-
   it("looks only at the start of a very long line", () => {
     const long = `User: ${"x".repeat(100_000)}`;
     expect(roleMarker(long)?.rest.length).toBe(100_000);
     expect(roleMarker(`${"x".repeat(100_000)} User: q`)).toBeNull();
+  });
+});
+
+describe("corrections.md 3, point 9: marker words are matched with ASCII case folding only", () => {
+  /** The names of 2.4, in the order they are tried. */
+  const NAMES = [
+    "you said",
+    "claude responded",
+    "claude said",
+    "chatgpt said",
+    "gemini said",
+    "user",
+    "human",
+    "you",
+    "me",
+    "assistant",
+    "claude",
+    "chatgpt",
+    "gpt",
+    "gemini",
+    "ai",
+    "system",
+  ];
+
+  it("folds the letters A to Z, in any mixture", () => {
+    expect(marker("cLaUdE rEsPoNdEd: x")).toEqual(["assistant", "x"]);
+    expect(marker("YOU SAID: x")).toEqual(["user", "x"]);
+    expect(roleMarker("GEMINI")).toEqual({ role: "assistant", rest: "", name: "gemini", bare: true });
+    for (const name of NAMES) {
+      expect(roleMarker(`${name.toUpperCase()}: q`)?.name, name).toBe(name);
+      expect(roleMarker(`${name}: q`)?.name, name).toBe(name);
+    }
+  });
+
+  it("U+0130 is part of no marker, although toLowerCase() makes an 'i' and a combining dot of it", () => {
+    // What a port that lower-cases the line matches: the reference port takes all of these for markers.
+    expect(`A${CAPITAL_I_WITH_DOT}: x`.toLowerCase().startsWith("ai")).toBe(true);
+    expect(roleMarker(`A${CAPITAL_I_WITH_DOT}: x`)).toBeNull();
+    expect(roleMarker(`a${CAPITAL_I_WITH_DOT}:`)).toBeNull();
+    expect(roleMarker(`GEMIN${CAPITAL_I_WITH_DOT}`)).toBeNull();
+    expect(roleMarker(`Gemin${CAPITAL_I_WITH_DOT}: x`)).toBeNull();
+    expect(roleMarker(`**Gemin${CAPITAL_I_WITH_DOT}**`)).toBeNull();
+    expect(roleMarker(`## A${CAPITAL_I_WITH_DOT}: x`)).toBeNull();
+    // Behind a marker it is ordinary text.
+    expect(marker(`AI: ${CAPITAL_I_WITH_DOT}zmir`)).toEqual(["assistant", `${CAPITAL_I_WITH_DOT}zmir`]);
+    // So a block or a captured turn that starts with such a line has no role.
+    expect(splitLeadingRoleMarker(`GEMIN${CAPITAL_I_WITH_DOT}\nthe answer`)).toBeNull();
+  });
+
+  it("no character outside ASCII stands in for a letter of a name", { timeout: 120_000 }, () => {
+    // Every character that any case mapping or compatibility mapping turns into ASCII letters:
+    // the Kelvin sign, the long s, the dotless i, full-width and mathematical letters, ligatures.
+    const lookalikes: string[] = [];
+    for (let code = 0x80; code <= 0x10ffff; code++) {
+      if (code >= 0xd800 && code <= 0xdfff) continue;
+      const character = String.fromCodePoint(code);
+      const mapped = character.toLowerCase() + character.toUpperCase() + character.normalize("NFKC");
+      if (/[A-Za-z]/.test(mapped)) lookalikes.push(character);
+    }
+    expect(lookalikes.length).toBeGreaterThan(1000);
+    expect(lookalikes).toContain(CAPITAL_I_WITH_DOT);
+    expect(lookalikes).toContain(chr(0x212a)); // KELVIN SIGN
+    expect(lookalikes).toContain(chr(0x17f)); // LATIN SMALL LETTER LONG S
+    let tried = 0;
+    for (const character of lookalikes) {
+      for (const name of NAMES) {
+        for (let position = 0; position < name.length; position++) {
+          if (name.charAt(position) === " ") continue;
+          const spelled = name.slice(0, position) + character + name.slice(position + 1);
+          tried++;
+          if (roleMarker(`${spelled}: q`) !== null || roleMarker(spelled) !== null) {
+            throw new Error(
+              `U+${character.codePointAt(0)?.toString(16)} at ${position} of "${name}" is a marker`,
+            );
+          }
+        }
+      }
+    }
+    expect(tried).toBeGreaterThan(100_000);
+  });
+
+  it("for ASCII lines the result is that of lower-casing the whole line (2.4)", () => {
+    // The Apple rule of 2.4 in the web form of W8, written with toLowerCase().
+    const lowerCased = (line: string): string | null => {
+      const candidate = line.trim().replace(/^#+/, "").trim().replace(/^\*\*/, "");
+      const lowered = candidate.toLowerCase();
+      for (const name of NAMES) {
+        if (!lowered.startsWith(name)) continue;
+        const after = candidate.slice(name.length).replace(/^\*\*/, "");
+        if (after === "" && ["user", "human", "assistant", "claude", "chatgpt", "gemini"].includes(name))
+          return name;
+        if (after.startsWith(":")) return name;
+      }
+      return null;
+    };
+    const mixedCase = (name: string, pattern: number): string =>
+      Array.from(name, (letter, index) => ((pattern >> index) & 1 ? letter.toUpperCase() : letter)).join("");
+    let markers = 0;
+    for (const name of [...NAMES, "users", "ai assistant", "gemin", "a"]) {
+      for (let pattern = 0; pattern < 64; pattern++) {
+        for (const line of [
+          `${mixedCase(name, pattern * 37)}: q`,
+          mixedCase(name, pattern * 41),
+          `## **${mixedCase(name, pattern * 43)}:** q`,
+        ]) {
+          const found = roleMarker(line)?.name ?? null;
+          expect(found, line).toBe(lowerCased(line));
+          if (found !== null) markers++;
+        }
+      }
+    }
+    expect(markers).toBeGreaterThan(1000);
   });
 });
 

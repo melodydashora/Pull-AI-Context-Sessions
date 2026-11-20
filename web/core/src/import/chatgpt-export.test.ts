@@ -162,12 +162,39 @@ describe("2.5.1 and W4: which nodes, in which order", () => {
     expect(texts(parseChatGPTExport({ mapping }))).toEqual([ids]);
   });
 
-  it("time order: an infinite time sorts last and ties among them keep the key order", () => {
+  it("time order: a number counts whenever it is finite, however far from any date (corrections.md 3, point 5)", () => {
+    const at = (time: string, text: string): string =>
+      `{"message":{"author":{"role":"user"},"create_time":${time},"content":{"parts":["${text}"]}}}`;
+    // None of these but 5 and 0 is a time a date could have; all of them order the nodes.
     const text =
-      '{"mapping":{"a":{"message":{"author":{"role":"user"},"create_time":1e999,"content":{"parts":["inf a"]}}},' +
-      '"b":{"message":{"author":{"role":"user"},"create_time":5,"content":{"parts":["five"]}}},' +
-      '"c":{"message":{"author":{"role":"user"},"create_time":1e999,"content":{"parts":["inf c"]}}}}}';
-    expect(texts(fromText(text))).toEqual([["five", "inf a", "inf c"]]);
+      `{"mapping":{"a":${at("1e300", "huge")},"b":${at("5", "five")},"c":${at("253402300800", "year 10000")},` +
+      `"d":${at("-1e300", "minus huge")},"e":${at("0", "zero")},"f":${at("-62167219200", "year 0")},` +
+      `"g":${at("0.0005", "half a millisecond")}}}`;
+    expect(texts(fromText(text))).toEqual([
+      ["minus huge", "year 0", "zero", "half a millisecond", "five", "year 10000", "huge"],
+    ]);
+  });
+
+  it("time order: a time that is not finite counts as 0, like one that is no number (corrections.md 3, point 5)", () => {
+    const at = (time: string, text: string): string =>
+      `{"message":{"author":{"role":"user"},"create_time":${time},"content":{"parts":["${text}"]}}}`;
+    // JSON.parse reads 1e999 as Infinity. It does not sort last, and -1e999 does not sort first.
+    const text =
+      `{"mapping":{"a":${at("1e999", "inf a")},"b":${at("5", "five")},"c":${at("-1e999", "minus inf c")},` +
+      `"d":${at("-3", "minus three")},"e":${at("0", "zero")},"f":${at("1e999", "inf f")}}}`;
+    expect(texts(fromText(text))).toEqual([["minus three", "inf a", "minus inf c", "zero", "inf f", "five"]]);
+    // The same for values that JSON cannot write but a caller can pass.
+    const timed = (time: number, part: string): object => ({
+      message: { author: { role: "user" }, create_time: time, content: { parts: [part] } },
+    });
+    const mapping = {
+      a: timed(Number.NaN, "nan"),
+      b: timed(1, "one"),
+      c: timed(Number.POSITIVE_INFINITY, "inf"),
+      d: timed(-1, "minus one"),
+      e: timed(Number.NEGATIVE_INFINITY, "minus inf"),
+    };
+    expect(texts(parseChatGPTExport({ mapping }))).toEqual([["minus one", "nan", "inf", "minus inf", "one"]]);
   });
 });
 
@@ -371,7 +398,8 @@ describe("2.5.1 and W4: messages, titles and dates", () => {
     [1789000000.5, "2026-09-10T00:26:40.500Z"],
     [1789000000.0009, "2026-09-10T00:26:40.000Z"],
     [-1.5, "1969-12-31T23:59:58.500Z"],
-    [-62167219200, "0000-01-01T00:00:00.000Z"],
+    // The first and the last millisecond of the years 0001 to 9999 (corrections.md 3, point 5).
+    [-62135596800, "0001-01-01T00:00:00.000Z"],
     [253402300799.999, "9999-12-31T23:59:59.999Z"],
   ])("create_time %d is the date %s (seconds since 1970, milliseconds kept)", (seconds, expected) => {
     const sessions = parseChatGPTExport({ create_time: seconds, mapping: { a: node("user", "x") } });
@@ -395,25 +423,59 @@ describe("2.5.1 and W4: messages, titles and dates", () => {
     expect(fromText(text.replace("1e999", "-1e999"))?.[0]?.createdAt).toBeNull();
   });
 
-  it("a create_time outside the years 0000 to 9999 has no RFC 3339 form and is no date", () => {
+  it("a create_time outside the years 0001 to 9999 is no date (corrections.md 3, point 5)", () => {
     const date = (seconds: number): string | null | undefined =>
       parseChatGPTExport({ create_time: seconds, mapping: { a: node("user", "x") } })?.[0]?.createdAt;
     expect(date(253402300800)).toBeNull(); // the first second of the year 10000
+    expect(date(-62135596800.001)).toBeNull(); // the last millisecond of the year 0000
+    expect(date(-62135596801)).toBeNull(); // the last second of the year 0000
+    // The year 0000 has an RFC 3339 form, but no timestamp of the interchange format may carry it.
+    expect(date(-62167219200)).toBeNull(); // 0000-01-01T00:00:00Z
+    expect(date(-62150000000)).toBeNull(); // in the middle of the year 0000
     expect(date(-62167219200.001)).toBeNull(); // the last millisecond of the year -1
     expect(date(1e15)).toBeNull();
     expect(date(1e300)).toBeNull();
     expect(date(-1e300)).toBeNull();
+    // The neighbours on the inside are dates.
+    expect(date(-62135596800)).toBe("0001-01-01T00:00:00.000Z");
+    expect(date(-62135596799.999)).toBe("0001-01-01T00:00:00.001Z");
+    expect(date(253402300799)).toBe("9999-12-31T23:59:59.000Z");
   });
 
-  it("every date it returns has the form the interchange schema demands", () => {
+  it("a date is returned exactly for the instants of the years 0001 to 9999, in the form the interchange schema demands", () => {
     const form = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$/;
-    fc.assert(
-      fc.property(fc.double({ noNaN: true }), (seconds) => {
-        const sessions = parseChatGPTExport({ create_time: seconds, mapping: { a: node("user", "x") } });
-        const createdAt = sessions?.[0]?.createdAt;
-        if (createdAt !== null && createdAt !== undefined) expect(createdAt).toMatch(form);
-      }),
-      { seed: 20261120, numRuns: 1000 },
+    // What the platform prints for the instant: four digits for the years 0000 to 9999, a sign
+    // and six digits outside them, an exception when the instant is beyond what Date can hold.
+    const printed = (seconds: number): string | null => {
+      try {
+        return new Date(Math.floor(seconds * 1000)).toISOString();
+      } catch {
+        return null;
+      }
+    };
+    const seconds = fc.oneof(
+      fc.double({ noNaN: true }),
+      // Around the two ends of the range, and across it.
+      fc.double({ min: -62_135_596_800 - 40_000_000, max: -62_135_596_800 + 40_000_000, noNaN: true }),
+      fc.double({ min: 253_402_300_800 - 40_000_000, max: 253_402_300_800 + 40_000_000, noNaN: true }),
+      fc.double({ min: -62_135_596_800, max: 253_402_300_800, noNaN: true }),
+      fc.constantFrom(-62_135_596_800, -62_135_596_800.001, 253_402_300_799.999, 253_402_300_800, 0),
     );
+    let dates = 0;
+    let refused = 0;
+    fc.assert(
+      fc.property(seconds, (value) => {
+        const sessions = parseChatGPTExport({ create_time: value, mapping: { a: node("user", "x") } });
+        const createdAt = sessions?.[0]?.createdAt ?? null;
+        const iso = printed(value);
+        const expected = iso !== null && form.test(iso) && !iso.startsWith("0000-") ? iso : null;
+        expect(createdAt).toBe(expected);
+        if (createdAt === null) refused++;
+        else dates++;
+      }),
+      { seed: 20261120, numRuns: 3000 },
+    );
+    expect(dates).toBeGreaterThan(500);
+    expect(refused).toBeGreaterThan(500);
   });
 });

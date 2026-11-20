@@ -7,7 +7,15 @@ import { hasFewerGraphemesThan, normaliseText, trimFull } from "./text.ts";
 /** 2.10: the longest text treated as a link, in user-perceived characters (W15). */
 const LINK_LIMIT = 500;
 
-const TWO_OR_MORE_LETTERS = /^[a-z]{2,}$/i;
+// capture.md 8.1: a label of two or more letters, A to Z in either case. A loop, not a pattern.
+function isTwoOrMoreLetters(label: string): boolean {
+  if (label.length < 2) return false;
+  for (let index = 0; index < label.length; index++) {
+    const code = label.charCodeAt(index) | 0x20; // folds A to Z onto a to z
+    if (code < 0x61 || code > 0x7a) return false;
+  }
+  return true;
+}
 
 /**
  * capture.md 8.1 on text that is W1-normalised and full-trimmed: no white space, under 500
@@ -23,7 +31,7 @@ export function linkOf(trimmed: string): string | null {
   if (url.protocol !== "http:" && url.protocol !== "https:") return null;
   const host = url.hostname;
   if (!host.includes(".") || host.endsWith(".")) return null;
-  if (!TWO_OR_MORE_LETTERS.test(host.slice(host.lastIndexOf(".") + 1))) return null;
+  if (!isTwoOrMoreLetters(host.slice(host.lastIndexOf(".") + 1))) return null;
   url.protocol = "https:";
   return url.href;
 }

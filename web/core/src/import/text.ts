@@ -27,8 +27,9 @@ function isFullSpace(code: number): boolean {
   );
 }
 
-// The trims scan from both ends: linear, where an expression such as /[ \t]+$/ is quadratic
-// on a long run of blanks in the middle of a line.
+// The trims scan from both ends with loops: linear. A pattern that asks for a run of blanks
+// followed by the end of the text is quadratic on a long run of blanks in the middle of a
+// line (corrections.md 3, point 14), so no such pattern is used anywhere in this module.
 function trimWith(text: string, isSpace: (code: number) => boolean): string {
   let start = 0;
   let end = text.length;
@@ -135,12 +136,23 @@ function replaceLoneSurrogates(text: string): string {
 }
 
 /**
- * W1: (1) remove one leading U+FEFF, (2) CR LF and then every other CR become LF,
+ * W1: (1) remove every leading U+FEFF, (2) CR LF and then every other CR become LF,
  * (3) remove U+0000, (4) lone surrogates become U+FFFD. No Unicode normalisation.
  * Applied to every string that enters the importer; afterwards the text can be stored (C5).
+ *
+ * corrections.md 3, point 4: W1 is idempotent, so an entry point and parseText may both apply
+ * it. For that, step 1 also passes over a U+0000 that stands in front of a mark: step 3
+ * removes it anyway, and it would otherwise hide the mark from this pass and leave it at the
+ * start for the next one. The result is that of applying the four steps twice.
  */
 export function normaliseText(text: string): string {
-  let result = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+  let start = 0;
+  while (start < text.length) {
+    const code = text.charCodeAt(start);
+    if (code !== 0xfeff && code !== 0x0000) break;
+    start++;
+  }
+  let result = start === 0 ? text : text.slice(start);
   if (result.includes("\r")) result = result.replace(/\r\n?/g, "\n");
   if (result.includes(NUL)) result = result.replaceAll(NUL, "");
   return replaceLoneSurrogates(result);

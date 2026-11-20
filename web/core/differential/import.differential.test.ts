@@ -9,13 +9,26 @@
 //   IMPORT_DIFF_SEED    seed (default 20261120)
 //   IMPORT_DIFF_REPORT  set it to print how often each entry point, outcome and feature was reached
 //
-// The corpus stays clear of the places where the product departs from the port on purpose.
-// Each of those is listed, with the rule that decides it, in the last block of this file,
-// which shows both behaviours on a crafted input.
+// The corpus stays clear of the places where the product departs from the port on purpose:
+// the decisions of docs/corrections.md section 3 that the port does not implement, and the
+// port's known defects (points 11 to 15 there). Each of those is listed, with the rule that
+// decides it, in the last block of this file, which shows both behaviours on a crafted input.
+// How the corpus stays clear:
+//   - texts are shaped before both sides see them (`clearOfKnownDivergences`): at most one
+//     leading U+FEFF, no line that is a marker only when U+0130 is lower-cased, no title or
+//     header-line text that is blank without being empty, no U+2028 on a fence or Origin line;
+//   - values the two sides read differently are not generated: a date in the year 0000, a
+//     message time that is not finite, mapping keys that look like integers out of order,
+//     links whose last path segment has white space at its ends;
+//   - one input differs between the sides: the port never sees the odd last byte of UTF-16
+//     text, which the product ignores (`forThePort`).
 //
 // All content is invented. Every special character is built from its code point, so that
 // this file stays plain ASCII.
 
+import { readdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import * as reference from "../../reference/import-port/importer.ts";
 import * as importer from "../src/import/index.ts";
@@ -207,7 +220,12 @@ const LINKS = [
   `example.invalid/${TEA}`,
   `example.invalid/${BICYCLE}`,
 ];
-/** Links a capture or a paste can come with. Clean: the product normalises these, the port does not. */
+/**
+ * Links a capture or a paste can come with. Clean: the product normalises these, the port
+ * does not. And none has white space at its ends, nor a last path segment that decodes to
+ * text with white space at its ends: the product trims every candidate for a capture title
+ * (corrections.md 3, point 6), the port only the typed name and the detected title.
+ */
 const SOURCE_URLS = list(
   "https://claude.ai/share/EXAMPLE-0000-0000|https://claude.ai/code/session_EXAMPLE|" +
     "https://www.claude.ai/share/EXAMPLE|http://CLAUDE.AI/Share/EXAMPLE|https://chatgpt.com/share/EXAMPLE-RYE|" +
@@ -708,23 +726,112 @@ function assemble(random: Random, lines: readonly string[]): string {
 }
 
 /**
- * Keeps a text out of two documented divergences (see the last block of this file): the
- * port tests a fence opening line and an "Origin:" line with patterns whose "." stops at
- * U+2028 and U+2029. A text that has such a line gets those two characters replaced.
+ * corrections.md 3, point 4: the product removes every leading U+FEFF, the port one for each
+ * time it normalises (once to three times, depending on the entry point). A text of the
+ * corpus starts with at most one, and with no U+0000 in front of it; then both remove it.
+ */
+function oneLeadingMark(text: string): string {
+  let end = 0;
+  while (end < text.length && (text[end] === BOM || text[end] === NUL)) end++;
+  return text.slice(0, end).includes(BOM) ? BOM + text.slice(end) : text;
+}
+
+/** The name of the marker the port finds on a line, or null. */
+function portMarkerName(line: string): string | null {
+  return reference.roleMarker(line, "web")?.name ?? null;
+}
+
+/**
+ * corrections.md 3, point 9: true when the port takes the line for a marker only because it
+ * lower-cases U+0130 to "i" and a combining dot. The product folds A to Z and nothing else.
+ */
+function isMarkerOnlyByLowerCasing(line: string): boolean {
+  return (
+    line.includes(I_WITH_DOT) && portMarkerName(line) !== portMarkerName(line.replaceAll(I_WITH_DOT, "x"))
+  );
+}
+
+/** Keeps a single line out of the divergence of point 9. */
+function clearLine(line: string): string {
+  return isMarkerOnlyByLowerCasing(line) ? line.replaceAll(I_WITH_DOT, "x") : line;
+}
+
+/** corrections.md 3, point 8: not empty after the inline trim, empty after the full trim. */
+function isBlankButNotEmpty(text: string): boolean {
+  return reference.trimInline(text) !== "" && reference.trimAll(text) === "";
+}
+
+const SHARE_HEADER_PREFIXES = [
+  "You said:",
+  "Claude responded:",
+  "Claude said:",
+  "ChatGPT said:",
+  "Gemini said:",
+];
+
+/**
+ * corrections.md 3, point 8: true for a share-page header line whose own text, or a puller
+ * title line whose title, is blank without being empty. The port stores such a text as a
+ * message, or as the title; for the product it is no message, and such a title falls back.
+ */
+function hasBlankHeaderTextOrTitle(line: string): boolean {
+  const trimmed = reference.trimInline(line);
+  for (const prefix of SHARE_HEADER_PREFIXES) {
+    if (trimmed.startsWith(prefix) && isBlankButNotEmpty(trimmed.slice(prefix.length))) return true;
+  }
+  return line.startsWith("# ") && isBlankButNotEmpty(line.slice(2));
+}
+
+/**
+ * Keeps a text out of the documented divergences (see the last block of this file):
+ * - point 4: at most one leading U+FEFF;
+ * - point 13: the port tests a fence opening line and an "Origin:" line with patterns whose
+ *   "." stops at U+2028 and U+2029; a text that has such a line gets those two replaced;
+ * - point 8: a text with a blank header-line text or title gets the five characters replaced
+ *   that the full trim removes and the inline trim keeps;
+ * - point 9: a text with a line that is a marker only by lower-casing U+0130 gets that
+ *   character replaced.
+ * Which lines a text has is asked of the port itself, after its own normalisation.
  */
 function clearOfKnownDivergences(text: string): string {
-  let out = text;
+  let out = oneLeadingMark(text);
   for (let pass = 0; pass < 4; pass++) {
-    if (!out.includes(LS) && !out.includes(PS)) return out;
-    let normal = out;
-    for (let again = 0; again < 3; again++) normal = reference.normaliseText(normal);
-    const risky = normal
-      .split("\n")
-      .some((line) => reference.trimInline(line).startsWith(TICKS) || line.startsWith("Origin: "));
-    if (!risky) return out;
-    out = out.replaceAll(LS, " ").replaceAll(PS, " ");
+    const lines = reference.normaliseText(out).split("\n");
+    let changed = false;
+    if (
+      (out.includes(LS) || out.includes(PS)) &&
+      lines.some((line) => reference.trimInline(line).startsWith(TICKS) || line.startsWith("Origin: "))
+    ) {
+      out = out.replaceAll(LS, " ").replaceAll(PS, " ");
+      changed = true;
+    }
+    const text = out;
+    if (
+      LINE_SEPARATORS.some((separator) => text.includes(separator)) &&
+      lines.some(hasBlankHeaderTextOrTitle)
+    ) {
+      for (const separator of LINE_SEPARATORS) out = out.replaceAll(separator, " ");
+      changed = true;
+    }
+    if (out.includes(I_WITH_DOT) && lines.some(isMarkerOnlyByLowerCasing)) {
+      out = out.replaceAll(I_WITH_DOT, "x");
+      changed = true;
+    }
+    if (!changed) return out;
   }
   return out;
+}
+
+/**
+ * corrections.md 3, point 1: the product ignores an odd last byte of UTF-16 text; the port
+ * decodes it to U+FFFD. Where the port reads odd-length bytes as UTF-16, it is given them
+ * without that byte. The product always gets all the bytes.
+ */
+function forThePort(bytes: Uint8Array): Uint8Array {
+  if (bytes.length % 2 === 0) return bytes;
+  const flag = reference.decodeBytesWeb(bytes)?.flag ?? null;
+  const isUtf16 = flag === "decoded_as_utf_16le" || flag === "decoded_as_utf_16be";
+  return isUtf16 ? bytes.subarray(0, bytes.length - 1) : bytes;
 }
 
 function someText(random: Random, kind: TextKind = random.weighted(TEXT_KINDS)): string {
@@ -786,7 +893,9 @@ function messageText(random: Random): string {
       [1, '"12"'],
       [1, "null"],
       [1, "true"],
-      [1, "1e999"],
+      // Finite, and far from any date: both sides order by it. A time that is not finite (1e999)
+      // counts as 0 for the product and sorts last for the port: corrections.md 3, point 5.
+      [1, "1e300"],
       [1, "-3.5"],
     ]);
     entries.push(["create_time", time]);
@@ -839,7 +948,11 @@ function mappingIds(random: Random): string[] {
   return [...indices, ...named];
 }
 
-/** Seconds since 1970, some with a part below the millisecond; within the years RFC 3339 can write. */
+/**
+ * Seconds since 1970, some with a part below the millisecond; within the years 0001 to 9999,
+ * the years for which both sides give a date (corrections.md 3, point 5). The last two are
+ * the last second of the year 9999 and the first second of the year 0001.
+ */
 function createTime(random: Random): string {
   const seconds = 1789000000 + random.int(100000);
   return random.weighted<string>([
@@ -850,7 +963,7 @@ function createTime(random: Random): string {
     [1, `-${random.int(1000)}.${random.int(100000)}`],
     [1, "0"],
     [1, "253402300799"],
-    [1, "-62167219200"],
+    [1, "-62135596800"],
   ]);
 }
 
@@ -1116,6 +1229,8 @@ interface Comparison {
   readonly result?: () => importer.ImportResult;
   /** What kind of text the input was built as, for the coverage count. */
   readonly made?: string;
+  /** Further things the input reached, for the coverage count. */
+  readonly notes?: () => string[];
 }
 
 const RANDOM_BYTES = [0, 9, 10, 13, 32, 65, 97, 0x1b, 0x80, 0xe9, 0xff];
@@ -1145,13 +1260,15 @@ function fileCase(random: Random): Comparison {
       ]);
   const filename = extension === "" ? stem : `${stem}.${extension}`;
   const run = (): importer.ImportResult => importer.importFile(bytes, filename);
+  const portBytes = forThePort(bytes);
   return {
     what: "importFile",
     made: asJson ? "json" : kind,
     input: { filename, bytes: [...bytes] },
     product: () => productResult(run()),
-    reference: () => referenceResult(reference.importFile(bytes, filename, "web")),
+    reference: () => referenceResult(reference.importFile(portBytes, filename, "web")),
     result: run,
+    notes: () => (portBytes.length < bytes.length ? ["UTF-16 with an odd last byte"] : []),
   };
 }
 
@@ -1250,11 +1367,32 @@ function pageText(random: Random, kind: TextKind): string[] {
   return page;
 }
 
+/**
+ * A `keepDropped` list (import-rules.md W10): mostly indexes of turns, some of them twice, and
+ * now and then one that names no turn at all. Absent half of the time.
+ */
+function keepDroppedList(random: Random, turnCount: number): number[] | undefined {
+  if (random.chance(0.5)) return undefined;
+  const inRange = (): number => random.int(Math.max(1, turnCount));
+  return random.repeat(0, 5, () =>
+    random.weighted<number>([
+      [10, inRange()],
+      [3, 0],
+      [3, turnCount - 1],
+      [1, turnCount],
+      [1, turnCount + 1 + random.int(100)],
+      [1, -1 - random.int(3)],
+      [1, inRange() + 0.5],
+      [1, Number.MAX_SAFE_INTEGER],
+    ]),
+  );
+}
+
 function captureCase(random: Random, kind: "page-text" | "turns"): Comparison {
   const pageKind = random.weighted(PAGE_KINDS);
   const turns = kind === "page-text" ? pageText(random, pageKind) : capturedTurns(random);
   const allowWall = allowWallChoice(random);
-  const input: importer.CaptureInput = {
+  const plain: importer.CaptureInput = {
     sourceUrl: random.pick(SOURCE_URLS),
     detectedTitle: random.chance(0.4) ? null : captureName(random),
     typedName: captureName(random),
@@ -1262,6 +1400,9 @@ function captureCase(random: Random, kind: "page-text" | "turns"): Comparison {
     turns,
     ...(allowWall === undefined ? {} : { allowWall }),
   };
+  // Given for both kinds: for whole-page text both sides have to ignore it.
+  const keepDropped = keepDroppedList(random, turns.length);
+  const input: importer.CaptureInput = keepDropped === undefined ? plain : { ...plain, keepDropped };
   const run = (): importer.ImportResult => importer.importCapture(input);
   return {
     what: `importCapture ${kind}`,
@@ -1278,11 +1419,19 @@ function captureCase(random: Random, kind: "page-text" | "turns"): Comparison {
             kind,
             turns: [...turns],
             ...(allowWall === undefined ? {} : { allowWall }),
+            ...(keepDropped === undefined ? {} : { keepDropped: [...keepDropped] }),
           },
           "web",
         ),
       ),
     result: run,
+    notes: () => {
+      if (keepDropped === undefined || keepDropped.length === 0) return [];
+      if (kind === "page-text") return ["keepDropped given with whole-page text"];
+      const without = importer.importCapture(plain).droppedTurns.length;
+      const restored = without - run().droppedTurns.length;
+      return [restored > 0 ? "keepDropped put a turn back" : "keepDropped named no dropped turn"];
+    },
   };
 }
 
@@ -1292,19 +1441,31 @@ function guardCase(random: Random): Comparison {
     ? random.repeat(0, 3, () => wallText(random))
     : [
         ...random.repeat(0, 3, () => chromeTurn(random)),
-        assemble(random, [...headerResidue(random), ...(random.chance(0.8) ? [sentence(random)] : [])]),
+        clearOfKnownDivergences(
+          assemble(random, [...headerResidue(random), ...(random.chance(0.8) ? [sentence(random)] : [])]),
+        ),
         ...random.repeat(0, 3, () => chromeTurn(random)),
       ];
+  const keepDropped = keepDroppedList(random, turns.length);
   return {
     what: "looksLikeSignInWall and stripChromeTurns",
-    input: turns,
-    product: () => ({ wall: importer.looksLikeSignInWall(turns), chrome: importer.stripChromeTurns(turns) }),
+    input: { turns, keepDropped },
+    product: () => ({
+      wall: importer.looksLikeSignInWall(turns),
+      chrome: importer.stripChromeTurns(turns, keepDropped),
+    }),
     reference: () => {
       const normal = turns.map(reference.normaliseText);
       return {
         wall: reference.looksLikeSignInWall(normal),
-        chrome: reference.stripChromeTurns(normal, "web"),
+        chrome: reference.stripChromeTurns(normal, "web", keepDropped ?? []),
       };
+    },
+    notes: () => {
+      if (keepDropped === undefined || keepDropped.length === 0) return [];
+      const without = importer.stripChromeTurns(turns).dropped.length;
+      const restored = without - importer.stripChromeTurns(turns, keepDropped).dropped.length;
+      return restored > 0 ? ["stripChromeTurns put a turn back"] : [];
     },
   };
 }
@@ -1356,18 +1517,21 @@ function parseJson(text: string, use: (value: unknown) => unknown): unknown {
 
 function primitiveCase(random: Random): Comparison {
   const text = someText(random);
-  const line = random.weighted<string>([
-    [5, markerLine(random)],
-    [2, decorate(random, sentence(random))],
-    [1, random.pick(FURNITURE)],
-  ]);
+  const line = clearLine(
+    random.weighted<string>([
+      [5, markerLine(random)],
+      [2, decorate(random, sentence(random))],
+      [1, random.pick(FURNITURE)],
+    ]),
+  );
   // Every character of the two trim sets at the ends, and some that only look like blanks.
   const blank = [...INLINE_SET, ...LINE_SEPARATORS, "\n", "\r", BOM, NUL, ZWSP];
   const blanks = (): string => random.repeat(0, 4, () => random.pick(blank)).join("");
-  const padded = `${blanks()}${words(random, 0, 3)}${blanks()}`;
+  const padded = oneLeadingMark(`${blanks()}${words(random, 0, 3)}${blanks()}`);
   const filename = `${random.pick(FILE_STEMS)}${random.pick(["", ".txt", ".JSON", ".", ". md", ".tar.gz", ".a b"])}`;
   const url = random.pick(SOURCE_URLS);
   const bytes = random.chance(0.2) ? bytesAtUtf16Limits(random) : encode(random, text);
+  const portBytes = forThePort(bytes);
   const json = jsonText(random);
   const title = random.pick(TITLES);
   return {
@@ -1399,7 +1563,7 @@ function primitiveCase(random: Random): Comparison {
     reference: () => {
       const marker = reference.roleMarker(line, "web");
       const name = reference.splitExtension(filename);
-      const decoded = reference.decodeBytesWeb(bytes);
+      const decoded = reference.decodeBytesWeb(portBytes);
       return {
         normal: [reference.normaliseText(text), reference.normaliseText(padded)],
         trimInline: [reference.trimInline(line), reference.trimInline(padded)],
@@ -1421,6 +1585,7 @@ function primitiveCase(random: Random): Comparison {
         ),
       };
     },
+    notes: () => (portBytes.length < bytes.length ? ["UTF-16 with an odd last byte"] : []),
   };
 }
 
@@ -1474,7 +1639,12 @@ const REQUIRED = list(
     "importCapture page-text of share text: imported|importCapture page-text of labels text: imported|" +
     "importCapture page-text of dialogue text: imported|importCapture page-text of puller text: imported|" +
     "importCapture page-text of pack text: imported|importCapture page-text of wall text: sign_in_suspected|" +
-    "importCapture turns of turns text: imported",
+    "importCapture turns of turns text: imported|" +
+    // W10 keep_dropped, on both functions that take it, and where it must change nothing.
+    "keepDropped put a turn back|keepDropped named no dropped turn|keepDropped given with whole-page text|" +
+    "stripChromeTurns put a turn back|" +
+    // corrections.md 3, point 1: the product on all the bytes, the port without the odd last one.
+    "UTF-16 with an odd last byte",
 );
 
 // ---------------------------------------------------------------------------------------
@@ -1506,6 +1676,7 @@ describe("import differential: product against the reference port in web mode", 
       // What the inputs reached, counted on the product's own result.
       if (mine.includes('"threw"')) count("an exception on both sides");
       if (mine.includes('"type":"code"')) count("a code segment");
+      for (const note of comparison.notes?.() ?? []) count(note);
       const result = comparison.result?.();
       if (result === undefined) continue;
       const outcome = result.outcome === "rejected" ? result.reason : result.outcome;
@@ -1549,53 +1720,246 @@ describe("import differential: product against the reference port in web mode", 
 // Where the product departs from the reference port on purpose. The corpus above avoids
 // these inputs; each is shown here once, with both results and the rule that decides.
 // If the port or the product changes on one of them, this block says so.
+//
+// Three groups: what docs/corrections.md section 3 decided after the port was written
+// (points 1 to 10; points 2 and 3 are what the port does too), the port's known defects
+// (points 11 to 15, also listed in reference/import-port/README.md), and one detail of the
+// product's own interface.
 // ---------------------------------------------------------------------------------------
 
-describe("documented divergences from the reference port", () => {
-  const bytesOf = (text: string): Uint8Array => new TextEncoder().encode(text);
-  const node = (text: string): string =>
-    `{"message":{"author":{"role":"user"},"content":{"parts":[${JSON.stringify(text)}]}}}`;
-  const textsOf = (result: { sessions: readonly { messages: readonly { text: string }[] }[] }): string[] =>
-    result.sessions.flatMap((session) => session.messages.map((message) => message.text));
-  const captureInput = (sourceUrl: string): importer.CaptureInput => ({
-    sourceUrl,
-    detectedTitle: null,
-    typedName: "",
-    kind: "turns",
-    turns: ["User: q"],
-  });
-  const referenceCapture = (sourceURL: string): reference.ImportResult =>
-    reference.importCapture(
-      { sourceURL, detectedTitle: null, typedName: "", kind: "turns", turns: ["User: q"] },
-      "web",
-    );
+const REPLACEMENT = chr(0xfffd);
+const bytesOf = (text: string): Uint8Array => new TextEncoder().encode(text);
 
-  it("W3: an interchange file is handed over; the port leaves that format out by its own statement", () => {
+/** One node of a ChatGPT export, as JSON text; `time` is written as given, so 1e999 can be. */
+function exportNode(text: string, time?: string): string {
+  const createTime = time === undefined ? "" : `"create_time":${time},`;
+  return `{"message":{"author":{"role":"user"},${createTime}"content":{"parts":[${JSON.stringify(text)}]}}}`;
+}
+
+interface Messages {
+  readonly sessions: readonly {
+    readonly messages: readonly { readonly role: string; readonly text: string }[];
+  }[];
+}
+const textsOf = (result: Messages): string[] =>
+  result.sessions.flatMap((session) => session.messages.map((message) => message.text));
+const turnsOf = (result: Messages): [string, string][] =>
+  result.sessions.flatMap((session) =>
+    session.messages.map((message): [string, string] => [message.role, message.text]),
+  );
+
+/** The same capture for both sides: one turn "User: q" unless stated otherwise. */
+function captureBoth(
+  sourceUrl: string,
+  turns: readonly string[] = ["User: q"],
+): { readonly mine: importer.ImportResult; readonly theirs: reference.ImportResult } {
+  return {
+    mine: importer.importCapture({ sourceUrl, detectedTitle: null, typedName: "", kind: "turns", turns }),
+    theirs: reference.importCapture(
+      { sourceURL: sourceUrl, detectedTitle: null, typedName: "", kind: "turns", turns: [...turns] },
+      "web",
+    ),
+  };
+}
+
+/** Processor time of the fastest of three runs, in milliseconds: other work on the machine does not count. */
+function processorTime(run: () => unknown): number {
+  let best = Number.POSITIVE_INFINITY;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const before = process.cpuUsage();
+    run();
+    const used = process.cpuUsage(before);
+    best = Math.min(best, (used.user + used.system) / 1000);
+  }
+  return best;
+}
+
+describe("documented divergences: decided after the port was written (corrections.md 3, points 1 to 10)", () => {
+  it("point 1: an odd last byte of UTF-16 text is ignored; the port decodes it to U+FFFD", () => {
+    const odd = new Uint8Array([0xff, 0xfe, ...utf16("User: q", true), 0x21]);
+    expect(importer.decodeBytes(odd)).toEqual({ text: "User: q", flag: "decoded_as_utf_16le" });
+    expect(reference.decodeBytesWeb(odd)).toEqual({
+      text: `User: q${REPLACEMENT}`,
+      flag: "decoded_as_utf_16le",
+    });
+    expect(textsOf(importer.importFile(odd, "a.txt"))).toEqual(["q"]);
+    expect(textsOf(reference.importFile(odd, "a.txt", "web"))).toEqual([`q${REPLACEMENT}`]);
+    // Without a mark the two agree on what the bytes are, and differ in the same way.
+    const bare = new Uint8Array([...utf16("User: q", false), 0x21]);
+    expect(importer.decodeBytes(bare)).toEqual({ text: "User: q", flag: "decoded_as_utf_16be" });
+    expect(reference.decodeBytesWeb(bare)?.text).toBe(`User: q${REPLACEMENT}`);
+    // Given the bytes without the odd one, the port gives the product's result: that is how
+    // the corpus above compares such input.
+    expect(reference.decodeBytesWeb(forThePort(odd))).toEqual(importer.decodeBytes(odd));
+    expect(forThePort(odd).length).toBe(odd.length - 1);
+  });
+
+  it("point 4: W1 removes every leading U+FEFF; the port removes one each time it normalises", () => {
+    expect(importer.normaliseText(`${BOM}${BOM}${BOM}x`)).toBe("x");
+    expect(reference.normaliseText(`${BOM}${BOM}${BOM}x`)).toBe(`${BOM}${BOM}x`);
+    // The port normalises a captured turn once: a second mark stays and hides the marker.
+    const turn = `${BOM}${BOM}User: q`;
+    const captured = captureBoth("https://example.invalid/share/EXAMPLE", [turn]);
+    expect(turnsOf(captured.mine)).toEqual([["user", "q"]]);
+    expect(turnsOf(captured.theirs)).toEqual([["unknown", `${BOM}User: q`]]);
+    // It normalises a file three times (the decoder, importFile, parseText): a fourth mark stays.
+    const file = bytesOf(`${BOM}${BOM}${BOM}${BOM}User: q`);
+    expect(turnsOf(importer.importFile(file, "a.txt"))).toEqual([["user", "q"]]);
+    expect(turnsOf(reference.importFile(file, "a.txt", "web"))).toEqual([["unknown", `${BOM}User: q`]]);
+    // And a U+0000 in front of a mark hides the mark from one pass of the port.
+    expect(importer.normaliseText(`${NUL}${BOM}x`)).toBe("x");
+    expect(reference.normaliseText(`${NUL}${BOM}x`)).toBe(`${BOM}x`);
+    expect(reference.normaliseText(reference.normaliseText(`${NUL}${BOM}x`))).toBe("x");
+    // The product's W1 is idempotent, the port's is not.
+    const twice = importer.normaliseText(importer.normaliseText(`${BOM}${BOM}x`));
+    expect(twice).toBe(importer.normaliseText(`${BOM}${BOM}x`));
+    expect(reference.normaliseText(reference.normaliseText(`${BOM}${BOM}x`))).not.toBe(
+      reference.normaliseText(`${BOM}${BOM}x`),
+    );
+  });
+
+  it("point 5: create_time gives a date only for the years 0001 to 9999; the port prints whatever Date prints", () => {
+    const dateOf = (seconds: string): [string | null | undefined, string | null | undefined] => {
+      const file = bytesOf(`{"create_time":${seconds},"mapping":{"a":${exportNode("x")}}}`);
+      return [
+        importer.importFile(file, "c.json").sessions[0]?.createdAt,
+        reference.importFile(file, "c.json", "web").sessions[0]?.createdAt,
+      ];
+    };
+    // The first second of the year 10000.
+    expect(dateOf("253402300800")).toEqual([null, "+010000-01-01T00:00:00.000Z"]);
+    // The first second of the year 0000, and the last one: no timestamp of the interchange format has that year.
+    expect(dateOf("-62167219200")).toEqual([null, "0000-01-01T00:00:00.000Z"]);
+    expect(dateOf("-62135596801")).toEqual([null, "0000-12-31T23:59:59.000Z"]);
+    // Inside the range the two agree, at both ends.
+    expect(dateOf("-62135596800")).toEqual(["0001-01-01T00:00:00.000Z", "0001-01-01T00:00:00.000Z"]);
+    expect(dateOf("253402300799")).toEqual(["9999-12-31T23:59:59.000Z", "9999-12-31T23:59:59.000Z"]);
+  });
+
+  it("point 5: for the order of nodes a time counts when it is finite; the port also sorts by one that is not", () => {
+    // JSON.parse reads 1e999 as Infinity.
+    const file = bytesOf(
+      `{"mapping":{"a":${exportNode("not finite", "1e999")},"b":${exportNode("five", "5")},"c":${exportNode("zero", "0")}}}`,
+    );
+    // The product: not finite counts as 0, so the node keeps its place among the zeros.
+    expect(textsOf(importer.importFile(file, "c.json"))).toEqual(["not finite", "zero", "five"]);
+    expect(textsOf(reference.importFile(file, "c.json", "web"))).toEqual(["zero", "five", "not finite"]);
+    // A finite time far from any date orders the nodes on both sides.
+    const finite = bytesOf(
+      `{"mapping":{"a":${exportNode("huge", "1e300")},"b":${exportNode("five", "5")},"c":${exportNode("zero", "0")}}}`,
+    );
+    expect(textsOf(importer.importFile(finite, "c.json"))).toEqual(["zero", "five", "huge"]);
+    expect(textsOf(reference.importFile(finite, "c.json", "web"))).toEqual(["zero", "five", "huge"]);
+  });
+
+  it("point 6: every candidate for a capture title goes through W1 and the full trim; the last is 'Captured session'", () => {
+    const titles = (sourceUrl: string): [string | undefined, string | undefined] => {
+      const both = captureBoth(sourceUrl);
+      return [both.mine.sessions[0]?.title, both.theirs.sessions[0]?.title];
+    };
+    // The last path segment, percent-decoded: the port takes it as decoded.
+    expect(titles("https://example.invalid/a/%20Bread%20notes%20")).toEqual(["Bread notes", " Bread notes "]);
+    // Decoded, it can hold what a title must not: U+0000 and CR.
+    expect(titles("https://example.invalid/a%00b%0Dc")).toEqual(["ab\nc", `a${NUL}b\rc`]);
+    // A segment that is empty after decoding and the trim does not count: the link is next.
+    const blankSegment = "https://example.invalid/a/%20%09";
+    expect(titles(blankSegment)).toEqual([blankSegment, " \t"]);
+    // The link itself is a candidate like the others.
+    expect(titles("  not a link \n")).toEqual(["not a link", "  not a link \n"]);
+    // And when every candidate is empty, the constant. The port returns the blank link.
+    expect(titles(" ")).toEqual(["Captured session", " "]);
+    expect(titles("")).toEqual(["Captured session", ""]);
+  });
+
+  it("point 7: W1 applies to every stored string: the caller's title, the link, the file name", () => {
+    const dirty = `a${NUL}b\r\nc${HIGH}`;
+    const clean = `ab\nc${REPLACEMENT}`;
+    const mine = importer.importPaste("note", { title: dirty, pickerProvider: "other", sourceUrl: dirty });
+    const theirs = reference.importPaste("note", "Other", "web", { title: dirty, sourceURL: dirty });
+    expect([mine.sessions[0]?.title, mine.sessions[0]?.sourceUrl]).toEqual([clean, clean]);
+    expect([theirs.sessions[0]?.title, theirs.sessions[0]?.sourceURL]).toEqual([dirty, dirty]);
+
+    expect(importer.importFile(bytesOf("note"), `${dirty}.txt`).sessions[0]?.title).toBe(clean);
+    expect(reference.importFile(bytesOf("note"), `${dirty}.txt`, "web").sessions[0]?.title).toBe(dirty);
+
+    const link = `https://claude.ai/share/E${NUL}XAMPLE`;
+    const captured = captureBoth(link);
+    expect(captured.mine.sessions[0]?.sourceUrl).toBe("https://claude.ai/share/EXAMPLE");
+    expect(captured.theirs.sessions[0]?.sourceURL).toBe(link);
+  });
+
+  it("point 8: a header-line text or a title that is blank without being empty counts as empty; the port stores it", () => {
+    // U+2028 survives the inline trim of the header line. The turn has no other text.
+    const share = `You said: ${LS}\nClaude responded: a\nb`;
+    expect(turnsOf({ sessions: importer.parseText(share, "t") })).toEqual([["assistant", "b"]]);
+    expect(turnsOf({ sessions: reference.parseText(share, "t", "web") })).toEqual([
+      ["user", LS],
+      ["assistant", "b"],
+    ]);
+    // The same for the title line of puller Markdown.
+    const puller = `# ${LS}\nSource: https://claude.ai/code/EXAMPLE\n\nUser: q\n`;
+    expect(importer.parseText(puller, "from the caller")[0]?.title).toBe("from the caller");
+    expect(reference.parseText(puller, "from the caller", "web")[0]?.title).toBe(LS);
+  });
+
+  it("point 9: marker words are matched with ASCII case folding only; the port lower-cases U+0130 into a marker", () => {
+    const line = `A${I_WITH_DOT}: x`;
+    expect(importer.roleMarker(line)).toBeNull();
+    expect(reference.roleMarker(line, "web")).toEqual({
+      role: "assistant",
+      rest: "x",
+      name: "ai",
+      bare: false,
+    });
+    expect(importer.roleMarker(`GEMIN${I_WITH_DOT}`)).toBeNull();
+    expect(reference.roleMarker(`GEMIN${I_WITH_DOT}`, "web")).toEqual({
+      role: "assistant",
+      rest: "",
+      name: "gemini",
+      bare: true,
+    });
+    // In a text the port cuts a message at such a line and names a provider after it.
+    const text = `User: q\nGemin${I_WITH_DOT}: a`;
+    const mine = importer.parseText(text, "t")[0];
+    const theirs = reference.parseText(text, "t", "web")[0];
+    expect([mine?.provider, turnsOf({ sessions: mine === undefined ? [] : [mine] })]).toEqual([
+      "other",
+      [["user", `q\nGemin${I_WITH_DOT}: a`]],
+    ]);
+    expect([theirs?.provider, turnsOf({ sessions: theirs === undefined ? [] : [theirs] })]).toEqual([
+      "Gemini",
+      [
+        ["user", "q"],
+        ["assistant", "a"],
+      ],
+    ]);
+    // The corpus keeps such lines out: the test for it recognises exactly these.
+    expect(isMarkerOnlyByLowerCasing(line)).toBe(true);
+    expect(isMarkerOnlyByLowerCasing(`AI: ${I_WITH_DOT}x`)).toBe(false);
+  });
+
+  it("point 10 and W3: an interchange file is the fourth outcome; the port leaves that format out by its own statement", () => {
     const file = bytesOf(
       '{"format":"sessionvault-interchange","version":1,"kind":"vault","projects":[],"sessions":[]}',
     );
-    expect(importer.importFile(file, "vault.json").outcome).toBe("interchange");
+    const mine = importer.importFile(file, "vault.json");
+    expect(mine.outcome).toBe("interchange");
+    expect(mine.reason).toBeNull();
     expect(reference.importFile(file, "vault.json", "web").reason).toBe("unrecognised_json");
   });
+});
 
-  it("W4 and section 5: ties among node ids that look like array indices follow the JSON text", () => {
-    // The port takes the order of JSON.parse, which moves such keys to the front in numeric order.
-    const file = bytesOf(`{"mapping":{"10":${node("ten")},"b":${node("b")},"2":${node("two")}}}`);
+describe("documented divergences: the known defects of the port (corrections.md 3, points 11 to 15)", () => {
+  it("point 11: ties among node ids that look like integers follow the JSON text; the port follows Object.keys", () => {
+    // JSON.parse moves such keys to the front in numeric order; W4 asks for the order of the text.
+    const file = bytesOf(
+      `{"mapping":{"10":${exportNode("ten")},"b":${exportNode("b")},"2":${exportNode("two")}}}`,
+    );
     expect(textsOf(importer.importFile(file, "c.json"))).toEqual(["ten", "b", "two"]);
     expect(textsOf(reference.importFile(file, "c.json", "web"))).toEqual(["two", "ten", "b"]);
   });
 
-  it("result format: a create_time outside the years 0000 to 9999 has no RFC 3339 form and is no date", () => {
-    // README "Result format" and the timestamp pattern of interchange-schema-v1.json: four-digit years.
-    const file = bytesOf(`{"create_time":253402300800,"mapping":{"a":${node("x")}}}`);
-    expect(importer.importFile(file, "c.json").sessions[0]?.createdAt).toBeNull();
-    expect(reference.importFile(file, "c.json", "web").sessions[0]?.createdAt).toBe(
-      "+010000-01-01T00:00:00.000Z",
-    );
-  });
-
-  it("W14: only the four role lines are role lines", () => {
-    // The port looks a line up in a plain object, where "constructor" and its like are found too.
+  it("point 12: only the four role lines of a context pack are role lines; the port finds 'constructor' in a plain object", () => {
     const pack =
       "# Context pack: T\n\n## Transcript\n\n**User:**\n\nabove\n\n---\n\nconstructor\n\nbelow\n\n---\n";
     expect(importer.parseText(pack, "t")[0]?.messages).toEqual([
@@ -1603,11 +1967,11 @@ describe("documented divergences from the reference port", () => {
     ]);
     const theirs = reference.parseText(pack, "t", "web")[0]?.messages ?? [];
     expect(theirs.map((message) => message.text)).toEqual(["above", "below"]);
+    // The role of the port's second message is the constructor function of every object.
     expect(typeof theirs[1]?.role).toBe("function");
   });
 
-  it("2.3 and W13: U+2028 and U+2029 are ordinary characters of a line, also of a fence opening line", () => {
-    // The port tests the opening line with a pattern whose "." does not match these two.
+  it("point 13: U+2028 and U+2029 are ordinary characters of a fence opening line; the port's '.' stops at them", () => {
     const text = `${TICKS}js${LS}x\ncode\n${TICKS}`;
     expect(importer.splitDisplaySegments(text)).toEqual([
       { type: "code", language: `js${LS}x`, code: "code" },
@@ -1618,7 +1982,7 @@ describe("documented divergences from the reference port", () => {
     ]);
   });
 
-  it("2.3 and W14: the same on the Origin line of a context pack", () => {
+  it("point 13: the same on the Origin line of a context pack", () => {
     const pack = `# Context pack: T\n\nOrigin: Claude (mo${PS}del), saved x\n\n## Transcript\n\n**User:**\n\nq\n\n---\n`;
     const mine = importer.parseText(pack, "t")[0];
     const theirs = reference.parseText(pack, "t", "web")[0];
@@ -1626,42 +1990,81 @@ describe("documented divergences from the reference port", () => {
     expect([theirs?.provider, theirs?.modelName]).toEqual(["Other", ""]);
   });
 
-  it("C5 and W1: the title, the link and the file name are normalised too, so that they can be stored", () => {
-    const dirty = `a${NUL}b\r\nc${HIGH}`;
-    const clean = `ab\nc${chr(0xfffd)}`;
-    const mine = importer.importPaste("note", { title: dirty, pickerProvider: "other", sourceUrl: dirty });
-    const theirs = reference.importPaste("note", "Other", "web", { title: dirty, sourceURL: dirty });
-    expect([mine.sessions[0]?.title, mine.sessions[0]?.sourceUrl]).toEqual([clean, clean]);
-    expect([theirs.sessions[0]?.title, theirs.sessions[0]?.sourceURL]).toEqual([dirty, dirty]);
-
-    expect(importer.importFile(bytesOf("note"), `${dirty}.txt`).sessions[0]?.title).toBe(clean);
-    expect(reference.importFile(bytesOf("note"), `${dirty}.txt`, "web").sessions[0]?.title).toBe(dirty);
-
-    const link = `https://claude.ai/share/E${NUL}XAMPLE`;
-    expect(importer.importCapture(captureInput(link)).sessions[0]?.sourceUrl).toBe(
-      "https://claude.ai/share/EXAMPLE",
-    );
-    expect(referenceCapture(link).sessions[0]?.sourceURL).toBe(link);
+  it("point 14: the port's trim takes four times as long for twice the blanks inside a line; the product's is linear", {
+    timeout: 120_000,
+  }, () => {
+    const line = (blanks: number): string => `x${" ".repeat(blanks)}x`;
+    // Both leave such a line as it is: the run of blanks is inside it.
+    expect(reference.trimInline(line(100))).toBe(line(100));
+    expect(importer.trimInline(line(100))).toBe(line(100));
+    const portShort = processorTime(() => reference.trimInline(line(10_000)));
+    const portLong = processorTime(() => reference.trimInline(line(20_000)));
+    const product = processorTime(() => importer.trimInline(line(1_000_000)));
+    // Quadratic: twice the input, about four times the time (measured: 40 ms and 159 ms).
+    // Linear would be a factor of 2; the bound leaves room for a noisy measurement.
+    expect(portLong / portShort).toBeGreaterThan(2.8);
+    // The product trims fifty times as many blanks in a fraction of that time (measured: under 1 ms).
+    expect(product).toBeLessThan(portLong / 10);
   });
 
-  it("C5 and W1: a path segment that decodes to U+0000 or CR is normalised before it becomes a title", () => {
-    const link = "https://example.invalid/a%00b%0Dc";
-    expect(importer.importCapture(captureInput(link)).sessions[0]?.title).toBe("ab\nc");
-    expect(referenceCapture(link).sessions[0]?.title).toBe(`a${NUL}b\rc`);
+  it("point 14: the same for the port's pattern on an Origin line with ' (' repeated", {
+    timeout: 120_000,
+  }, () => {
+    const pack = (pairs: number): string =>
+      `# Context pack: T\n\nOrigin: ${" (".repeat(pairs)}\n\n## Transcript\n\n**User:**\n\nq\n\n---\n`;
+    expect(turnsOf({ sessions: reference.parseText(pack(10), "t", "web") })).toEqual([["user", "q"]]);
+    expect(turnsOf({ sessions: importer.parseText(pack(10), "t") })).toEqual([["user", "q"]]);
+    const portShort = processorTime(() => reference.parseText(pack(8_000), "t", "web"));
+    const portLong = processorTime(() => reference.parseText(pack(16_000), "t", "web"));
+    const product = processorTime(() => importer.parseText(pack(500_000), "t"));
+    // Measured: 54 ms and about 220 ms for the port, 2 ms for the product on thirty times as much.
+    // Linear would be a factor of 2; the bound leaves room for a noisy measurement.
+    expect(portLong / portShort).toBeGreaterThan(2.8);
+    expect(product).toBeLessThan(portLong / 10);
   });
 
-  it("D13 and W10: the title of a capture is never empty or all white space", () => {
-    // A last path segment that decodes to white space does not count; the link is next.
-    const blankSegment = "https://example.invalid/a/%20%09";
-    expect(importer.importCapture(captureInput(blankSegment)).sessions[0]?.title).toBe(blankSegment);
-    expect(referenceCapture(blankSegment).sessions[0]?.title).toBe(" \t");
-    // A blank link leaves the fallback of W8.
-    expect(importer.importCapture(captureInput(" ")).sessions[0]?.title).toBe("Imported session");
-    expect(referenceCapture(" ").sessions[0]?.title).toBe(" ");
-    expect(importer.importCapture(captureInput("")).sessions[0]?.title).toBe("Imported session");
-    expect(referenceCapture("").sessions[0]?.title).toBe("");
+  it("point 15: the product compiles under the strict settings of web/tsconfig.base.json; the port does not", {
+    timeout: 300_000,
+  }, () => {
+    const web = new URL("../../", import.meta.url);
+    const read = ts.readConfigFile(fileURLToPath(new URL("tsconfig.base.json", web)), ts.sys.readFile);
+    const settings: unknown = read.config?.compilerOptions;
+    const { options, errors } = ts.convertCompilerOptionsFromJson(settings, fileURLToPath(web));
+    expect(errors).toEqual([]);
+    expect(options.strict).toBe(true);
+    // The number of errors the compiler reports for some files, without the types of any platform.
+    const errorsIn = (files: readonly string[]): number =>
+      ts.getPreEmitDiagnostics(ts.createProgram({ rootNames: files, options: { ...options, types: [] } }))
+        .length;
+    const folder = new URL("core/src/import/", web);
+    const product = readdirSync(folder)
+      .filter((name) => name.endsWith(".ts") && !name.endsWith(".test.ts"))
+      .map((name) => fileURLToPath(new URL(name, folder)));
+    expect(product.length).toBeGreaterThanOrEqual(20);
+    expect(errorsIn(product)).toBe(0);
+    const port = fileURLToPath(new URL("reference/import-port/importer.ts", web));
+    expect(errorsIn([port])).toBeGreaterThan(10);
   });
 
+  it("point 15: without String.prototype.toWellFormed the port's W1 leaves a lone surrogate; the product replaces it", () => {
+    const sample = `a${HIGH}b`;
+    const original = Object.getOwnPropertyDescriptor(String.prototype, "toWellFormed");
+    expect(original).toBeDefined();
+    // With the method, as on this platform, the two agree.
+    expect(reference.normaliseText(sample)).toBe(`a${REPLACEMENT}b`);
+    expect(importer.normaliseText(sample)).toBe(`a${REPLACEMENT}b`);
+    try {
+      Reflect.deleteProperty(String.prototype, "toWellFormed");
+      expect(reference.normaliseText(sample)).toBe(sample);
+      expect(importer.normaliseText(sample)).toBe(`a${REPLACEMENT}b`);
+    } finally {
+      if (original !== undefined) Object.defineProperty(String.prototype, "toWellFormed", original);
+    }
+    expect(reference.normaliseText(sample)).toBe(`a${REPLACEMENT}b`);
+  });
+});
+
+describe("documented divergences: a detail of the product's own interface", () => {
   it("W15: 'fewer than 0 characters' is false for every text, the empty one included", () => {
     expect(importer.hasFewerGraphemesThan("", 0)).toBe(false);
     expect(reference.fewerGraphemesThan("", 0)).toBe(true);

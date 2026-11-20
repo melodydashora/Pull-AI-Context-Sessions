@@ -3,7 +3,7 @@
 
 import { cleanTranscriptLines } from "./cleaner.ts";
 import { mostFrequent } from "./provider.ts";
-import { cleanTitle, trimFull, trimInline } from "./text.ts";
+import { cleanTitle, isBlank, trimFull, trimInline } from "./text.ts";
 import type { ParsedMessage, ParsedSession, Provider, Role } from "./types.ts";
 
 interface Header {
@@ -58,7 +58,10 @@ export function parseSharePageText(lines: readonly string[], title: string): Par
     let body = trimFull(cleanTranscriptLines(turnLines).join("\n"));
     // W6: a turn whose only text sits on its header line keeps that text (D6).
     if (body === "") body = headerText;
-    if (role !== null && body !== "") messages.push({ role, text: body });
+    // corrections.md 3, point 8: "empty" is empty after the full trim. The header-line text is
+    // only inline-trimmed, so it can be blank without being empty: that is no message (W12).
+    // A message that is kept is stored as before.
+    if (role !== null && !isBlank(body)) messages.push({ role, text: body });
     turnLines = [];
   };
 

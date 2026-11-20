@@ -40,6 +40,10 @@ const FORBIDDEN: readonly (readonly [rule: string, pattern: RegExp])[] = [
   ],
   ["a suppressed type error", /@ts-ignore|@ts-expect-error|@ts-nocheck/],
   ["a character that is not printable ASCII, a tab or a line feed", /[^\t\n -~]/],
+  // corrections.md 2 and 3, point 14: a trim or a search of the form <class>+$ takes quadratic
+  // time on a long run that does not end the text. A repeat without an upper limit must not
+  // stand directly before "$"; trims are loops.
+  ["a repeat without limit directly before the end of the text", /[+*]\$|,\}\$/],
 ];
 
 function violations(source: string): string[] {
@@ -93,6 +97,12 @@ describe("the non-test sources of the importer are portable and pure", () => {
       [`const mark = "${String.fromCodePoint(0xfeff)}";`]:
         "a character that is not printable ASCII, a tab or a line feed",
       "line one\r\nline two": "a character that is not printable ASCII, a tab or a line feed",
+      // The trims of the reference port, and their like.
+      'const RE_RTRIM_INLINE = new RegExp("[" + INLINE_WS + "]+$");':
+        "a repeat without limit directly before the end of the text",
+      "text.replace(/^[ \\t]+|[ \\t]+$/g, '')": "a repeat without limit directly before the end of the text",
+      "/\\s*$/.exec(line)": "a repeat without limit directly before the end of the text",
+      "/[0-9]{2,}$/.test(line)": "a repeat without limit directly before the end of the text",
       'import { x } from "../vault/x.ts";': 'the import "../vault/x.ts"',
       'import { x } from "./text";': 'the import "./text"',
       'import fc from "fast-check";': 'the import "fast-check"',
@@ -103,6 +113,8 @@ describe("the non-test sources of the importer are portable and pure", () => {
       violations('import { trimFull } from "./text.ts";\nnew Date(milliseconds).toISOString();'),
     ).toEqual([]);
     expect(violations("declare const URL: new (input: string) => ParsedUrl;")).toEqual([]);
+    // The time line of W7 ends in an optional group, not in a repeat without limit.
+    expect(violations("const TIME_LINE = /^[0-9]{1,2}:[0-9]{2}\\s?(AM|PM)?$/;")).toEqual([]);
   });
 
   it("runs under Node directly, as the server will load it: type stripping only, no build step", {

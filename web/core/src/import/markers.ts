@@ -57,19 +57,31 @@ function dropBold(text: string): string {
   return text.startsWith("**") ? text.slice(2) : text;
 }
 
+// corrections.md 3, point 9: marker words are matched with ASCII case folding only. A to Z
+// become a to z and nothing else changes, so no other letter can stand in for one of a name:
+// U+0130, which Unicode lower-cases to "i" plus a combining dot, is part of no marker.
+function foldAscii(text: string): string {
+  let folded = "";
+  for (let index = 0; index < text.length; index++) {
+    const code = text.charCodeAt(index);
+    folded += code >= 0x41 && code <= 0x5a ? String.fromCharCode(code + 0x20) : text.charAt(index);
+  }
+  return folded;
+}
+
 /**
  * W8, the web form of 2.4: same names, same order, same bare set, but "**" is removed only
- * where it decorates the label, so bold text after the label survives (D7). For lines
- * without "**" this is the Apple marker, apart from the accidents of its string library
- * that D18 says to ignore. Whether a bare marker counts is the caller's rule.
+ * where it decorates the label, so bold text after the label survives (D7). For ASCII lines
+ * without "**" this is the Apple marker (corrections.md 3, point 9), apart from the accidents
+ * of its string library that D18 says to ignore. Whether a bare marker counts is the caller's rule.
  */
 export function roleMarker(line: string): RoleMarker | null {
   const trimmed = trimInline(line);
   if (trimmed === "") return null;
   const candidate = dropBold(trimInline(stripLeadingHashes(trimmed)));
-  // The names are ASCII and at most 16 long, so only the start of the line is lower-cased:
-  // the result is that of lower-casing the whole line, without the cost on a very long one.
-  const head = candidate.slice(0, LONGEST_NAME).toLowerCase();
+  // The names are at most 16 long, so only the start of the line is folded. Folding keeps
+  // every character in its place, so the name ends in the candidate where it ends in `head`.
+  const head = foldAscii(candidate.slice(0, LONGEST_NAME));
   for (const [name, role] of ROLE_NAMES) {
     if (!head.startsWith(name)) continue;
     const after = dropBold(candidate.slice(name.length));

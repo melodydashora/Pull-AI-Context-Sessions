@@ -2,23 +2,43 @@
 // The three entry points, rule by rule: docs/import-rules.md W2, W3, W10, W11, W12 and the
 // items of part C, beyond what the golden fixtures pin down. All content is invented.
 
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
   type CaptureInput,
+  decodeBytes,
   type ImportResult,
   importCapture,
   importFile,
   importPaste,
   type PasteOptions,
   providerForUrl,
+  trimFull,
 } from "./index.ts";
 
 const chr = (...codes: number[]): string => String.fromCodePoint(...codes);
 const NUL = chr(0);
+const VT = chr(0x0b);
+const FF = chr(0x0c);
+const NEL = chr(0x85);
 const ZWSP = chr(0x200b);
+const LS = chr(0x2028);
+const PS = chr(0x2029);
 const BOM = chr(0xfeff);
 const REPLACEMENT = chr(0xfffd);
 const HIGH = chr(0xd800);
+
+/** True when a surrogate stands without its partner: such a string cannot be stored (C5). */
+function hasLoneSurrogate(text: string): boolean {
+  for (let index = 0; index < text.length; index++) {
+    const code = text.charCodeAt(index);
+    if (code < 0xd800 || code > 0xdfff) continue;
+    const next = text.charCodeAt(index + 1);
+    if (code > 0xdbff || !(next >= 0xdc00 && next <= 0xdfff)) return true;
+    index++;
+  }
+  return false;
+}
 
 const utf8 = (text: string): Uint8Array => new TextEncoder().encode(text);
 
@@ -100,6 +120,50 @@ describe("importFile: W2 bytes to text", () => {
     // A lone surrogate reaches the text through UTF-16.
     const lone = importFile(utf16le(`User: x${HIGH}y and more text`, true), "lone.txt");
     expect(turns(lone)).toEqual([["user", `x${REPLACEMENT}y and more text`]]);
+  });
+
+  it("corrections.md 3, point 1: UTF-16 with an odd last byte is imported, that byte ignored", () => {
+    const odd = new Uint8Array([...utf16le("User: hello\r\nAssistant: hi", true), 0x21]);
+    const result = importFile(odd, "notes.txt");
+    expect(verdict(result)).toEqual(["imported", null, ["decoded_as_utf_16le"]]);
+    expect(turns(result)).toEqual([
+      ["user", "hello"],
+      ["assistant", "hi"],
+    ]);
+    // The same without a mark.
+    const bare = new Uint8Array([...utf16le("User: hello\r\nAssistant: hi", false), 0x21]);
+    expect(importFile(bare, "notes.txt")).toEqual(result);
+    // A mark and half a character hold no text at all.
+    expect(verdict(importFile(new Uint8Array([0xff, 0xfe, 0x41]), "a.txt"))).toEqual([
+      "rejected",
+      "empty_input",
+      ["decoded_as_utf_16le"],
+    ]);
+  });
+
+  it("corrections.md 3, point 3: a UTF-8 mark before bytes that are not UTF-8 gives the windows-1252 flag and the mark as three characters", () => {
+    const file = new Uint8Array([0xef, 0xbb, 0xbf, ...utf8("User: caf"), 0xe9]);
+    const result = importFile(file, "notes.txt");
+    expect(verdict(result)).toEqual(["imported", null, ["decoded_as_windows_1252"]]);
+    // The three characters stand in front of "User:", so the line is no marker: the review step shows them.
+    expect(turns(result)).toEqual([["unknown", `${chr(0xef, 0xbb, 0xbf)}User: caf${chr(0xe9)}`]]);
+  });
+
+  it("corrections.md 3, points 4 and 10: decodeBytes leaves W1 to importFile, which removes every mark", () => {
+    const marks = [0xef, 0xbb, 0xbf, 0xef, 0xbb, 0xbf, 0xef, 0xbb, 0xbf, 0xef, 0xbb, 0xbf, 0xef, 0xbb, 0xbf];
+    const file = new Uint8Array([...marks, ...utf8("User: q\r\nAssistant: a")]);
+    // Five marks in the bytes: the decoder consumes one, the text still starts with four.
+    expect(decodeBytes(file)).toEqual({ text: `${BOM.repeat(4)}User: q\r\nAssistant: a`, flag: null });
+    expect(turns(importFile(file, "a.txt"))).toEqual([
+      ["user", "q"],
+      ["assistant", "a"],
+    ]);
+    // JSON.parse refuses a leading U+FEFF, so every one of them has to be gone before it (fixture 08).
+    expect(verdict(importFile(new Uint8Array([...marks, ...utf8(EXPORT)]), "c.json"))).toEqual([
+      "imported",
+      null,
+      [],
+    ]);
   });
 
   it("accepts a Node Buffer, which is a byte array, and refuses anything else", () => {
@@ -222,7 +286,9 @@ describe("importFile: W3 JSON files", () => {
   });
 });
 
-describe("importFile: W3 interchange files are handed over, not imported here", () => {
+// corrections.md 3, point 10: the fourth outcome of importFile, `interchange`, carries the parsed
+// document; the caller hands it to the interchange reader. It is never `unrecognised_json`.
+describe("importFile: W3 interchange files are handed over, not imported here (corrections.md 3, point 10)", () => {
   const interchange = {
     format: "sessionvault-interchange",
     version: 1,
@@ -548,15 +614,109 @@ describe("importCapture: W10", () => {
     expect(title("not a link")).toBe("not a link");
   });
 
-  it("no title is ever empty or all white space (D13), and every title can be stored (C5)", () => {
-    const title = (sourceUrl: string): string | undefined =>
-      importCapture(capture({ turns: ["User: q"], sourceUrl })).sessions[0]?.title;
-    // A last path segment that decodes to white space does not count; the link is next.
-    expect(title("https://example.invalid/a/%20%09")).toBe("https://example.invalid/a/%20%09");
-    expect(title("")).toBe("Imported session");
-    expect(title(" \t ")).toBe("Imported session");
-    expect(title("https://example.invalid/a%00b%0D%0Ac")).toBe("ab\nc");
-    expect(title(`${BOM}https://example.invalid/x${NUL}`)).toBe("x");
+  describe("the title chain of corrections.md 3, point 6", () => {
+    const title = (overrides: Partial<CaptureInput>): string | undefined =>
+      importCapture(capture({ turns: ["User: q"], ...overrides })).sessions[0]?.title;
+    // Blank for the full trim, though not for the inline trim: U+000B, U+000C, U+0085, U+2028, U+2029.
+    const blankOnlyForTheFullTrim = `${VT}${FF}${NEL}${LS}${PS}`;
+
+    it("1. the typed name, through W1 and the full trim", () => {
+      expect(title({ typedName: `${BOM}${BOM}Ty${NUL}ped\r\n`, detectedTitle: "Detected" })).toBe("Typed");
+      expect(title({ typedName: `${LS}Typed${NEL}`, detectedTitle: "Detected" })).toBe("Typed");
+      expect(title({ typedName: `a${HIGH}b` })).toBe(`a${REPLACEMENT}b`);
+    });
+
+    it("2. else the detected title, through W1 and the full trim", () => {
+      expect(title({ typedName: "", detectedTitle: `${BOM}De${NUL}tected ${PS}` })).toBe("Detected");
+      // A typed name that is empty only after the full trim does not count (point 8).
+      expect(title({ typedName: blankOnlyForTheFullTrim, detectedTitle: "Detected" })).toBe("Detected");
+      expect(title({ typedName: `${BOM}${NUL} \r\n`, detectedTitle: "Detected" })).toBe("Detected");
+    });
+
+    it("3. else the last non-empty path segment of the link, percent-decoded, through W1 and the full trim", () => {
+      const blank = { typedName: " ", detectedTitle: blankOnlyForTheFullTrim };
+      expect(title({ ...blank, sourceUrl: "https://example.invalid/a/%20Bread%20notes%20%0A" })).toBe(
+        "Bread notes",
+      );
+      expect(title({ ...blank, sourceUrl: "https://example.invalid/first/second//" })).toBe("second");
+      // What the decoded segment can hold and a title must not: U+0000, CR, a mark at the start.
+      expect(title({ ...blank, sourceUrl: "https://example.invalid/a%00b%0D%0Ac" })).toBe("ab\nc");
+      expect(title({ ...blank, sourceUrl: "https://example.invalid/%EF%BB%BF%EF%BB%BFx" })).toBe("x");
+      // If decoding fails, the segment as written.
+      expect(title({ ...blank, sourceUrl: "https://example.invalid/a/%E0%A4%A" })).toBe("%E0%A4%A");
+      expect(title({ ...blank, sourceUrl: "https://example.invalid/100%" })).toBe("100%");
+    });
+
+    it("4. else the link itself, through W1 and the full trim", () => {
+      // No path segment at all.
+      expect(title({ sourceUrl: "https://example.invalid/" })).toBe("https://example.invalid/");
+      expect(title({ sourceUrl: `${BOM}https://example.invalid${NUL}/\r\n` })).toBe(
+        "https://example.invalid/",
+      );
+      expect(title({ sourceUrl: `  not a link ${LS}` })).toBe("not a link");
+      // A last path segment that is empty after decoding and the full trim does not count.
+      expect(title({ sourceUrl: "https://example.invalid/a/%20%09" })).toBe(
+        "https://example.invalid/a/%20%09",
+      );
+      expect(title({ sourceUrl: "https://example.invalid/a/%E2%80%A8%C2%85" })).toBe(
+        "https://example.invalid/a/%E2%80%A8%C2%85",
+      );
+      expect(title({ sourceUrl: "https://example.invalid/a/%00" })).toBe("https://example.invalid/a/%00");
+    });
+
+    it("5. and last the constant 'Captured session'", () => {
+      expect(title({ sourceUrl: "" })).toBe("Captured session");
+      expect(title({ sourceUrl: " \t " })).toBe("Captured session");
+      expect(title({ sourceUrl: `${BOM}${NUL}\r\n` })).toBe("Captured session");
+      expect(title({ sourceUrl: blankOnlyForTheFullTrim, typedName: blankOnlyForTheFullTrim })).toBe(
+        "Captured session",
+      );
+      // The same for whole-page text, where the capture title always replaces the parser's.
+      expect(title({ kind: "page-text", sourceUrl: "", turns: ["a page of text"] })).toBe("Captured session");
+    });
+
+    it("so a title is never blank and never holds U+0000, whatever the three strings are", () => {
+      const pieces = [
+        BOM,
+        NUL,
+        "\r",
+        "\n",
+        " ",
+        "\t",
+        VT,
+        FF,
+        NEL,
+        LS,
+        PS,
+        ZWSP,
+        HIGH,
+        "%00",
+        "%20",
+        "/",
+        "a",
+      ];
+      const piece = fc.constantFrom(...pieces);
+      const text = fc.array(piece, { maxLength: 6 }).map((parts) => parts.join(""));
+      const link = fc.oneof(
+        text,
+        text.map((path) => `https://example.invalid/${path}`),
+      );
+      let fallbacks = 0;
+      fc.assert(
+        fc.property(text, fc.option(text, { nil: null }), link, (typedName, detectedTitle, sourceUrl) => {
+          const found = title({ typedName, detectedTitle, sourceUrl });
+          if (found === undefined) throw new Error("no session");
+          expect(found).not.toBe("");
+          expect(trimFull(found)).toBe(found);
+          expect(found.includes(NUL)).toBe(false);
+          expect(found.includes("\r")).toBe(false);
+          expect(hasLoneSurrogate(found)).toBe(false);
+          if (found === "Captured session") fallbacks++;
+        }),
+        { seed: 20261120, numRuns: 2000 },
+      );
+      expect(fallbacks).toBeGreaterThan(20);
+    });
   });
 
   it("page text: the capture title always wins, also over a puller header in the text (D13)", () => {
@@ -679,12 +839,80 @@ describe("importCapture: W10", () => {
       // @ts-expect-error a caller outside the type system
       expect(verdict(importCapture(value))).toEqual(["rejected", "no_conversation_found", []]);
     }
-    // Missing names and link are treated as empty.
+    // Missing names and link are treated as empty: the last title of the chain is left.
     // @ts-expect-error a caller outside the type system
     expect(importCapture({ kind: "turns", turns: ["User: q"] }).sessions[0]).toMatchObject({
-      title: "Imported session",
+      title: "Captured session",
       sourceUrl: "",
       provider: "other",
     });
+    const mistyped = { kind: "turns", turns: ["User: q"], typedName: 5, detectedTitle: {}, sourceUrl: [] };
+    // @ts-expect-error a caller outside the type system
+    expect(importCapture(mistyped).sessions[0]).toMatchObject({ title: "Captured session", sourceUrl: "" });
+  });
+});
+
+describe("corrections.md 3, point 7: W1 applies to every stored string", () => {
+  // Two marks at the start, U+0000, CR LF, a lone surrogate and a lone CR: everything W1 acts on.
+  const dirty = `${BOM}${BOM}a${NUL}b\r\nc${HIGH}\rd`;
+  const clean = `ab\nc${REPLACEMENT}\nd`;
+  const captureOf = (overrides: Partial<CaptureInput>): CaptureInput => ({
+    sourceUrl: "https://example.invalid/share/EXAMPLE",
+    detectedTitle: null,
+    typedName: "",
+    kind: "turns",
+    turns: ["User: q"],
+    ...overrides,
+  });
+
+  it("the title passed by the caller", () => {
+    expect(importPaste("note", { title: dirty, pickerProvider: "other" }).sessions[0]?.title).toBe(clean);
+    // Also where a parser other than the generic one uses it: share-page text, a puller file without a title.
+    expect(importPaste("You said: q\nq", { title: dirty, pickerProvider: "other" }).sessions[0]?.title).toBe(
+      clean,
+    );
+    expect(
+      importPaste("# \nSource: x\n\nturn", { title: dirty, pickerProvider: "other" }).sessions[0]?.title,
+    ).toBe(clean);
+  });
+
+  it("the source link, of a paste and of a capture of either kind", () => {
+    const pasted = importPaste("note", { title: "t", pickerProvider: "other", sourceUrl: dirty });
+    expect(pasted.sessions[0]?.sourceUrl).toBe(clean);
+    expect(importCapture(captureOf({ sourceUrl: dirty })).sessions[0]?.sourceUrl).toBe(clean);
+    expect(importCapture(captureOf({ sourceUrl: dirty, kind: "page-text" })).sessions[0]?.sourceUrl).toBe(
+      clean,
+    );
+    // The link stays as written otherwise: W1, not a trim.
+    const padded = importPaste("note", { title: "t", pickerProvider: "other", sourceUrl: "  x \n" });
+    expect(padded.sessions[0]?.sourceUrl).toBe("  x \n");
+  });
+
+  it("the file-name stem", () => {
+    expect(importFile(utf8("note"), `${dirty}.txt`).sessions[0]?.title).toBe(clean);
+    expect(importFile(utf8("You said: q\nq"), `${dirty}.md`).sessions[0]?.title).toBe(clean);
+    expect(importFile(utf8("# \nSource: x\n\nturn"), `${dirty}.md`).sessions[0]?.title).toBe(clean);
+  });
+
+  it("the typed name and the detected title of a capture", () => {
+    expect(importCapture(captureOf({ typedName: dirty })).sessions[0]?.title).toBe(clean);
+    expect(importCapture(captureOf({ detectedTitle: dirty })).sessions[0]?.title).toBe(clean);
+    expect(importCapture(captureOf({ typedName: dirty, kind: "page-text" })).sessions[0]?.title).toBe(clean);
+  });
+
+  it("the strings a file itself carries: a puller title and link, a ChatGPT title, each message, each dropped turn", () => {
+    const puller = importFile(utf8(`# ti${NUL}tle\r\nSource: li${NUL}nk\r\n\r\nUser: q${HIGH}\r\n`), "p.md");
+    expect(puller.sessions[0]).toMatchObject({
+      title: "title",
+      sourceUrl: "link",
+      messages: [{ role: "user", text: `q${REPLACEMENT}` }],
+    });
+    const exported = JSON.stringify({ title: dirty, mapping: { a: node("user", dirty) } });
+    expect(importFile(utf8(exported), "c.json").sessions[0]).toMatchObject({
+      title: clean,
+      messages: [{ role: "user", text: clean }],
+    });
+    const dropped = importCapture(captureOf({ turns: [`${BOM}Sign${NUL} in\r\n`, "User: q"] })).droppedTurns;
+    expect(dropped).toEqual([{ position: "leading", index: 0, text: "Sign in\n" }]);
   });
 });

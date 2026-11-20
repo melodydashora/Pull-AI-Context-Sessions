@@ -4,7 +4,7 @@
 
 import { splitLeadingRoleMarker } from "./markers.ts";
 import { providerForUrl, providerFromLabels } from "./provider.ts";
-import { cleanTitle, isBlankLine, trimFull, trimInline } from "./text.ts";
+import { cleanTitle, isBlank, isBlankLine, trimFull, trimInline } from "./text.ts";
 import type { ParsedMessage, ParsedSession } from "./types.ts";
 
 const TITLE_PREFIX = "# ";
@@ -46,8 +46,9 @@ function buildSession(
   // W12: a session with no message is not returned.
   if (messages.length === 0) return null;
   return {
-    // W5: the text after "# "; if empty, the title passed by the caller.
-    title: title === "" ? cleanTitle(fallbackTitle) : title,
+    // W5: the text after "# "; if empty, the title passed by the caller. corrections.md 3,
+    // point 8: empty after the full trim, so a title of line separators alone falls back too.
+    title: isBlank(title) ? cleanTitle(fallbackTitle) : title,
     // W9: the host of the Source line, else the speaker labels.
     provider: providerForUrl(source) ?? providerFromLabels(labels) ?? "other",
     model: "",

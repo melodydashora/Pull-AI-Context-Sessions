@@ -111,9 +111,9 @@ describe("W2 decode bytes explicitly", () => {
     expect(decodeBytes(mixed)?.flag).toBe(null);
   });
 
-  it("an odd number of bytes is rounded down for the test, and the text is still decoded", () => {
+  it("an odd number of bytes is rounded down for the test, and the odd last byte is ignored", () => {
     const odd = [...utf16("hello", "le"), 0x21];
-    expect(decodeBytes(bytes(...odd))).toEqual({ text: `hello${REPLACEMENT}`, flag: "decoded_as_utf_16le" });
+    expect(decodeBytes(bytes(...odd))).toEqual({ text: "hello", flag: "decoded_as_utf_16le" });
   });
 
   it("a single pair says nothing: two or three bytes are never taken for UTF-16 without a mark", () => {
@@ -171,6 +171,136 @@ describe("W2 decode bytes explicitly", () => {
 
   it("zero bytes decode to the empty text (importFile rejects them before decoding)", () => {
     expect(decodeBytes(bytes())).toEqual({ text: "", flag: null });
+  });
+});
+
+describe("corrections.md 3, point 1: UTF-16 is decoded leniently", () => {
+  const LE = "decoded_as_utf_16le";
+  const BE = "decoded_as_utf_16be";
+
+  it("an odd last byte is ignored: without a mark, in either byte order", () => {
+    for (const last of [0x21, 0x00, 0x0a, 0xd8, 0xff]) {
+      expect(decodeBytes(bytes(...utf16("hello", "le"), last))).toEqual({ text: "hello", flag: LE });
+      expect(decodeBytes(bytes(...utf16("hello", "be"), last))).toEqual({ text: "hello", flag: BE });
+    }
+  });
+
+  it("an odd last byte is ignored: after a byte-order mark, in either byte order", () => {
+    expect(decodeBytes(bytes(0xff, 0xfe, ...utf16("AB", "le"), 0x43))).toEqual({ text: "AB", flag: LE });
+    expect(decodeBytes(bytes(0xfe, 0xff, ...utf16("AB", "be"), 0x43))).toEqual({ text: "AB", flag: BE });
+    // A mark and a single byte: no character at all.
+    expect(decodeBytes(bytes(0xff, 0xfe, 0x41))).toEqual({ text: "", flag: LE });
+    expect(decodeBytes(bytes(0xfe, 0xff, 0x41))).toEqual({ text: "", flag: BE });
+  });
+
+  it("ignored means that no U+FFFD stands for it, which a decoder alone would add", () => {
+    const odd = bytes(0xff, 0xfe, ...utf16("AB", "le"), 0x43);
+    expect(new TextDecoder("utf-16le").decode(odd)).toBe(`AB${REPLACEMENT}`);
+    expect(decodeBytes(odd)?.text).toBe("AB");
+  });
+
+  it("an unpaired surrogate becomes U+FFFD, and a pair stays", () => {
+    // A lone high surrogate (D800) before a letter, a lone low one (DC00) between letters.
+    expect(decodeBytes(bytes(0xff, 0xfe, 0x00, 0xd8, 0x41, 0x00))).toEqual({
+      text: `${REPLACEMENT}A`,
+      flag: LE,
+    });
+    expect(decodeBytes(bytes(0xff, 0xfe, 0x41, 0x00, 0x00, 0xdc, 0x42, 0x00))).toEqual({
+      text: `A${REPLACEMENT}B`,
+      flag: LE,
+    });
+    expect(decodeBytes(bytes(0xfe, 0xff, 0xd8, 0x00, 0x00, 0x41))).toEqual({
+      text: `${REPLACEMENT}A`,
+      flag: BE,
+    });
+    // A high surrogate as the last unit, with and without an odd byte behind it.
+    expect(decodeBytes(bytes(0xff, 0xfe, 0x41, 0x00, 0x00, 0xd8))?.text).toBe(`A${REPLACEMENT}`);
+    expect(decodeBytes(bytes(0xff, 0xfe, 0x41, 0x00, 0x00, 0xd8, 0x21))?.text).toBe(`A${REPLACEMENT}`);
+    // D83D DEB2 is the bicycle, U+1F6B2.
+    expect(decodeBytes(bytes(0xff, 0xfe, 0x3d, 0xd8, 0xb2, 0xde))).toEqual({ text: chr(0x1f6b2), flag: LE });
+  });
+
+  it("UTF-8 stays strict: an invalid byte is never replaced, it sends the bytes to the rows below", () => {
+    // "caf" and a lone E9: not UTF-8, so windows-1252, flagged; no U+FFFD anywhere.
+    const decoded = decodeBytes(bytes(...ascii("caf"), 0xe9));
+    expect(decoded).toEqual({ text: `caf${chr(0xe9)}`, flag: "decoded_as_windows_1252" });
+  });
+});
+
+describe("corrections.md 3, point 2: UTF-16 without a mark needs at least two byte pairs", () => {
+  const NUL = chr(0);
+
+  it("one pair, with or without an odd byte behind it, is never taken for UTF-16", () => {
+    expect(decodeBytes(bytes(0x41, 0x00))).toEqual({ text: `A${NUL}`, flag: null });
+    expect(decodeBytes(bytes(0x00, 0x41))).toEqual({ text: `${NUL}A`, flag: null });
+    expect(decodeBytes(bytes(0x41, 0x00, 0x42))).toEqual({ text: `A${NUL}B`, flag: null });
+    expect(decodeBytes(bytes(0x00))).toEqual({ text: NUL, flag: null });
+  });
+
+  it("from two pairs on the zero-byte test applies", () => {
+    expect(decodeBytes(bytes(0x41, 0x00, 0x42, 0x00))).toEqual({ text: "AB", flag: "decoded_as_utf_16le" });
+    expect(decodeBytes(bytes(0x00, 0x41, 0x00, 0x42))).toEqual({ text: "AB", flag: "decoded_as_utf_16be" });
+    // Two pairs and an odd byte: the test looks at the two pairs, the odd byte is ignored (point 1).
+    expect(decodeBytes(bytes(0x41, 0x00, 0x42, 0x00, 0x43))).toEqual({
+      text: "AB",
+      flag: "decoded_as_utf_16le",
+    });
+    // One zero among two second bytes is 50 %, which is at least 40 %.
+    expect(decodeBytes(bytes(0x41, 0x00, 0x42, 0x43))).toEqual({
+      text: `A${chr(0x4342)}`,
+      flag: "decoded_as_utf_16le",
+    });
+    // No zero at all: two pairs of plain letters are UTF-8.
+    expect(decodeBytes(bytes(0x41, 0x42, 0x43, 0x44))).toEqual({ text: "ABCD", flag: null });
+  });
+});
+
+describe("corrections.md 3, point 3: a UTF-8 mark followed by invalid UTF-8 falls through with all its bytes", () => {
+  it("the user gets the windows-1252 flag and the three mark bytes as characters at the start", () => {
+    expect(decodeBytes(bytes(0xef, 0xbb, 0xbf, ...ascii("caf"), 0xe9))).toEqual({
+      text: `${chr(0xef)}${chr(0xbb)}${chr(0xbf)}caf${chr(0xe9)}`,
+      flag: "decoded_as_windows_1252",
+    });
+  });
+
+  it("every row below is tried with all the bytes: UTF-16 without a mark, then the refusal of binary data", () => {
+    // After the mark: 00 41 00 E9 00 42 00 43 00. E9 00 is not UTF-8. As pairs from the first byte
+    // on (EF BB, BF 00, 41 00, E9 00, 42 00, 43 00) five of six second bytes are zero: UTF-16LE.
+    const mixed = bytes(0xef, 0xbb, 0xbf, 0x00, 0x41, 0x00, 0xe9, 0x00, 0x42, 0x00, 0x43, 0x00);
+    expect(decodeBytes(mixed)).toEqual({
+      text: `${chr(0xbbef)}${chr(0xbf)}A${chr(0xe9)}BC`,
+      flag: "decoded_as_utf_16le",
+    });
+    // A control byte that text never has: not text at all.
+    expect(decodeBytes(bytes(0xef, 0xbb, 0xbf, 0xe9, 0x1b))).toBeNull();
+  });
+
+  it("valid UTF-8 after the mark is UTF-8, and the mark is consumed", () => {
+    expect(decodeBytes(bytes(0xef, 0xbb, 0xbf, ...ascii("caf"), 0xc3, 0xa9))).toEqual({
+      text: `caf${chr(0xe9)}`,
+      flag: null,
+    });
+  });
+});
+
+describe("corrections.md 3, point 10: decodeBytes returns the text as decoded, before W1", () => {
+  const NUL = chr(0);
+
+  it("UTF-8: a second mark, CR LF, a lone CR and U+0000 are all still there", () => {
+    const file = bytes(0xef, 0xbb, 0xbf, 0xef, 0xbb, 0xbf, ...ascii("a\r\nb"), 0x00, ...ascii("c\r"));
+    expect(decodeBytes(file)).toEqual({ text: `${BOM}a\r\nb${NUL}c\r`, flag: null });
+  });
+
+  it("UTF-16: the same, and only the mark of the encoding itself is consumed", () => {
+    const file = bytes(0xff, 0xfe, 0xff, 0xfe, ...utf16(`a\r\n${NUL}b\r`, "le"));
+    expect(decodeBytes(file)).toEqual({ text: `${BOM}a\r\n${NUL}b\r`, flag: "decoded_as_utf_16le" });
+  });
+
+  it("windows-1252: CR LF stays", () => {
+    expect(decodeBytes(bytes(0xe9, 0x0d, 0x0a, 0x41))).toEqual({
+      text: `${chr(0xe9)}\r\nA`,
+      flag: "decoded_as_windows_1252",
+    });
   });
 });
 

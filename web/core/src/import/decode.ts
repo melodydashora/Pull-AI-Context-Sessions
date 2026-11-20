@@ -26,7 +26,7 @@ const UTF16_FLAG: Readonly<Record<Utf16, ImportFlag>> = {
 function utf16WithoutMark(bytes: Uint8Array): Utf16 | null {
   const sample = Math.min(bytes.length, SAMPLE_BYTES) & ~1;
   const pairs = sample / 2;
-  // W2 names no smallest sample. As the reference port: at least two pairs, since one pair says nothing.
+  // corrections.md 3, point 2: the test applies from two byte pairs on; one pair says nothing.
   if (pairs < 2) return null;
   let zeroFirst = 0;
   let zeroSecond = 0;
@@ -49,9 +49,12 @@ function hasBinaryControlByte(bytes: Uint8Array): boolean {
 }
 
 function decodeUtf16(bytes: Uint8Array, encoding: Utf16): DecodedText | null {
-  // W2 gives the UTF-16 rows no failure branch, although its closing paragraph forbids a
-  // decoder that is not strict. As the reference port: lenient, and flagged.
-  const text = decodeText(bytes, encoding, false);
+  // corrections.md 3, point 1: UTF-16 is decoded leniently, and flagged. An odd last byte is
+  // ignored: it is half a character. An unpaired surrogate becomes U+FFFD, which is what a
+  // decoder that is not strict makes of it. The rule of W2 against such a decoder is about
+  // UTF-8, where a failure is what tells UTF-8 from windows-1252.
+  const pairs = bytes.length % 2 === 0 ? bytes : bytes.subarray(0, bytes.length - 1);
+  const text = decodeText(pairs, encoding, false);
   return text === null ? null : { text, flag: UTF16_FLAG[encoding] };
 }
 
@@ -60,11 +63,16 @@ function decodeUtf16(bytes: Uint8Array, encoding: Utf16): DecodedText | null {
  * strict UTF-8, refusal of binary data, windows-1252. A row applies when its decoding succeeds.
  * null: the bytes are not text (`undecodable`). Zero bytes give the empty text; `importFile`
  * rejects them as `empty_input` before it gets here.
+ *
+ * corrections.md 3, point 10: the text is returned as decoded, before W1. The decoder has
+ * consumed one byte-order mark of its own encoding; a further mark, CR and U+0000 are still there.
  */
 export function decodeBytes(bytes: Uint8Array): DecodedText | null {
   if (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
     const text = decodeText(bytes, "utf-8", true);
     if (text !== null) return { text, flag: null };
+    // corrections.md 3, point 3: a UTF-8 mark followed by bytes that are not UTF-8 falls
+    // through to the rows below with all its bytes, the three of the mark included.
   }
   if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) return decodeUtf16(bytes, "utf-16le");
   if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) return decodeUtf16(bytes, "utf-16be");

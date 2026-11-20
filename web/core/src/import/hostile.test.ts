@@ -88,7 +88,7 @@ function must(condition: boolean, what: string): void {
   if (!condition) throw new Error(`malformed result: ${what}`);
 }
 
-function checkResult(result: ImportResult): void {
+function checkResult(result: ImportResult, restoring = false): void {
   must(["imported", "rejected", "link", "interchange"].includes(result.outcome), "an unknown outcome");
   if (result.outcome === "rejected") must(REASONS.has(result.reason), "an unknown reason");
   else must(result.reason === null, "a reason on a result that is no rejection");
@@ -121,15 +121,18 @@ function checkResult(result: ImportResult): void {
     }
   }
 
-  // W10: dropped turns come from the two ends, in input order, with their positions.
+  // W10: dropped turns come from the two ends, in input order, with their positions. Without
+  // `keepDropped` each end is one run without a gap; a turn that was put back leaves a gap.
   let previous = -1;
   let trailing = false;
   for (const turn of result.droppedTurns) {
-    must(turn.index > previous, "dropped turns out of order");
+    must(Number.isInteger(turn.index) && turn.index > previous, "dropped turns out of order");
     if (turn.position === "leading") {
-      must(!trailing && turn.index === previous + 1, "a leading turn that is not at the start");
+      must(!trailing, "a leading turn after a trailing one");
+      must(restoring || turn.index === previous + 1, "a leading turn that is not at the start");
     } else {
-      must(!trailing || turn.index === previous + 1, "trailing turns with a gap");
+      must(turn.position === "trailing", "an unknown position");
+      must(restoring || !trailing || turn.index === previous + 1, "trailing turns with a gap");
       trailing = true;
     }
     previous = turn.index;
@@ -870,5 +873,241 @@ describe("no exception escapes, and every result is well formed", () => {
       }),
       { seed: SEED, numRuns: 1500 },
     );
+  });
+});
+
+// ---------------------------------------------------------------------------------------
+// W10 keep_dropped: the list comes from a request body, so it is hostile input too.
+// ---------------------------------------------------------------------------------------
+
+describe("keepDropped (W10 keep_dropped): results stay well formed, whatever the list holds", () => {
+  /** Turns that the chrome test drops, so that there is something to put back. */
+  const chromeTurn = fc.constantFrom(
+    "Sign in",
+    "AI Overview",
+    "This assistant can make mistakes.",
+    "cookie and privacy policy",
+    "Conversation Transcript\nSign in",
+    `Sign in${chr(0)}\r\n`,
+    `${chr(0xfeff)}${chr(0xfeff)}Log in`,
+    "Copy",
+    "",
+    "Assistant",
+  );
+  const turnsWithChrome = fc
+    .tuple(
+      fc.array(chromeTurn, { maxLength: 3 }),
+      fc.array(fc.oneof(anyText, chromeTurn), { maxLength: 5 }),
+      fc.array(chromeTurn, { maxLength: 3 }),
+    )
+    .map(([leading, middle, trailing]) => [...leading, ...middle, ...trailing]);
+  /** An entry of the list: mostly an index of a turn, sometimes a number that names none. */
+  const entry = fc.oneof(
+    { weight: 10, arbitrary: fc.integer({ min: 0, max: 10 }) },
+    { weight: 2, arbitrary: fc.integer({ min: -5, max: 40 }) },
+    {
+      weight: 2,
+      arbitrary: fc.constantFrom(
+        0.5,
+        -0,
+        Number.NaN,
+        Number.POSITIVE_INFINITY,
+        Number.NEGATIVE_INFINITY,
+        Number.MAX_SAFE_INTEGER,
+        2 ** 32,
+        2 ** 53,
+        -1,
+        1e300,
+      ),
+    },
+  );
+  const anyList = fc.array(entry, { maxLength: 12 });
+  const captureWithChrome = fc.record(
+    {
+      sourceUrl: anyLink,
+      detectedTitle: fc.oneof(fc.constant(null), anyText),
+      typedName: anyText,
+      kind: fc.constantFrom<CaptureInput["kind"]>("turns", "turns", "turns", "page-text"),
+      turns: turnsWithChrome,
+      allowWall: fc.boolean(),
+    },
+    { requiredKeys: ["sourceUrl", "detectedTitle", "typedName", "kind", "turns"] },
+  );
+
+  it("importCapture, for any capture and any list of numbers", { timeout: TEST_TIMEOUT }, () => {
+    const tally = new Tally();
+    let putBack = 0;
+    let namedNothing = 0;
+    let rescued = 0;
+    fc.assert(
+      fc.property(captureWithChrome, anyList, (plainInput, keepDropped) => {
+        const input: CaptureInput = { ...plainInput, keepDropped };
+        const plain = importCapture(plainInput);
+        const result = importCapture(input);
+        checkResult(plain);
+        checkResult(result, true);
+        tally.result(result);
+        expect(result.flags).toEqual([]);
+        expect(result.sessions.length).toBeLessThanOrEqual(1);
+        expect(importCapture(input)).toEqual(result); // a pure function
+        expect(keepDropped, "the list is not changed").toEqual([...keepDropped]);
+
+        // Whole-page text has no dropped turns: the list changes nothing.
+        if (input.kind === "page-text") {
+          expect(result).toEqual(plain);
+          return;
+        }
+        // Exactly the named turns leave the dropped list; the others stay as they were.
+        const named = new Set(keepDropped);
+        expect(result.droppedTurns).toEqual(plain.droppedTurns.filter((turn) => !named.has(turn.index)));
+        for (const turn of result.droppedTurns) expect(turn.index).toBeLessThan(input.turns.length);
+        if (result.droppedTurns.length < plain.droppedTurns.length) putBack++;
+        else {
+          namedNothing++;
+          expect(result).toEqual(plain);
+        }
+        // Putting turns back never loses a message: those of the plain run are all there, in order.
+        const before = plain.sessions[0]?.messages ?? [];
+        const after = result.sessions[0]?.messages ?? [];
+        let from = 0;
+        for (const message of before) {
+          let at = from;
+          while (at < after.length && !(after[at]?.role === message.role && after[at]?.text === message.text))
+            at++;
+          must(at < after.length, "a message of the plain run is gone after a restore");
+          from = at + 1;
+        }
+        // A capture that was all chrome can become a session, never the other way round.
+        if (plain.outcome === "imported") expect(result.outcome).toBe("imported");
+        else if (result.outcome === "imported") rescued++;
+        // Title and link do not depend on the list.
+        if (plain.outcome === "imported" && result.outcome === "imported") {
+          expect(result.sessions[0]?.title).toBe(plain.sessions[0]?.title);
+          expect(result.sessions[0]?.sourceUrl).toBe(plain.sessions[0]?.sourceUrl);
+        }
+      }),
+      { seed: SEED, numRuns: 4000 },
+    );
+    expect(putBack).toBeGreaterThan(500);
+    expect(namedNothing).toBeGreaterThan(200);
+    expect(rescued).toBeGreaterThan(20);
+    tally.expectAll([
+      "imported",
+      "rejected: no_conversation_found",
+      "rejected: sign_in_suspected",
+      "dropped leading",
+      "dropped trailing",
+      "role user",
+      "role assistant",
+      "role unknown",
+    ]);
+  });
+
+  it("stripChromeTurns, for any turns and any list of numbers", { timeout: TEST_TIMEOUT }, () => {
+    let putBack = 0;
+    fc.assert(
+      fc.property(turnsWithChrome, anyList, (turns, keepDropped) => {
+        const plain = stripChromeTurns(turns);
+        const { kept, dropped } = stripChromeTurns(turns, keepDropped);
+        expect(kept.length + dropped.length).toBe(turns.length);
+        const named = new Set(keepDropped);
+        expect(dropped).toEqual(plain.dropped.filter((turn) => !named.has(turn.index)));
+        if (dropped.length < plain.dropped.length) putBack++;
+        for (const text of kept) storable(text, "a kept turn");
+        for (const turn of dropped) storable(turn.text, "a dropped turn");
+        // The session of the capture is built from exactly these.
+        checkResult(importCapture({ ...capture("turns", turns), keepDropped }), true);
+      }),
+      { seed: SEED, numRuns: 3000 },
+    );
+    expect(putBack).toBeGreaterThan(500);
+  });
+
+  it("a list of any type at all: no exception, and what is no index of a turn changes nothing", {
+    timeout: TEST_TIMEOUT,
+  }, () => {
+    let lists = 0;
+    fc.assert(
+      fc.property(turnsWithChrome, fc.oneof(fc.anything(), fc.array(fc.anything())), (turns, anything) => {
+        const plainInput = capture("turns", turns);
+        // @ts-expect-error callers outside the type system
+        const input: CaptureInput = { ...plainInput, keepDropped: anything };
+        const result = importCapture(input);
+        checkResult(result, true);
+        // Only whole numbers that are entries of a real list name a turn.
+        const numbers = Array.isArray(anything)
+          ? anything.filter((value): value is number => typeof value === "number")
+          : [];
+        if (Array.isArray(anything)) lists++;
+        expect(result).toEqual(importCapture({ ...plainInput, keepDropped: numbers }));
+        // @ts-expect-error callers outside the type system
+        expect(stripChromeTurns(turns, anything)).toEqual(stripChromeTurns(turns, numbers));
+        // And for whole-page text nothing at all depends on it.
+        // @ts-expect-error callers outside the type system
+        const page: CaptureInput = { ...capture("page-text", turns), keepDropped: anything };
+        expect(importCapture(page)).toEqual(importCapture(capture("page-text", turns)));
+      }),
+      { seed: SEED, numRuns: 2000 },
+    );
+    expect(lists).toBeGreaterThan(500);
+  });
+
+  it(`${MANY} chrome turns, all put back, return within a few seconds`, { timeout: TEST_TIMEOUT }, () => {
+    const all: number[] = [];
+    for (let index = 0; index < MANY; index++) all.push(index);
+    for (const turn of ["sign in", "Conversation Transcript\nSign in", "Assistant", "Copy", " \n "]) {
+      const turns = new Array<string>(MANY).fill(turn);
+      const plain = quick("importCapture", () => importCapture(capture("turns", turns)));
+      const result = quick("importCapture with keepDropped", () =>
+        importCapture({ ...capture("turns", turns), keepDropped: all }),
+      );
+      checkResult(result, true);
+      expect(result.droppedTurns).toEqual([]);
+      const { kept, dropped } = quick("stripChromeTurns", () => stripChromeTurns(turns, all));
+      expect([kept.length, dropped.length]).toEqual([MANY, 0]);
+      // Every second one put back: the other half stays dropped, in order.
+      const half = quick("importCapture with every second index", () =>
+        importCapture({ ...capture("turns", turns), keepDropped: all.filter((index) => index % 2 === 0) }),
+      );
+      checkResult(half, true);
+      expect(half.droppedTurns.length).toBe(
+        plain.droppedTurns.length - Math.ceil(plain.droppedTurns.length / 2),
+      );
+    }
+  });
+
+  it("a list of 2,000,000 entries costs one pass", { timeout: TEST_TIMEOUT }, () => {
+    const turns = ["Sign in", "User: q", "Assistant: a", "AI Overview"];
+    const shapes: Record<string, number[]> = {
+      "the same index": new Array<number>(2_000_000).fill(3),
+      "indexes that name no turn": Array.from({ length: 2_000_000 }, (_unused, index) => index + 4),
+      "numbers that are no index": new Array<number>(2_000_000).fill(Number.NaN),
+      "every kind in turn": Array.from(
+        { length: 2_000_000 },
+        (_unused, index) => [0, 3, -1, 0.5, 1e300][index % 5] ?? 0,
+      ),
+    };
+    for (const [name, keepDropped] of Object.entries(shapes)) {
+      const result = quick(name, () => importCapture({ ...capture("turns", turns), keepDropped }));
+      checkResult(result, true);
+      const expected = name === "the same index" ? [3] : name === "every kind in turn" ? [0, 3] : [];
+      expect(result, name).toEqual(importCapture({ ...capture("turns", turns), keepDropped: expected }));
+      quick(`stripChromeTurns, ${name}`, () => stripChromeTurns(turns, keepDropped));
+    }
+  });
+
+  it("restored turns of 5 MB: a turn too long to be chrome is never dropped, and the list changes nothing", {
+    timeout: TEST_TIMEOUT,
+  }, () => {
+    const long = `sign in ${" ".repeat(FIVE_MB)}cookie`;
+    const turns = ["Sign in", long, "User: q", long, "AI Overview"];
+    const plain = quick("importCapture", () => importCapture(capture("turns", turns)));
+    expect(plain.droppedTurns.map((turn) => turn.index)).toEqual([0, 4]);
+    const result = quick("importCapture with keepDropped", () =>
+      importCapture({ ...capture("turns", turns), keepDropped: [0, 1, 2, 3, 4] }),
+    );
+    checkResult(result, true);
+    expect(result.droppedTurns).toEqual([]);
+    expect(result.sessions[0]?.messages.length).toBe((plain.sessions[0]?.messages.length ?? 0) + 2);
   });
 });

@@ -129,6 +129,13 @@ export interface CaptureInput {
   readonly kind: "page-text" | "turns";
   readonly turns: readonly string[];
   readonly allowWall?: boolean;
+  /**
+   * W10 `keep_dropped`: input indexes of turns that were dropped as page chrome and that the
+   * user wants back, after seeing `droppedTurns`. Each goes back to its place and is then
+   * treated like any kept turn. Empty when absent; an index that names no dropped turn is
+   * ignored. Kind "turns" only.
+   */
+  readonly keepDropped?: readonly number[];
 }
 
 /** W13: one piece of a message as it is drawn. Computed on display, never stored. */

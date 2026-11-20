@@ -557,9 +557,9 @@ function expectedSessions(): Expected[] {
 describe("every session the import fixtures expect becomes a session of the vault, unchanged", () => {
   const expected = expectedSessions();
 
-  it("there are 45 of them, with 138 messages, all four roles and all four providers", () => {
-    expect(expected).toHaveLength(45);
-    expect(expected.reduce((sum, item) => sum + item.session.messages.length, 0)).toBe(138);
+  it("there are 47 of them, with 142 messages, all four roles and all four providers", () => {
+    expect(expected).toHaveLength(47);
+    expect(expected.reduce((sum, item) => sum + item.session.messages.length, 0)).toBe(142);
     expect(
       new Set(expected.flatMap((item) => item.session.messages.map((message) => message.role))).size,
     ).toBe(4);
@@ -602,7 +602,7 @@ describe("every session the import fixtures expect becomes a session of the vaul
       expected.map((item) => item.session),
       context(),
     );
-    expect(added.vault.sessions).toHaveLength(45);
+    expect(added.vault.sessions).toHaveLength(47);
     expectStorable(added.vault);
     expect(listSessions(added.vault.sessions, { kind: "all" }).map((session) => session.title)).toEqual(
       expected.map((item) => item.session.title),

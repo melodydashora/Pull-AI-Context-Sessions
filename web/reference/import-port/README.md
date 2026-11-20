@@ -29,6 +29,8 @@ Checked on 2026-11-20, after fixtures 58 to 61 and the preview rule of W6 with i
 
 Added on 2026-11-20: the capture entry takes `keepDropped`, the list of dropped turns that a user restored (`import-rules.md` W10). No fixture covers it; the worked example in W10 was produced with this port. Without `keepDropped` the port behaves as before, and both checks above were run again after the change.
 
+Corrected on 2026-11-20 in the web mode: UTF-16 with an odd last byte. `TextDecoder` turns that byte into U+FFFD; W2 (`../../docs/corrections.md`, section 3, point 1) says it is ignored. No fixture has such an input; both checks above give the same lines after the change.
+
 ## Known defects
 
 Found on 2026-11-20 by the session that builds the web app, and not fixed yet. None of them changes the result of a fixture. `../../docs/corrections.md`, section 3, points 11 to 15, has the detail:

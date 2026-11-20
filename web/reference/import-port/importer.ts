@@ -819,6 +819,11 @@ function decodeUtf8Strict(bytes: Uint8Array): string | null {
 
 export interface Decoded { text: string; flag: string | null }
 
+/** Web (W2): UTF-16 is decoded in pairs; an odd last byte is ignored (TextDecoder alone turns it into U+FFFD). */
+function decodeUtf16Web(b: Uint8Array, encoding: "utf-16le" | "utf-16be"): string {
+  return new TextDecoder(encoding).decode(b.length % 2 === 1 ? b.subarray(0, b.length - 1) : b);
+}
+
 /** Web (W2). null = not text. */
 export function decodeBytesWeb(bytes: Uint8Array): Decoded | null {
   const b = bytes;
@@ -826,16 +831,16 @@ export function decodeBytesWeb(bytes: Uint8Array): Decoded | null {
     const t = decodeUtf8Strict(b);
     if (t !== null) return { text: t, flag: null };
   }
-  if (b.length >= 2 && b[0] === 0xff && b[1] === 0xfe) return { text: new TextDecoder("utf-16le").decode(b), flag: "decoded_as_utf_16le" };
-  if (b.length >= 2 && b[0] === 0xfe && b[1] === 0xff) return { text: new TextDecoder("utf-16be").decode(b), flag: "decoded_as_utf_16be" };
+  if (b.length >= 2 && b[0] === 0xff && b[1] === 0xfe) return { text: decodeUtf16Web(b, "utf-16le"), flag: "decoded_as_utf_16le" };
+  if (b.length >= 2 && b[0] === 0xfe && b[1] === 0xff) return { text: decodeUtf16Web(b, "utf-16be"), flag: "decoded_as_utf_16be" };
   // UTF-16 without a BOM: mostly-Latin text has a zero in every second byte.
   const n = Math.min(b.length, 4096) & ~1;
   const pairs = n / 2;
   if (pairs >= 2) {
     let zeroEven = 0, zeroOdd = 0;
     for (let i = 0; i < n; i += 2) { if (b[i] === 0) zeroEven++; if (b[i + 1] === 0) zeroOdd++; }
-    if (zeroOdd >= 0.4 * pairs && zeroEven <= 0.05 * pairs) return { text: new TextDecoder("utf-16le").decode(b), flag: "decoded_as_utf_16le" };
-    if (zeroEven >= 0.4 * pairs && zeroOdd <= 0.05 * pairs) return { text: new TextDecoder("utf-16be").decode(b), flag: "decoded_as_utf_16be" };
+    if (zeroOdd >= 0.4 * pairs && zeroEven <= 0.05 * pairs) return { text: decodeUtf16Web(b, "utf-16le"), flag: "decoded_as_utf_16le" };
+    if (zeroEven >= 0.4 * pairs && zeroOdd <= 0.05 * pairs) return { text: decodeUtf16Web(b, "utf-16be"), flag: "decoded_as_utf_16be" };
   }
   const utf8 = decodeUtf8Strict(b);
   if (utf8 !== null) return { text: utf8, flag: null };

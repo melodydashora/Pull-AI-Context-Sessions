@@ -20,8 +20,8 @@
 //   - values the two sides read differently are not generated: a date in the year 0000, a
 //     message time that is not finite, mapping keys that look like integers out of order,
 //     links whose last path segment has white space at its ends;
-//   - one input differs between the sides: the port never sees the odd last byte of UTF-16
-//     text, which the product ignores (`forThePort`).
+//   - UTF-16 text with an odd last byte is generated and compared like any other: the port's
+//     web mode ignores that byte since 2026-11-20, as the product does (corrections.md 3, point 1).
 //
 // All content is invented. Every special character is built from its code point, so that
 // this file stays plain ASCII.
@@ -822,16 +822,11 @@ function clearOfKnownDivergences(text: string): string {
   return out;
 }
 
-/**
- * corrections.md 3, point 1: the product ignores an odd last byte of UTF-16 text; the port
- * decodes it to U+FFFD. Where the port reads odd-length bytes as UTF-16, it is given them
- * without that byte. The product always gets all the bytes.
- */
-function forThePort(bytes: Uint8Array): Uint8Array {
-  if (bytes.length % 2 === 0) return bytes;
-  const flag = reference.decodeBytesWeb(bytes)?.flag ?? null;
-  const isUtf16 = flag === "decoded_as_utf_16le" || flag === "decoded_as_utf_16be";
-  return isUtf16 ? bytes.subarray(0, bytes.length - 1) : bytes;
+/** UTF-16 text of an odd length: both sides ignore the last byte (corrections.md 3, point 1). */
+function hasOddUtf16Byte(bytes: Uint8Array): boolean {
+  if (bytes.length % 2 === 0) return false;
+  const flag = importer.decodeBytes(bytes)?.flag ?? null;
+  return flag === "decoded_as_utf_16le" || flag === "decoded_as_utf_16be";
 }
 
 function someText(random: Random, kind: TextKind = random.weighted(TEXT_KINDS)): string {
@@ -1260,15 +1255,14 @@ function fileCase(random: Random): Comparison {
       ]);
   const filename = extension === "" ? stem : `${stem}.${extension}`;
   const run = (): importer.ImportResult => importer.importFile(bytes, filename);
-  const portBytes = forThePort(bytes);
   return {
     what: "importFile",
     made: asJson ? "json" : kind,
     input: { filename, bytes: [...bytes] },
     product: () => productResult(run()),
-    reference: () => referenceResult(reference.importFile(portBytes, filename, "web")),
+    reference: () => referenceResult(reference.importFile(bytes, filename, "web")),
     result: run,
-    notes: () => (portBytes.length < bytes.length ? ["UTF-16 with an odd last byte"] : []),
+    notes: () => (hasOddUtf16Byte(bytes) ? ["UTF-16 with an odd last byte"] : []),
   };
 }
 
@@ -1531,7 +1525,6 @@ function primitiveCase(random: Random): Comparison {
   const filename = `${random.pick(FILE_STEMS)}${random.pick(["", ".txt", ".JSON", ".", ". md", ".tar.gz", ".a b"])}`;
   const url = random.pick(SOURCE_URLS);
   const bytes = random.chance(0.2) ? bytesAtUtf16Limits(random) : encode(random, text);
-  const portBytes = forThePort(bytes);
   const json = jsonText(random);
   const title = random.pick(TITLES);
   return {
@@ -1563,7 +1556,7 @@ function primitiveCase(random: Random): Comparison {
     reference: () => {
       const marker = reference.roleMarker(line, "web");
       const name = reference.splitExtension(filename);
-      const decoded = reference.decodeBytesWeb(portBytes);
+      const decoded = reference.decodeBytesWeb(bytes);
       return {
         normal: [reference.normaliseText(text), reference.normaliseText(padded)],
         trimInline: [reference.trimInline(line), reference.trimInline(padded)],
@@ -1585,7 +1578,7 @@ function primitiveCase(random: Random): Comparison {
         ),
       };
     },
-    notes: () => (portBytes.length < bytes.length ? ["UTF-16 with an odd last byte"] : []),
+    notes: () => (hasOddUtf16Byte(bytes) ? ["UTF-16 with an odd last byte"] : []),
   };
 }
 
@@ -1775,23 +1768,16 @@ function processorTime(run: () => unknown): number {
 }
 
 describe("documented divergences: decided after the port was written (corrections.md 3, points 1 to 10)", () => {
-  it("point 1: an odd last byte of UTF-16 text is ignored; the port decodes it to U+FFFD", () => {
+  it("point 1: an odd last byte of UTF-16 text is ignored, by the product and by the corrected port", () => {
     const odd = new Uint8Array([0xff, 0xfe, ...utf16("User: q", true), 0x21]);
     expect(importer.decodeBytes(odd)).toEqual({ text: "User: q", flag: "decoded_as_utf_16le" });
-    expect(reference.decodeBytesWeb(odd)).toEqual({
-      text: `User: q${REPLACEMENT}`,
-      flag: "decoded_as_utf_16le",
-    });
+    expect(reference.decodeBytesWeb(odd)).toEqual(importer.decodeBytes(odd));
     expect(textsOf(importer.importFile(odd, "a.txt"))).toEqual(["q"]);
-    expect(textsOf(reference.importFile(odd, "a.txt", "web"))).toEqual([`q${REPLACEMENT}`]);
-    // Without a mark the two agree on what the bytes are, and differ in the same way.
+    expect(textsOf(reference.importFile(odd, "a.txt", "web"))).toEqual(["q"]);
+    // Without a mark the two agree on what the bytes are, and on the odd byte.
     const bare = new Uint8Array([...utf16("User: q", false), 0x21]);
     expect(importer.decodeBytes(bare)).toEqual({ text: "User: q", flag: "decoded_as_utf_16be" });
-    expect(reference.decodeBytesWeb(bare)?.text).toBe(`User: q${REPLACEMENT}`);
-    // Given the bytes without the odd one, the port gives the product's result: that is how
-    // the corpus above compares such input.
-    expect(reference.decodeBytesWeb(forThePort(odd))).toEqual(importer.decodeBytes(odd));
-    expect(forThePort(odd).length).toBe(odd.length - 1);
+    expect(reference.decodeBytesWeb(bare)).toEqual(importer.decodeBytes(bare));
   });
 
   it("point 4: W1 removes every leading U+FEFF; the port removes one each time it normalises", () => {

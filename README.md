@@ -39,3 +39,16 @@ Options:
 - `--profile DIR` — browser profile directory holding the login (default: `~/.claude_session_pull_profile`)
 
 If `.md` files come out near-empty, either you aren't logged in (the script warns about login redirects — rerun `--login`) or the claude.ai transcript layout changed; in the latter case, update `SCROLLER_SELECTORS` at the top of the script.
+
+## Using it on Replit
+
+The `Session login (VNC)` workflow opens Chromium in Replit's streamed desktop. Start it when you need to sign in to `claude.ai`, then close the browser window to finish login setup. The script stores the persistent browser profile in `~/.claude_session_pull_profile`; do not share that profile.
+
+After logging in, export an authorized session from the Replit Shell with:
+
+```bash
+LD_LIBRARY_PATH="$(dirname "$(gcc -print-file-name=libatomic.so.1)")${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+python pull_sessions.py --headless --browser-exe "$(command -v chromium)" URL
+```
+
+Replace `URL` with a session link you are authorized to access. Exports are written to `sessions/`, which is excluded from Git.

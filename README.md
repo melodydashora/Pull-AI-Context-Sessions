@@ -10,6 +10,7 @@ GitHub still shows two older branches, `sessionvault-app` and `claude/per-chat-a
 |---|---|---|
 | `apple/` | **SessionVault**, a native macOS and iOS app (SwiftUI, SwiftData). It imports, stores, searches and exports sessions, and can continue one with Claude. Details: `apple/README.md`. | The live app. Builds on a Mac only. |
 | `puller/` | **pull_sessions.py**, a Python + Playwright script that saves Claude Code session pages (`claude.ai/code/session_...` links) as Markdown and JSON files. Details: `puller/README.md`. | Written for Windows, macOS and Replit. No run has captured a full transcript yet, so try one link first. |
+| `web/` | **SessionVault for the web**: the build brief (`web/HANDOFF.md`), the documents and test fixtures taken from the Apple app, and later the web app itself. | Being built in a Replit workspace. No app code yet. |
 | `reference/session-capture-ios/` | **Session Capture**, a parallel iOS-only attempt written on 2026-08-05 without a Swift toolchain, with its planning documents. | Donor code only. It compiles (checked for the iOS Simulator) but has never been run or tested. Its documents are historical. |
 
 `.replit` at the top level configures the Replit workspace (a sign-in workflow for the puller). It is used only on Replit.

@@ -3,6 +3,9 @@
 // On 2026-11-20 a security review of the first screens measured the first parser on hostile text:
 // 1 MB of "(*a" repeated took 11.7 s, ".*a" 10.2 s, " **a" 4.2 s, "http:///" 2.7 s, and 497
 // opening brackets followed by "](" 2.3 s. inline.ts was changed so that these cost a step each.
+// The same day four testers of the session on the Mac found one more in the reference of
+// design.md 5.4, which this parser shared: a backslash and two backticks, repeated (2.5 s for 1 MB
+// here). The runs of backticks are now listed once per text as well.
 // This file proves two things about that change: no result differs, and time grows with the
 // length of the text, not with its square.
 
@@ -119,7 +122,23 @@ describe("parseInline gives what the parser as first written gave", () => {
     },
   );
 
+  it("on 40,000 short texts made of backticks, backslashes and little else", () => {
+    const pieces = ["`", "``", "```", "````", BS, `${BS}\``, BS + BS, "a", " ", "*", "\n", "x".repeat(7)];
+    const next = random(96);
+    for (let n = 0; n < 40_000; n++) {
+      let s = "";
+      const count = 1 + Math.floor(next() * 16);
+      for (let k = 0; k < count; k++) s += pieces[Math.floor(next() * pieces.length)];
+      expect(parseInline(s), JSON.stringify(s)).toEqual(first(s));
+      // A look-ahead that these texts reach.
+      expect(parseInlineWith(s, 5), JSON.stringify(s)).toEqual(firstWith(s, 5));
+    }
+  });
+
   it.each([
+    ["an escaped backtick before a run of two", `${BS}\`\` a \` b \`\` c \``],
+    ["an escaped backtick before a run of three", `${BS}\`\`\` a \`\` b \`\`\` c`],
+    ["a run of backticks exactly at the look-ahead", `\`${"a".repeat(1999)}\` \`${"b".repeat(2000)}\``],
     ["a label of 500 characters", `[${"l".repeat(500)}](http://a)`],
     ["a label of 501 characters", `[${"l".repeat(501)}](http://a)`],
     ["a line break in the label", "[a\nb](http://a)"],
@@ -176,6 +195,12 @@ describe("parseInline, time: hostile text costs little more than plain text", ()
     `*a${BS}*`,
     `http://a${")".repeat(1992)} `,
     `http://a${"]".repeat(1992)} `,
+    // Found on 2026-11-20 in the reference of design.md 5.4 by the session on the Mac.
+    `${BS}\`\``,
+    `${BS}\`\`\``,
+    `${String.fromCharCode(0x4e2d)}${BS}\`\``,
+    `${"[".repeat(500)}](`,
+    `${"[".repeat(100)}](`,
   ])("for %s repeated", (unit) => {
     const hostile = fill(unit);
     parseInline(hostile.slice(0, 100_000)); // warm up

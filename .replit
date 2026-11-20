@@ -2,7 +2,7 @@ modules = ["python-3.12"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["gitFull", "playwright-driver", "gcc", "glib", "nspr", "nss", "atk", "at-spi2-atk", "dbus", "cups", "mesa", "libxkbcommon", "alsa-lib", "libdrm", "cairo", "pango", "fontconfig", "freetype", "gtk3", "xorg.libX11", "xorg.libXcomposite", "xorg.libXdamage", "xorg.libXext", "xorg.libXfixes", "xorg.libXrandr", "xorg.libxcb", "chromium"]
+packages = ["alsa-lib", "at-spi2-atk", "atk", "cairo", "chromium", "cups", "dbus", "fontconfig", "freetype", "gcc", "gitFull", "glib", "gtk3", "libdrm", "libxkbcommon", "mesa", "nspr", "nss", "pango", "playwright-driver", "xorg.libX11", "xorg.libXcomposite", "xorg.libXdamage", "xorg.libXext", "xorg.libXfixes", "xorg.libXrandr", "xorg.libxcb"]
 
 [agent]
 expertMode = true

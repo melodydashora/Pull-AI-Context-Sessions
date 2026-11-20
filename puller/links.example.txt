@@ -1,0 +1,14 @@
+# links.example.txt - example input file for pull_sessions.py
+#
+# Format: one URL per line. Only lines that start with "http" are read, so
+# comment lines like these and blank lines are skipped. A URL listed twice is
+# pulled once.
+#
+# To use it: copy this file to links.txt, replace the two placeholder lines
+# below with your own Claude Code session links, then run
+#     python pull_sessions.py links.txt
+# links.txt is ignored by git because real links are private. Never commit it.
+#
+# The lines below are fake placeholders. They do not point at real sessions.
+https://claude.ai/code/session_EXAMPLEREPLACEME1
+https://claude.ai/code/session_EXAMPLEREPLACEME2

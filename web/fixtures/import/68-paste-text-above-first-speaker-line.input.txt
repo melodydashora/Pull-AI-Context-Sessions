@@ -1,0 +1,3 @@
+Here is what happened yesterday.
+You said: hi
+Claude responded: hello

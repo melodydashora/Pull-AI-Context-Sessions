@@ -1,0 +1,52 @@
+{
+  "fixture": "64-paste-share-quoted-speaker-in-block",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "apple_status_message": "Imported 1 session from clipboard.",
+  "notes": [
+    "Share-page text in which a user turn holds a closed code block that quotes two speaker lines of an older conversation.",
+    "Apple has no fence rule in the share-page parser and removes the text on a speaker line: the two quoted lines become turns of their own, and what is left of the conversation is two fence lines. Until 2026-11-20 the web rule also began a turn at every line that begins with a speaker label. Now such a line is text when it stands inside a closed fenced block and the fences of the paste pair up: the block stays whole in the user turn, and the label words are stored with it."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "```",
+            "display_segments": [
+              {
+                "type": "code",
+                "language": null,
+                "code": ""
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "```",
+            "display_segments": [
+              {
+                "type": "code",
+                "language": null,
+                "code": ""
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

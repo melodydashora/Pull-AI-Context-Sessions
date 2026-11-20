@@ -1,0 +1,59 @@
+{
+  "fixture": "68-paste-text-above-first-speaker-line",
+  "source": "apple-importer; the web app must return the same result",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "apple_status_message": "Imported 1 session from clipboard.",
+  "notes": [
+    "One line of ordinary text above a two-line dialogue in the share-page shape. The line is not page furniture. The Apple app keeps the line too, for a reason of its own: it discards the text on both speaker lines, finds no turn, and reads the paste with its generic parser."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "unknown",
+            "text": "Here is what happened yesterday.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Here is what happened yesterday."
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "hi",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "hi"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "hello",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "hello"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

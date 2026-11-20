@@ -1,0 +1,54 @@
+{
+  "fixture": "64-paste-share-quoted-speaker-in-block",
+  "source": "web-target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "notes": [
+    "Share-page text in which a user turn holds a closed code block that quotes two speaker lines of an older conversation.",
+    "Apple has no fence rule in the share-page parser and removes the text on a speaker line: the two quoted lines become turns of their own, and what is left of the conversation is two fence lines. Until 2026-11-20 the web rule also began a turn at every line that begins with a speaker label. Now such a line is text when it stands inside a closed fenced block and the fences of the paste pair up: the block stays whole in the user turn, and the label words are stored with it."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Why did the import split here?\n```\nClaude responded: an older answer\nYou said: an older question\n```",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Why did the import split here?"
+              },
+              {
+                "type": "code",
+                "language": null,
+                "code": "Claude responded: an older answer\nYou said: an older question"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Because that line began with a speaker label.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Because that line began with a speaker label."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

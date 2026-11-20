@@ -1,0 +1,59 @@
+{
+  "fixture": "71-paste-text-of-700-characters-above",
+  "source": "web-target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "notes": [
+    "The same shape with a second line of 680 ASCII characters: the two lines above the first speaker line have 700 characters.",
+    "Apple drops what stands above the first speaker line. In the web app 700 characters are not fewer than 700, so the two lines are not the top of a share page, although one of them holds a furniture phrase: both are kept as a note."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "unknown",
+            "text": "Shared conversation\nThe words on this line were written to fill it up to a length that a test needs. The words on this line were written to fill it up to a length that a test needs. The words on this line were written to fill it up to a length that a test needs. The words on this line were written to fill it up to a length that a test needs. The words on this line were written to fill it up to a length that a test needs. The words on this line were written to fill it up to a length that a test needs. The words on this line were written to fill it up to a length that a test needs. The words on this line were written to fill it up to a length that a test needs. The words on this line were writ",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Shared conversation\nThe words on this line were written to fill it up to a length that a test needs. The words on this line were written to fill it up to a length that a test needs. The words on this line were written to fill it up to a length that a test needs. The words on this line were written to fill it up to a length that a test needs. The words on this line were written to fill it up to a length that a test needs. The words on this line were written to fill it up to a length that a test needs. The words on this line were written to fill it up to a length that a test needs. The words on this line were written to fill it up to a length that a test needs. The words on this line were writ"
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "hi there",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "hi there"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "hello again",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "hello again"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

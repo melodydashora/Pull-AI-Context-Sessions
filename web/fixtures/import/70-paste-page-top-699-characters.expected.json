@@ -1,0 +1,49 @@
+{
+  "fixture": "70-paste-page-top-699-characters",
+  "source": "apple-importer; the web app must return the same result",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "apple_status_message": "Imported 1 session from clipboard.",
+  "notes": [
+    "A page top of two lines above a two-turn dialogue: 'Shared conversation', and a line of 678 ASCII characters and one emoji. Joined by a line break they have 699 user-perceived characters and 700 UTF-16 units. The web app drops them as the top of a share page, as the Apple app drops everything above the first speaker line. A port that compares `length` with 700 keeps them as a note and fails here."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "hi there",
+            "display_segments": [
+              {
+                "text": "hi there",
+                "type": "prose"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "hello again",
+            "display_segments": [
+              {
+                "text": "hello again",
+                "type": "prose"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "fixture": "71-paste-text-of-700-characters-above",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "apple_status_message": "Imported 1 session from clipboard.",
+  "notes": [
+    "The same shape with a second line of 680 ASCII characters: the two lines above the first speaker line have 700 characters.",
+    "Apple drops what stands above the first speaker line. In the web app 700 characters are not fewer than 700, so the two lines are not the top of a share page, although one of them holds a furniture phrase: both are kept as a note."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "hi there",
+            "display_segments": [
+              {
+                "text": "hi there",
+                "type": "prose"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "hello again",
+            "display_segments": [
+              {
+                "text": "hello again",
+                "type": "prose"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

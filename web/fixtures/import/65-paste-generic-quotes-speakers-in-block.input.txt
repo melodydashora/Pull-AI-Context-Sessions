@@ -1,0 +1,6 @@
+**Human:** Look at this old paste:
+```
+You said: hi
+Claude responded: hello
+```
+**Assistant:** I see the two speaker lines.

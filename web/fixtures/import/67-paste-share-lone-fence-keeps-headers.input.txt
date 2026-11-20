@@ -1,0 +1,9 @@
+You said: The block below never closes.
+```
+start of a log
+Claude responded: I see the start of it.
+You said: Here is a second block.
+```
+line of code
+```
+Claude responded: Thanks.

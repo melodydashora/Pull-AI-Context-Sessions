@@ -1,0 +1,49 @@
+{
+  "fixture": "66-paste-note-quotes-one-speaker",
+  "source": "web-target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "notes": [
+    "A plain note of three lines; the second begins with 'Claude responded:'. No line begins with a user label.",
+    "Apple takes the note for share-page text, drops the line above the speaker line and the text on it, and stores 'More notes.' as an assistant message. The web app asks for a user header and an assistant header before it reads text as a share page. Here there is no user header, so the generic parser reads the text: the first line is kept as a note, and 'Claude responded:' is a marker of that parser."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "unknown",
+            "text": "My notes about the tool.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "My notes about the tool."
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "sample output\nMore notes.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "sample output\nMore notes."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

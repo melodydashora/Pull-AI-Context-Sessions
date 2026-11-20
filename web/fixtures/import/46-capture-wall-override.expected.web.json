@@ -6,7 +6,8 @@
   },
   "notes": [
     "The same capture again, after the user answered the warning with 'import anyway' (allow_wall is true).",
-    "The Apple app has no override: the capture stays refused. In the web app the guard only warns; with allow_wall the capture is imported normally."
+    "The Apple app has no override: the capture stays refused. In the web app the guard only warns; with allow_wall the capture is imported normally.",
+    "Since 2026-11-20 the line above the first speaker line ('Router help') is kept as a note: it is not page furniture, and the web app drops such lines only when they are the top of a share page (import-rules.md W6)."
   ],
   "result": {
     "outcome": "imported",
@@ -20,6 +21,16 @@
         "source_url": "https://claude.ai/share/EXAMPLE-0000-ROUTER",
         "created_at": null,
         "messages": [
+          {
+            "role": "unknown",
+            "text": "Router help",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Router help"
+              }
+            ]
+          },
           {
             "role": "user",
             "text": "My new router arrived today. How do I sign in to it?",

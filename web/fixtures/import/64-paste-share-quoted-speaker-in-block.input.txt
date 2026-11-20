@@ -1,0 +1,6 @@
+You said: Why did the import split here?
+```
+Claude responded: an older answer
+You said: an older question
+```
+Claude responded: Because that line began with a speaker label.

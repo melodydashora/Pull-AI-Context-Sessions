@@ -1558,6 +1558,222 @@
         "W7"
       ],
       "difference": "Apple leaves each turn with one fence line: 'Report', '10:42' and 'Retry' are stored nowhere. In the first turn the web app finds the fence of the speaker line again as the first line of the turn, takes it for a preview and drops it once; the block that the turn closes by itself keeps 'Report'. In the second turn the two readings close different blocks: with the speaker line in front, the time line is inside a block; read alone, 'Retry' is. Both lines are kept, the first line of the turn does not begin with the fence, and so the text of the speaker line stays the first line of the turn."
+    },
+    {
+      "id": "64-paste-share-quoted-speaker-in-block",
+      "kind": "defect-fix",
+      "entry": "paste",
+      "input": "64-paste-share-quoted-speaker-in-block.input.txt",
+      "input_bytes": 175,
+      "input_sha256": "f78b6ef5595761f1b96199c83478208c06b5e1ddfcadfbf4a4bd723f2e97a095",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "apple": "64-paste-share-quoted-speaker-in-block.expected.apple.json",
+        "web": "64-paste-share-quoted-speaker-in-block.expected.web.json"
+      },
+      "summary": "Share-page text in which a user turn holds a closed code block that quotes two speaker lines of an older conversation.",
+      "covers": [
+        "a line that begins with a speaker label inside a closed fenced block is text, not a header",
+        "the block stays whole in its turn"
+      ],
+      "rules": [
+        "D6",
+        "D19",
+        "W6"
+      ],
+      "difference": "Apple has no fence rule in the share-page parser and removes the text on a speaker line: the two quoted lines become turns of their own, and what is left of the conversation is two fence lines. Until 2026-11-20 the web rule also began a turn at every line that begins with a speaker label. Now such a line is text when it stands inside a closed fenced block and the fences of the paste pair up: the block stays whole in the user turn, and the label words are stored with it."
+    },
+    {
+      "id": "65-paste-generic-quotes-speakers-in-block",
+      "kind": "defect-fix",
+      "entry": "paste",
+      "input": "65-paste-generic-quotes-speakers-in-block.input.txt",
+      "input_bytes": 124,
+      "input_sha256": "f6e322fcec6b061a87aa91e56d4b00011ab65d670035021453c20f49e3becf5e",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "apple": "65-paste-generic-quotes-speakers-in-block.expected.apple.json",
+        "web": "65-paste-generic-quotes-speakers-in-block.expected.web.json"
+      },
+      "summary": "A transcript with generic markers ('**Human:**', '**Assistant:**') whose first message quotes two share-page speaker lines inside a closed code block.",
+      "covers": [
+        "speaker lines that stand only inside a closed block do not make a text share-page text",
+        "the generic parser reads the text, and nothing above the quoted lines is lost"
+      ],
+      "rules": [
+        "D6",
+        "D19",
+        "W6"
+      ],
+      "difference": "Apple takes the text for share-page text because one line begins with 'You said:', and stores one assistant message that starts at the closing fence: the first message and both quoted lines are stored nowhere. In the web app the two speaker lines are text, because they stand inside a closed block; no header is left, so this is not share-page text, and the generic parser reads it: two messages, nothing lost."
+    },
+    {
+      "id": "66-paste-note-quotes-one-speaker",
+      "kind": "defect-fix",
+      "entry": "paste",
+      "input": "66-paste-note-quotes-one-speaker.input.txt",
+      "input_bytes": 69,
+      "input_sha256": "a3fa2cf9c157f7e0f9e76644abd7eece164d8c6660a37011b176e17a57eb2c99",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "apple": "66-paste-note-quotes-one-speaker.expected.apple.json",
+        "web": "66-paste-note-quotes-one-speaker.expected.web.json"
+      },
+      "summary": "A plain note of three lines; the second begins with 'Claude responded:'. No line begins with a user label.",
+      "covers": [
+        "text with speaker lines of one kind only is not share-page text",
+        "the line above the speaker line is kept"
+      ],
+      "rules": [
+        "D6",
+        "D19",
+        "W6"
+      ],
+      "difference": "Apple takes the note for share-page text, drops the line above the speaker line and the text on it, and stores 'More notes.' as an assistant message. The web app asks for a user header and an assistant header before it reads text as a share page. Here there is no user header, so the generic parser reads the text: the first line is kept as a note, and 'Claude responded:' is a marker of that parser."
+    },
+    {
+      "id": "67-paste-share-lone-fence-keeps-headers",
+      "kind": "defect-fix",
+      "entry": "paste",
+      "input": "67-paste-share-lone-fence-keeps-headers.input.txt",
+      "input_bytes": 181,
+      "input_sha256": "e311e85e627647e2e7a9d2246992736dfb76c3887e1abeceeb4106c4d46c32fd",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "apple": "67-paste-share-lone-fence-keeps-headers.expected.apple.json",
+        "web": "67-paste-share-lone-fence-keeps-headers.expected.web.json"
+      },
+      "summary": "Share-page text whose first turn opens a code block that never closes; later turns follow, one of them with a closed block. The fences of the text do not pair up.",
+      "covers": [
+        "when the fences of a text do not pair up, no speaker line is taken for text",
+        "the turns stay as written"
+      ],
+      "rules": [
+        "D6",
+        "D19",
+        "W6"
+      ],
+      "difference": "Apple removes the text on the speaker lines and keeps two user messages. In the web app the first block never closes, so the fences of the paste do not pair up. No reading of them can be trusted then, and every line that begins with a speaker label stays a header: four turns, as written. Without this guard the lone fence would pair with the opening fence of the later block and hide two speaker lines."
+    },
+    {
+      "id": "68-paste-text-above-first-speaker-line",
+      "kind": "parity",
+      "entry": "paste",
+      "input": "68-paste-text-above-first-speaker-line.input.txt",
+      "input_bytes": 70,
+      "input_sha256": "7627fad78174c27789a30fc361275e25f2de4961e715dcdc8465f14f615f32c3",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "both": "68-paste-text-above-first-speaker-line.expected.json"
+      },
+      "summary": "One line of ordinary text above a two-line dialogue in the share-page shape. The line is not page furniture. The Apple app keeps the line too, for a reason of its own: it discards the text on both speaker lines, finds no turn, and reads the paste with its generic parser.",
+      "covers": [
+        "text above the first speaker line is kept as a note unless it is the top of a share page"
+      ],
+      "rules": [
+        "W6"
+      ]
+    },
+    {
+      "id": "69-paste-code-above-first-speaker-line",
+      "kind": "defect-fix",
+      "entry": "paste",
+      "input": "69-paste-code-above-first-speaker-line.input.txt",
+      "input_bytes": 106,
+      "input_sha256": "e54ac20bfe11a1f44ea3190ec9cdd87d068ad91bb47dd0bfc78b620242dc1698",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "apple": "69-paste-code-above-first-speaker-line.expected.apple.json",
+        "web": "69-paste-code-above-first-speaker-line.expected.web.json"
+      },
+      "summary": "Five lines above a two-turn dialogue in the share-page shape: a line of text, an indented line 'Report', and a closed code block that holds the words 'log in'.",
+      "covers": [
+        "above the first speaker line, only a line that the cleaner could remove counts as page furniture",
+        "an indented line and a line inside a closed fenced block are text, whatever words they hold"
+      ],
+      "rules": [
+        "D6",
+        "W6",
+        "W7"
+      ],
+      "difference": "Apple drops what stands above the first speaker line, whatever it is. The web app drops such lines only when they are the top of a share page, and it looks for page furniture only among the lines that its cleaner could remove. 'Report' is indented and 'log in' stands inside a closed code block, so neither is a sign of a page top: the five lines are kept as a note."
+    },
+    {
+      "id": "70-paste-page-top-699-characters",
+      "kind": "parity",
+      "entry": "paste",
+      "input": "70-paste-page-top-699-characters.input.txt",
+      "input_bytes": 752,
+      "input_sha256": "d44e8535a9c6e98888d02bfced2d7dd0aafd68cee99e4c13d6644d317966b5da",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "both": "70-paste-page-top-699-characters.expected.json"
+      },
+      "summary": "A page top of two lines above a two-turn dialogue: 'Shared conversation', and a line of 678 ASCII characters and one emoji. Joined by a line break they have 699 user-perceived characters and 700 UTF-16 units. The web app drops them as the top of a share page, as the Apple app drops everything above the first speaker line. A port that compares `length` with 700 keeps them as a note and fails here.",
+      "covers": [
+        "the 700 of the page-top test is counted in user-perceived characters",
+        "699 characters are fewer than 700"
+      ],
+      "rules": [
+        "W6",
+        "W15"
+      ]
+    },
+    {
+      "id": "71-paste-text-of-700-characters-above",
+      "kind": "defect-fix",
+      "entry": "paste",
+      "input": "71-paste-text-of-700-characters-above.input.txt",
+      "input_bytes": 750,
+      "input_sha256": "cc5f03935564b43eb335aada9392a884b731914ba3fff74f9af8a076f2d44e22",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "apple": "71-paste-text-of-700-characters-above.expected.apple.json",
+        "web": "71-paste-text-of-700-characters-above.expected.web.json"
+      },
+      "summary": "The same shape with a second line of 680 ASCII characters: the two lines above the first speaker line have 700 characters.",
+      "covers": [
+        "lines above the first speaker line with 700 characters or more are not the top of a share page",
+        "they are kept as a note, the line with the furniture phrase included"
+      ],
+      "rules": [
+        "D6",
+        "W6",
+        "W15"
+      ],
+      "difference": "Apple drops what stands above the first speaker line. In the web app 700 characters are not fewer than 700, so the two lines are not the top of a share page, although one of them holds a furniture phrase: both are kept as a note."
     }
   ]
 }

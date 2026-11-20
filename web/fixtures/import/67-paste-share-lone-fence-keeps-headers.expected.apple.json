@@ -1,0 +1,52 @@
+{
+  "fixture": "67-paste-share-lone-fence-keeps-headers",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "apple_status_message": "Imported 1 session from clipboard.",
+  "notes": [
+    "Share-page text whose first turn opens a code block that never closes; later turns follow, one of them with a closed block. The fences of the text do not pair up.",
+    "Apple removes the text on the speaker lines and keeps two user messages. In the web app the first block never closes, so the fences of the paste do not pair up. No reading of them can be trusted then, and every line that begins with a speaker label stays a header: four turns, as written. Without this guard the lone fence would pair with the opening fence of the later block and hide two speaker lines."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "```\nstart of a log",
+            "display_segments": [
+              {
+                "type": "code",
+                "language": null,
+                "code": "start of a log"
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "text": "```\nline of code\n```",
+            "display_segments": [
+              {
+                "type": "code",
+                "language": null,
+                "code": "line of code"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

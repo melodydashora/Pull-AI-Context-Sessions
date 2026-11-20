@@ -1,0 +1,41 @@
+{
+  "fixture": "65-paste-generic-quotes-speakers-in-block",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "apple_status_message": "Imported 1 session from clipboard.",
+  "notes": [
+    "A transcript with generic markers ('**Human:**', '**Assistant:**') whose first message quotes two share-page speaker lines inside a closed code block.",
+    "Apple takes the text for share-page text because one line begins with 'You said:', and stores one assistant message that starts at the closing fence: the first message and both quoted lines are stored nowhere. In the web app the two speaker lines are text, because they stand inside a closed block; no header is left, so this is not share-page text, and the generic parser reads it: two messages, nothing lost."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "assistant",
+            "text": "```\n**Assistant:** I see the two speaker lines.",
+            "display_segments": [
+              {
+                "type": "code",
+                "language": null,
+                "code": "**Assistant:** I see the two speaker lines."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

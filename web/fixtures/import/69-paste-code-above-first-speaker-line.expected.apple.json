@@ -1,0 +1,50 @@
+{
+  "fixture": "69-paste-code-above-first-speaker-line",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "apple_status_message": "Imported 1 session from clipboard.",
+  "notes": [
+    "Five lines above a two-turn dialogue in the share-page shape: a line of text, an indented line 'Report', and a closed code block that holds the words 'log in'.",
+    "Apple drops what stands above the first speaker line, whatever it is. The web app drops such lines only when they are the top of a share page, and it looks for page furniture only among the lines that its cleaner could remove. 'Report' is indented and 'log in' stands inside a closed code block, so neither is a sign of a page top: the five lines are kept as a note."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Is this right?",
+            "display_segments": [
+              {
+                "text": "Is this right?",
+                "type": "prose"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Yes, it looks fine.",
+            "display_segments": [
+              {
+                "text": "Yes, it looks fine.",
+                "type": "prose"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

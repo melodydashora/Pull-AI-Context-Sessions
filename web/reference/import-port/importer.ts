@@ -331,6 +331,62 @@ function isPreviewOf(label: string, body: string[]): boolean {
   return ellipsisCut || !/^[\p{L}\p{N}\p{M}]/u.test(line.slice(stem.length));
 }
 
+// W6: the lines that begin with a speaker label and are text all the same, because they stand inside
+// a closed fenced block. The fences are read twice: as written, and with the text of a speaker line
+// in the place of its line, so that a block can open there. If either reading ends inside a block
+// that never closes, the fences of the text do not pair up and no line is taken for text.
+function shareHeaderLinesAsText(lines: string[]): boolean[] {
+  const none = new Array<boolean>(lines.length).fill(false);
+  if (scanFences(lines).some((f) => f.close === null)) return none;
+  const asWritten = closedFenceLines(lines);
+  const withLabels = new Array<boolean>(lines.length).fill(false);
+  let i = 0;
+  while (i < lines.length) {
+    const t = trimInline(lines[i]);
+    const header = SHARE_HEADERS.find((h) => t.startsWith(h.prefix));
+    const m = /^(`{3,})(.*)$/.exec(header ? trimInline(t.slice(header.prefix.length)) : t);
+    if (m && !m[2].includes("`")) {
+      const ticks = m[1].length;
+      let j = i + 1;
+      while (j < lines.length) {
+        const c = trimInline(lines[j]);
+        if (/^`{3,}$/.test(c) && c.length >= ticks) break;
+        j++;
+      }
+      if (j >= lines.length) return none;
+      // the line of a header whose text opens the block is a header, not a line of the block
+      for (let k = header ? i + 1 : i; k <= j; k++) withLabels[k] = true;
+      i = j + 1;
+      continue;
+    }
+    i++;
+  }
+  return lines.map((_, k) => asWritten[k] && withLabels[k]);
+}
+
+// W6: phrases that mark a line above the first speaker line as the top of a share page. The first
+// six are the HEADER list of stripLeadingHeaderLines.
+const SHARE_HEAD_PHRASES = [
+  "sign in", "log in", "created with", "conversation transcript", "shared conversation", "ai overview",
+  "skip to content", "conversation with gemini",
+];
+
+// W6: the lines above the first speaker line are dropped only when they look like the top of a share
+// page: few, short, and at least one of them is furniture. Anything else is real text and is kept.
+// The length is counted in user-perceived characters (W15). Only a line that the cleaner of W7 could
+// remove can be furniture: one that is not indented and not inside a closed fenced block of these lines.
+function isSharePageHead(lead: string[]): boolean {
+  const lines = lead.map(trimInline).filter((l) => l !== "");
+  if (lines.length > 12 || countGraphemes(lines.join("\n")) >= 700) return false;
+  const fenced = closedFenceLines(lead);
+  return lead.some((raw, k) => {
+    const probe = trimInline(raw);
+    if (probe === "" || fenced[k] || raw.replace(RE_RTRIM_INLINE, "") !== probe) return false;
+    return isBoilerplateLine(probe) || isTimestampLine(probe, "web")
+      || SHARE_HEAD_PHRASES.some((p) => probe.toLowerCase().includes(p));
+  });
+}
+
 function parseShareTextWeb(text: string, title: string): ImportedSession | null {
   const lines = text.split("\n");
   const trimmedLines = lines.map(trimInline);
@@ -361,22 +417,37 @@ function parseShareTextWeb(text: string, title: string): ImportedSession | null 
     if (currentRole !== null && cleaned !== "") messages.push({ role: currentRole, text: cleaned });
     currentLines = [];
   };
-  for (const rawLine of lines) {
+  const asText = shareHeaderLinesAsText(lines);
+  const lead: string[] = [];
+  let sawUser = false;
+  let sawAssistant = false;
+  for (let k = 0; k < lines.length; k++) {
+    const rawLine = lines[k];
     const line = trimInline(rawLine);
-    const header = SHARE_HEADERS.find((h) => line.startsWith(h.prefix));
-    const bare = header || !bareEnabled ? undefined : SHARE_BARE_HEADERS.find((h) => line === h.line);
+    const header = asText[k] ? undefined : SHARE_HEADERS.find((h) => line.startsWith(h.prefix));
+    const bare = header || asText[k] || !bareEnabled ? undefined : SHARE_BARE_HEADERS.find((h) => line === h.line);
     if (header || bare) {
       flush();
       currentRole = (header ?? bare)!.role;
+      if (currentRole === "user") sawUser = true; else sawAssistant = true;
       headerRemainder = header ? trimInline(line.slice(header.prefix.length)) : "";
       const family = (header ?? bare)!.provider;
       if (family) families.push(family);
     } else if (currentRole !== null) {
       currentLines.push(rawLine);
+    } else {
+      lead.push(rawLine);
     }
   }
   flush();
   if (messages.length === 0) return null;
+  // W6: text with only one kind of speaker is not share-page text; the next parser reads it.
+  if (!(sawUser && sawAssistant)) return null;
+  // W6: what stands above the first speaker line is kept as a note, unless it is the top of a share page.
+  if (!isSharePageHead(lead)) {
+    const note = trimAll(cleanTranscriptLinesWeb(lead).join("\n"));
+    if (note !== "") messages.unshift({ role: "unknown", text: note });
+  }
   const counts = new Map<Provider, number>();
   for (const p of families) counts.set(p, (counts.get(p) ?? 0) + 1);
   let provider: Provider = "Other";

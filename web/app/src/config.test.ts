@@ -36,3 +36,23 @@ it("cannot start a second server that answers under any host name", () => {
   ).scripts;
   expect(Object.keys(scripts)).toEqual(["build"]);
 });
+
+it("names the public registry in the lock file, so that the packages install on any machine", () => {
+  // npm writes the address it downloaded from. On Replit that is the platform's own package
+  // proxy, a host that exists nowhere else: a lock file that names it installs only there.
+  // With the public registry in the file, npm on Replit still goes through the proxy, because
+  // it replaces that host by the configured registry (replace-registry-host, default "npmjs").
+  const lock = JSON.parse(readFileSync(new URL("../../package-lock.json", import.meta.url), "utf8")) as {
+    packages: Record<string, { resolved?: string; link?: boolean }>;
+  };
+  const elsewhere = Object.entries(lock.packages)
+    .filter(
+      ([, entry]) =>
+        // A workspace package is a link to a folder of this repository, not a download.
+        entry.link !== true &&
+        entry.resolved !== undefined &&
+        !entry.resolved.startsWith("https://registry.npmjs.org/"),
+    )
+    .map(([name]) => name);
+  expect(elsewhere).toEqual([]);
+});

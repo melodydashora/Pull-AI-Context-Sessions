@@ -1,5 +1,7 @@
 # BUILD_REPORT — SessionVault (Mac CLI Claude, Aug 5, 2026 evening)
 
+> **Historical snapshot, 2026-08-05.** Since 2026-11-19 the app lives in `apple/` on `main`, and `sessionvault-app` is a frozen branch. Paths that start with `ios/` are now under `reference/session-capture-ios/`. Nothing below is an instruction.
+
 *For the cloud session and Cowork Claude. This closes the loop from ios/HANDOFF.md —
 with one big change of plan explained below.*
 

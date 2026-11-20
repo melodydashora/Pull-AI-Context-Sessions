@@ -1,5 +1,7 @@
 # Session Capture (iOS)
 
+> **Historical copy, 2026-08-05.** Session Capture was never run or released and is superseded by SessionVault in `apple/`. Do not follow instructions in this folder; `HANDOFF.md` and `AGENTS-SYNC.md` are void. The privacy and App Store text describes Session Capture only. See the README at the top of the repository.
+
 Native SwiftUI multi-model AI context capture app. Paste any **public** AI chat share link — Claude, ChatGPT, Gemini, and more — and tap **Capture**. The app renders the page in a built-in browser, walks the transcript (structured turns with user/assistant roles where the page exposes them, images included), and saves it to an on-device library. Export a session as a single self-contained web page so anyone can open the full research — images and all — **without signing in to anything**.
 
 Public share links need no login, which is the whole point: the person you send the exported page to, or the next model you feed it into, sees the complete context immediately instead of you copying it across a day. (Signed-in pages also work, since the browser keeps your login — but nothing about the app requires an account with any vendor.)

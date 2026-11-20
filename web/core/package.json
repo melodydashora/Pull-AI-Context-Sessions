@@ -5,6 +5,7 @@
   "description": "Shared core of SessionVault for the web: no DOM and no Node dependencies",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./display": "./src/display/index.ts"
   }
 }

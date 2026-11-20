@@ -100,7 +100,9 @@ export function SessionList({
     <nav className="list-pane" aria-label="Sessions">
       <header className="list-header">
         <div className="list-header__row">
-          <h1 className="list-header__title">All Sessions</h1>
+          <h1 className="list-header__title" tabIndex={-1}>
+            All Sessions
+          </h1>
           <IconButton label="Import" icon={Import} onClick={onImport} />
         </div>
         <label className="search">

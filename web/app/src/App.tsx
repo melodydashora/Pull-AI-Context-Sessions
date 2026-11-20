@@ -78,6 +78,19 @@ export function App({ initialPath }: { initialPath?: string }) {
   const selected =
     selectedId === null ? undefined : vault.sessions.find((session) => session.id === selectedId);
 
+  // Leaving a session for the list: the focus goes to the row of that session, or to the title
+  // of the list if the row is not there, instead of being lost on the page.
+  const left = useRef<string | null>(null);
+  useEffect(() => {
+    const before = left.current;
+    left.current = selectedId;
+    if (before === null || selectedId !== null) return;
+    const row = [...document.querySelectorAll<HTMLElement>("a[href]")].find(
+      (link) => link.getAttribute("href") === `/sessions/${before}`,
+    );
+    (row ?? document.querySelector<HTMLElement>(".list-header__title"))?.focus();
+  }, [selectedId]);
+
   // A short message that floats over the page and goes away by itself.
   const [toast, setToast] = useState<string | null>(null);
   useEffect(() => {
@@ -137,6 +150,13 @@ export function App({ initialPath }: { initialPath?: string }) {
     };
   }, [openImport]);
   const droppedTaken = useCallback((): void => setDropped(null), []);
+  // An open modal dialog is drawn above everything else in the page, so while Import is open the
+  // hint is drawn inside the dialog.
+  const dropHint = dragging ? (
+    <div className="drop-overlay" aria-hidden="true">
+      <p className="drop-overlay__text">Drop transcript files to import</p>
+    </div>
+  ) : null;
 
   return (
     <div className="shell" data-screen={location.screen.name}>
@@ -172,7 +192,7 @@ export function App({ initialPath }: { initialPath?: string }) {
           <EmptyState
             icon={TriangleAlert}
             title="Session Not Found"
-            description="It may have been deleted on another device."
+            description="Until accounts exist, the vault is kept in this tab only: it starts empty after a reload."
             action={
               <button type="button" className="button" onClick={showList}>
                 All Sessions
@@ -194,12 +214,9 @@ export function App({ initialPath }: { initialPath?: string }) {
         onOpenSession={openFromImport}
         dropped={dropped}
         onDroppedTaken={droppedTaken}
+        overlay={location.importOpen ? dropHint : null}
       />
-      {dragging ? (
-        <div className="drop-overlay" aria-hidden="true">
-          <p className="drop-overlay__text">Drop transcript files to import</p>
-        </div>
-      ) : null}
+      {location.importOpen ? null : dropHint}
       <div className="toast-region" role="status" aria-live="polite">
         {toast !== null ? <p className="toast">{toast}</p> : null}
       </div>

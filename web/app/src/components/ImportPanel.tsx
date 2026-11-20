@@ -16,7 +16,7 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import {
   fileRejectedMessage,
   fileRejectedShort,
@@ -86,6 +86,7 @@ export function ImportPanel({
   onOpenSession,
   dropped,
   onDroppedTaken,
+  overlay,
 }: {
   open: boolean;
   onRequestClose: () => void;
@@ -95,6 +96,8 @@ export function ImportPanel({
   /** Files dropped on the window: imported as soon as the panel is open. */
   dropped: readonly File[] | null;
   onDroppedTaken: () => void;
+  /** Drawn over the open dialog: the hint while files are dragged over the window. */
+  overlay?: ReactNode;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -487,6 +490,7 @@ export function ImportPanel({
           Done
         </button>
       </footer>
+      {overlay ?? null}
     </dialog>
   );
 }

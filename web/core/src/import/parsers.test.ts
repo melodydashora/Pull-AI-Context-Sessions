@@ -133,7 +133,7 @@ describe("W6 share-page text", () => {
 
   it("cuts at 'You said:' and 'Claude responded:' and drops everything before the first header", () => {
     const session = share(
-      "Page title\nShared by Example Person\nYou said: Hi\nHi there\nClaude responded: Hel\nHello.\n",
+      "Page title\nShared by Example Person\nYou said: Hi\nHi there\nClaude responded: Hel...\nHello.\n",
     );
     expect(turns(session)).toEqual([
       ["user", "Hi there"],
@@ -309,6 +309,58 @@ describe("W6 share-page text", () => {
       expect(turns(share(`You said: a...${E}\na more\nClaude responded: a`))).toEqual([
         ["user", `a...${E}\na more`],
         ["assistant", "a"],
+      ]);
+    });
+
+    it("without an ellipsis, is a preview only if it ends where a word ends in the next line", () => {
+      // A letter follows: "No" is no preview of "Nothing".
+      expect(
+        turns(
+          share(
+            "You said: No\nNothing works after the update.\nClaude responded: Yes\nYesterday's build is good.",
+          ),
+        ),
+      ).toEqual([
+        ["user", "No\nNothing works after the update."],
+        ["assistant", "Yes\nYesterday's build is good."],
+      ]);
+      // A digit follows, and a combining mark follows.
+      const acute = String.fromCodePoint(0x301);
+      expect(
+        turns(
+          share(
+            `You said: Version 1\nVersion 10 is out.\nClaude responded: Cafe\nCafe${acute} Central opens.`,
+          ),
+        ),
+      ).toEqual([
+        ["user", "Version 1\nVersion 10 is out."],
+        ["assistant", `Cafe\nCafe${acute} Central opens.`],
+      ]);
+      // Punctuation follows, or the line ends there: a preview.
+      expect(
+        turns(share("You said: Yes\nYes, it is done.\nClaude responded: Good\nGood. Then ship it.")),
+      ).toEqual([
+        ["user", "Yes, it is done."],
+        ["assistant", "Good. Then ship it."],
+      ]);
+      expect(
+        turns(share("You said: Done\nDone\nClaude responded: Noted\nNoted\nThanks for telling me.")),
+      ).toEqual([
+        ["user", "Done"],
+        ["assistant", "Noted\nThanks for telling me."],
+      ]);
+    });
+
+    it("with an ellipsis, any beginning counts: a preview can be cut inside a word", () => {
+      expect(
+        turns(
+          share(
+            `You said: Nothing wor${E}\nNothing works after the update.\nClaude responded: Yesterd...\nYesterday's build is good.`,
+          ),
+        ),
+      ).toEqual([
+        ["user", "Nothing works after the update."],
+        ["assistant", "Yesterday's build is good."],
       ]);
     });
 

@@ -37,19 +37,30 @@ const ELLIPSIS = String.fromCodePoint(0x2026);
 /** The two prefixes that make this parser apply, as in the Apple test. */
 const TRIGGER_PREFIXES: readonly string[] = ["You said:", "Claude responded:"];
 
+/** A letter, a digit or a combining mark: what continues a word (Unicode categories L, N and M). */
+const WORD_CONTINUES = /^[\p{L}\p{N}\p{M}]/u;
+
 /**
  * W6 (defect D19): the text after a speaker header is a preview exactly when the first non-blank
  * line of the turn, after the cleaner has run, begins with it once one trailing U+2026 or "..."
- * and the white space before it have been cut from it. Equality is the special case. What is
- * dropped therefore always stands at the start of the next line: a dropped preview loses no text.
+ * and the white space before it have been cut from it, and one of these holds: an ellipsis was
+ * cut; the line ends where the text ends; or what follows in the line is not a letter, a digit or
+ * a combining mark. So without an ellipsis the text must end where a word ends: "No" is no
+ * preview of "Nothing works." and stays as the first line of the turn. With an ellipsis any
+ * beginning counts, because a preview can be cut inside a word.
  */
 function isPreviewOf(headerText: string, cleanedLines: readonly string[]): boolean {
   let stem = headerText;
+  let ellipsisCut = true;
   if (stem.endsWith(ELLIPSIS)) stem = stem.slice(0, -1);
   else if (stem.endsWith("...")) stem = stem.slice(0, -3);
+  else ellipsisCut = false;
   stem = trimInline(stem);
   const first = cleanedLines.find((line) => trimInline(line) !== "");
-  return first !== undefined && trimInline(first).startsWith(stem);
+  if (first === undefined) return false;
+  const line = trimInline(first);
+  if (!line.startsWith(stem)) return false;
+  return ellipsisCut || !WORD_CONTINUES.test(line.slice(stem.length));
 }
 
 /**

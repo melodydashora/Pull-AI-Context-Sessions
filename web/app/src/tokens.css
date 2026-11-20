@@ -1,0 +1,172 @@
+/* The design tokens of docs/design.md 4.2: the same properties, in the same order, with the same
+   values (tokens.test.ts compares them; only the spelling of some values is the formatter's).
+   Components use these custom properties and hold no literal colours. */
+
+:root {
+  color-scheme: light dark;
+
+  /* Fonts */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Roboto Mono", "Liberation Mono", monospace;
+
+  /* Type scale: font-size and line-height (weights are in the role table below) */
+  --text-title: 1.375rem;
+  --leading-title: 1.25; /* 22 px */
+  --text-section: 1.25rem;
+  --leading-section: 1.3; /* 20 px */
+  --text-headline: 1rem;
+  --leading-headline: 1.35; /* 16 px */
+  --text-body: 1rem;
+  --leading-body: 1.55; /* 16 px */
+  --text-callout: 0.9375rem;
+  --leading-callout: 1.45; /* 15 px */
+  --text-subhead: 0.875rem;
+  --leading-subhead: 1.4; /* 14 px */
+  --text-caption: 0.8125rem;
+  --leading-caption: 1.35; /* 13 px */
+  --text-caption2: 0.75rem;
+  --leading-caption2: 1.3; /* 12 px */
+  --text-code: 0.875rem;
+  --leading-code: 1.5; /* 14 px */
+
+  /* Spacing */
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* Radii */
+  --radius-xs: 6px; /* inline code, small controls */
+  --radius-sm: 8px; /* code blocks, inputs, buttons, menu items */
+  --radius-md: 10px; /* message bubbles, banners */
+  --radius-lg: 14px; /* dialogs, menus, cards */
+  --radius-xl: 18px; /* chat field */
+  --radius-pill: 999px; /* chips, round buttons */
+
+  /* Sizes */
+  --size-touch: 44px; /* minimum hit area on touch screens */
+  --size-control: 36px; /* control height with a fine pointer */
+  --size-control-lg: 48px; /* large primary buttons */
+  --size-topbar: 52px;
+  --width-sidebar: 210px; /* the Apple ideal width */
+  --width-list: 320px;
+  --width-drawer: 280px;
+  --width-measure: 46rem; /* maximum width of header and transcript */
+  --width-dialog-sm: 400px;
+  --width-dialog-md: 520px;
+  --width-dialog-lg: 720px;
+
+  /* Motion */
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --ease-standard: cubic-bezier(0.42, 0, 0.58, 1);
+
+  /* Layers */
+  --z-sticky: 10;
+  --z-drawer: 30;
+  --z-dialog: 40;
+  --z-menu: 50;
+  --z-toast: 60;
+
+  /* Colour roles: light */
+  --color-bg: #ffffff; /* list and detail panes, pages */
+  --color-bg-sidebar: #f2f2f7; /* library, backdrop of the sign-in card */
+  --color-bar: rgba(255, 255, 255, 0.86); /* sticky bars, with backdrop blur */
+  --color-surface: #ffffff; /* inputs on a pane */
+  --color-surface-raised: #ffffff; /* dialogs, menus, toasts */
+  --color-hover: #f4f4f7;
+  --color-selected: #e9e9ee; /* selected row, active library item */
+  --color-text: #1d1d1f;
+  --color-text-secondary: #636366;
+  --color-text-tertiary: #6e6e73; /* hints and placeholders; only on bg, surface, surface-raised, field-bg */
+  --color-text-disabled: #a1a1a6;
+  --color-text-on-accent: #ffffff;
+  --color-separator: #d8d8dc; /* hairlines between rows and panes */
+  --color-border-control: #87878c; /* outlines of inputs and selects (3:1) */
+  --color-accent: #0066cc; /* links, accent text and icons */
+  --color-accent-fill: #0066cc; /* primary button background */
+  --color-accent-fill-hover: #005bb8;
+  --color-focus: #0066cc; /* focus ring */
+  --color-bubble-user: #ebf3fb;
+  --color-bubble-other: #f7f7f8; /* assistant, system, note, thinking */
+  --color-code-bg: rgba(0, 0, 0, 0.06); /* overlay on whatever bubble is below */
+  --color-field-bg: #f5f5f7; /* chat field, search field */
+  --color-fill-neutral: #efeff0; /* secondary buttons, date control */
+  --color-danger: #d70015;
+  --color-danger-fill: #d70015;
+  --color-danger-wash: #ffebea; /* error banner background */
+  --color-success: #1f7a36;
+  --color-warning: #a44a00;
+  --color-pin: #c46200;
+  --color-scrim: rgba(0, 0, 0, 0.32);
+  --color-skeleton: #ececef;
+
+  --provider-claude-fg: #a44a00;
+  --provider-claude-bg: #ffefd9;
+  --provider-chatgpt-fg: #006e82;
+  --provider-chatgpt-bg: #e0f3f7;
+  --provider-gemini-fg: #0058b8;
+  --provider-gemini-bg: #d9ebff;
+  --provider-other-fg: #5f5f64;
+  --provider-other-bg: #eeeeef;
+
+  /* Elevation */
+  --shadow-menu: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 6px 24px rgba(0, 0, 0, 0.14);
+  --shadow-dialog: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 18px 60px rgba(0, 0, 0, 0.22);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #121214;
+    --color-bg-sidebar: #1a1a1d;
+    --color-bar: rgba(18, 18, 20, 0.86);
+    --color-surface: #1c1c1f;
+    --color-surface-raised: #242428;
+    --color-hover: #1f1f23;
+    --color-selected: #2e2e33;
+    --color-text: #f5f5f7;
+    --color-text-secondary: #a1a1a6;
+    --color-text-tertiary: #98989d;
+    --color-text-disabled: #636366;
+    --color-text-on-accent: #ffffff;
+    --color-separator: #38383d;
+    --color-border-control: #75757a;
+    --color-accent: #5aa9ff;
+    --color-accent-fill: #0071e3;
+    --color-accent-fill-hover: #0066cc;
+    --color-focus: #5aa9ff;
+    --color-bubble-user: #11243a;
+    --color-bubble-other: #1e1e22;
+    --color-code-bg: rgba(255, 255, 255, 0.08);
+    --color-field-bg: #1c1c1f;
+    --color-fill-neutral: #2a2a2f;
+    --color-danger: #ff6961;
+    --color-danger-fill: #d63030;
+    --color-danger-wash: #381a1a;
+    --color-success: #30d158;
+    --color-warning: #ff9f0a;
+    --color-pin: #ff9f0a;
+    --color-scrim: rgba(0, 0, 0, 0.56);
+    --color-skeleton: #26262a;
+
+    --provider-claude-fg: #ff9f0a;
+    --provider-claude-bg: #463112;
+    --provider-chatgpt-fg: #40c8e0;
+    --provider-chatgpt-bg: #1c3a41;
+    --provider-gemini-fg: #5aa9ff;
+    --provider-gemini-bg: #102b48;
+    --provider-other-fg: #aeaeb2;
+    --provider-other-bg: #2d2d30;
+
+    --shadow-menu: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 8px 28px rgba(0, 0, 0, 0.55);
+    --shadow-dialog: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 20px 64px rgba(0, 0, 0, 0.65);
+  }
+}

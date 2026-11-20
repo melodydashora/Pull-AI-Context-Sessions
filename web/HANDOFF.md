@@ -30,6 +30,8 @@ These are settled. Do not reopen them; build for them. Where a document under `d
 | Repository | Public on GitHub while this work is in progress; the owner will make it private later. Treat everything committed as public and permanent. |
 | Builder | Claude Code in the Replit shell. Replit Agent is used only for platform setup such as provisioning the database. |
 | Apple app | Stays. It remains the native version; the two exchange sessions through the JSON interchange format in `docs/data-model.md`. |
+| Intended use | Personal use: each user's own conversations and project data, to manage complex work and to keep work that the user paid for. A saved session is not a complete record: the app does not translate or transcribe the activity of sub-agents, and agents, their subjects and the decisions or work of red or blue teams can be missing. The draft terms of use add two prohibitions that follow from this, for the owner to confirm: not to pass on other people's conversations, and not to use the app to train or distil AI models. |
+| Terms of use | Users agree to terms of use when they create an account. The terms link to each AI provider's own rules on using its output to train models. `docs/terms-of-use.md` is the draft; the owner approves the final text. |
 
 ## 3. Recommended approach, and the choices left open
 
@@ -66,6 +68,7 @@ Facts about the Replit workspace are in `docs/web-platform.md`: 10.11 (measured 
 | `reference/apple-harness/` | The command-line harness around the Apple app's real importer that produced the Apple side of the import fixtures, with a script to run it again on a Mac. Not needed to build the web app. |
 | `docs/data-model.md` | Every entity and field of the Apple app, search and sort rules, the context-pack template, the interchange JSON (version 1) with its reader and writer rules and test vectors, and the PostgreSQL design for many users: tables, the write transaction, the user's stored API key, storage limits, account deletion and the isolation rules I1 to I12. |
 | `docs/corrections.md` | What was decided after the revision and is not in the other documents yet (section 5). It wins where it differs. |
+| `docs/terms-of-use.md` | The draft of the owner's terms of use, with links to each AI provider's rules, a table that says how each link was checked on 2026-11-20 (the OpenAI pages could not be opened), and notes on where the app shows it. |
 | `docs/interchange-schema-v1.json`, `docs/example-vault-export.json` | The interchange format as a JSON Schema, and a synthetic example that validates against it. |
 | `docs/sync.md` | The offline copy and how it stays in step: the change feed, the queue of changes made offline, sixteen conflict cases with one rule each, the IndexedDB layout, the service worker boundary, and a test plan whose protocol tests need no browser. Its rules were run as a model before they were written down, except section 2.7 (the user a sync request is for), which was added after a review and has not been run. |
 | `docs/capture.md`, `docs/capture-scripts/` | How the Apple app captures a conversation from a link; the page scripts lifted verbatim out of the app, the puller and the reference app; 13 synthetic pages with observed results; a draft selectors file and a prototype extractor; eight defects proven on mock pages; the server-side capture with its job table and limits; and what is known about Claude Code session pages. |
@@ -184,7 +187,7 @@ Done when:
 
 ### Phase 2: accounts and the online vault
 
-- Sign-in, sign-out, session cookies and the invitation gate, as `docs/web-platform.md` 11.2, 11.9 and 11.10 specify.
+- Sign-in, sign-out, session cookies and the invitation gate, as `docs/web-platform.md` 11.2, 11.9 and 11.10 specify. Creating an account includes agreeing to the terms of use (`docs/terms-of-use.md`; `docs/corrections.md` 1.1.14, 1.2.5 and 1.5.14).
 - The database schema of `docs/data-model.md` 7.2. The first migration already has the columns and tables that sync needs (`docs/sync.md` 13.2). Every change to the vault goes through the write transaction of `docs/data-model.md` 7.9; recommended: build `POST /api/sync/push` now and let the page send every change through its six mutations, so that phase 5 only puts a queue in front. Every query is scoped to the signed-in user.
 - Import by paste and by file with the per-file report and warnings of `import-rules.md` section 4; JSON export and import; whole-vault export; account deletion (`docs/data-model.md` 7.11).
 - The screens in `docs/design.md`: list, detail, import, organise, search, context pack, settings. Every message has a copy action.
@@ -223,7 +226,7 @@ Done when: the automated checks pass (the manifest is valid and installable by t
 
 ### Phase 6: ready for strangers
 
-Before the invitation gate is opened: rate limits, per-user storage limits (the value is an owner decision), the conditions G1 to G15 of `docs/web-platform.md` 11.14 verified one by one, and a privacy policy and terms supplied by the owner (do not write legal text on your own; ask).
+Before the invitation gate is opened: rate limits, per-user storage limits (the value is an owner decision), the conditions G1 to G15 of `docs/web-platform.md` 11.14 verified one by one, and a privacy policy and the final terms of use from the owner (`docs/terms-of-use.md` is the owner's draft of the terms; do not write or change legal text on your own; ask).
 
 Done when: each condition has a test or a recorded manual check; a restore from backup has been carried out by the owner in the platform's interface and the restored data verified; the owner has supplied the policy and terms and has said in writing that sign-up may open.
 
@@ -273,7 +276,7 @@ A few steps cannot be undone later, or cannot be done from the shell. They need 
 | The first publish | Plan, region (permanent) and deployment type; the check that no personal connector and no personal account secret is attached to the project; the production secrets set (the key that wraps users' API keys, the invitation hashes). |
 | Capture is switched on for a provider | For each of Claude, ChatGPT and Gemini: whether automated capture of public share links may be switched on, after reading that provider's terms; then one public link of the owner's own to check the selectors. |
 | The import of Claude Code session files is specified | Whether one real session may be looked at once, on the owner's own machine, to write down the shape of its files. Nothing of it is committed. |
-| Sign-up opens beyond invitations | The privacy policy, the terms and a contact address; whether transcripts are also encrypted by the app (`docs/web-platform.md` 11.6); the limits per user; and the owner's word, in writing, that sign-up may open. |
+| Sign-up opens beyond invitations | The privacy policy, the final terms of use (`docs/terms-of-use.md` is the draft) and a contact address; whether transcripts are also encrypted by the app (`docs/web-platform.md` 11.6); the limits per user; and the owner's word, in writing, that sign-up may open. |
 
 Also the owner's, at any time: a different sign-in method than the default, and any wish to add something from "out of scope".
 

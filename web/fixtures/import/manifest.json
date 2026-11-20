@@ -2,11 +2,11 @@
   "format": "sessionvault-import-fixtures",
   "version": 1,
   "apple_side": {
-    "repository_commit": "c227766b51985be46fab022a2d5a7959956b9467",
+    "repository_commit": "ca37361b4dbfef40c4c018ee85a8a042c95a4687",
     "sources_sha256": {
       "apple/SessionVault/Importers.swift": "4ca4cb680c3380f1b296b96fb14377c2f0acd21198fd3746ac3e3fe29505b5e9",
       "apple/SessionVault/Models.swift": "6e16495d756d8170bc066fe637572d5c65e0bd490ebef80f7cf590a0975af76f",
-      "apple/SessionVault/Views/MessageView.swift": "efa812f2b40372d826bbf91c7db55a9212ccfd5e0d0171c1f26de9216361c443"
+      "apple/SessionVault/Views/MessageView.swift": "8a5a0c3be49b7f3882d83878c35768abf472f18855b2a6b955fa05a169c15a09"
     },
     "toolchain": "Apple Swift 6.4 (Xcode 27 beta), macOS 27.2.1, arm64"
   },

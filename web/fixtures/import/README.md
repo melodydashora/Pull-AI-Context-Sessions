@@ -3,7 +3,7 @@
 ## Summary
 
 - 57 synthetic inputs for the importer described in `import-rules.md`, each with the expected result as JSON. They are the acceptance tests of the web port.
-- Every Apple-side expectation was produced by running the REAL importer: `apple/SessionVault/Importers.swift`, compiled unmodified into a command-line harness (commit `c227766`). Nothing on the Apple side was written by hand.
+- Every Apple-side expectation was produced by running the REAL importer: `apple/SessionVault/Importers.swift`, compiled unmodified into a command-line harness (commit `c227766`; built and run again at commit `ca37361`, see "Apple side" below). Nothing on the Apple side was written by hand.
 - 23 fixtures are `parity`: one file `NN-name.expected.json`, the web app must return the same result as the Apple app.
 - 31 fixtures are `defect-fix`: the Apple result is a defect. Two files: `NN-name.expected.apple.json` (what the Apple app does today, for the record) and `NN-name.expected.web.json` (what the web app must do). Only the web file is a test target.
 - 3 fixtures are `web-extension`: behaviour that has no Apple counterpart (a sign-in-wall override, a paste with a source link, an optional context-pack parser). Same two files.
@@ -39,7 +39,8 @@ Inputs that an editor or a line-ending conversion would damage (CRLF, a byte-ord
 Apple side:
 
 - Compiled together, unmodified, with `swiftc` from Apple Swift 6.4 (Xcode 27 beta), macOS 27.2.1, arm64: `apple/SessionVault/Importers.swift`, `apple/SessionVault/Models.swift` (the real SwiftData model file; nothing was stubbed) and `apple/SessionVault/Views/MessageView.swift`. `diff` and `cmp` report the compiled copies identical to the repository files; their SHA-256 values are in `manifest.json` under `apple_side`.
-- `MessageSegment` (the prose/code splitter) is declared `private` in `MessageView.swift`. To call it, one accessor function was appended to a copy of that file; the first 5,573 bytes of the compiled file are byte-identical to the original.
+- `MessageSegment` (the prose/code splitter) is declared `private` in `MessageView.swift`. To call it, one accessor function was appended to a copy of that file; the first 6,601 bytes of the compiled file are byte-identical to the original.
+- Run again on 2026-11-20 at commit `ca37361`: commit `e81828a` had added a Copy button to `MessageView.swift`, which moved the splitter down in the file without changing it. The harness was rebuilt from the three files as they are in that commit and run on the 55 fixtures that have an Apple result. Its raw output is byte-identical to the output of the first build, and equal to every expected Apple file. `manifest.json` now names that commit and the new SHA-256 of `MessageView.swift`; no input and no expected file changed.
 - The importer functions called are the real ones: `SessionImporter.parse(data:filename:)`, `parseText(_:title:)`, `fromCapturedTurns(_:title:sourceURL:)`, `looksLikeSignInWall(_:)`, `stripChromeTurns(_:)`, `MessageSegment.parse(_:)`.
 - What had to be transcribed, because it is SwiftUI view code that cannot be called from a command line: the clipboard handler (`Views/ImportSheet.swift:195-226`: empty check, link routing, provider picker), the capture button and its completion (`Views/LinkCaptureView.swift:41-56`, `Views/ImportSheet.swift:133-150`: empty check, sign-in guard, title precedence, status text) and the status text of the file picker (`Views/ImportSheet.swift:183-193`). The `outcome`, `reason` and `apple_status_message` fields come from this transcription; `sessions` come from the real importer.
 - `dropped_turns` is bookkeeping added by the harness. The Apple app drops such turns silently. The harness finds out which ones by asking the real `stripChromeTurns` about each turn on its own, and checks the answer against the real multi-turn call.
@@ -116,7 +117,7 @@ Only `result` is compared. For the two fixtures where the Apple importer has no 
 | `link_url` | string | Only with `outcome: link`. |
 | `flags` | array of strings | Informational. Web only values: `decoded_as_utf_16le`, `decoded_as_utf_16be`, `decoded_as_windows_1252`. Compare as a set. |
 | `sessions` | array | In source order (order of the conversations in the file). |
-| `dropped_turns` | array | `capture` only: turns removed as page chrome, each `{ "position": "leading" or "trailing", "index": position in the input, "text" }`. The web UI must show these and let the user restore them. |
+| `dropped_turns` | array | `capture` only: turns removed as page chrome, each `{ "position": "leading" or "trailing", "index": position in the input, "text" }`. The web UI must show these and let the user restore them (the input `keep_dropped`, `import-rules.md` W10). |
 
 A session:
 
@@ -132,7 +133,7 @@ A session:
 
 The names map to the Apple struct `ImportedSession` (`Importers.swift:9-16`) as `source_url` = `sourceURL`, `created_at` = `createdAt`, `model` = `modelName`; data-model.md section 8.6 turns such a result into rows.
 
-`display_segments` is the split of `text` into `{ "type": "prose", "text" }` and `{ "type": "code", "language": string or null, "code" }` that the Apple app computes each time it draws a message (`Views/MessageView.swift:46-93`). It is never stored.
+`display_segments` is the split of `text` into `{ "type": "prose", "text" }` and `{ "type": "code", "language": string or null, "code" }` that the Apple app computes each time it draws a message (`Views/MessageView.swift:79-126`). It is never stored.
 
 ## What a test must assert
 

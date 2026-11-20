@@ -25,7 +25,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "LD_LIBRARY_PATH=\"$(dirname \"$(gcc -print-file-name=libatomic.so.1)\")${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}\" python pull_sessions.py --login --browser-exe \"$(command -v chromium)\""
+args = "LD_LIBRARY_PATH=\"$(dirname \"$(gcc -print-file-name=libatomic.so.1)\")${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}\" python puller/pull_sessions.py --login --browser-exe \"$(command -v chromium)\""
 
 [workflows.workflow.metadata]
 outputType = "vnc"

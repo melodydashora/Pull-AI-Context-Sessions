@@ -7,12 +7,27 @@ struct ClaudeModel: Identifiable, Hashable {
 
     static let all: [ClaudeModel] = [
         ClaudeModel(id: "claude-opus-5", name: "Claude Opus 5"),
+        ClaudeModel(id: "claude-fable-5-1", name: "Claude Fable 5.1"),
         ClaudeModel(id: "claude-fable-5", name: "Claude Fable 5"),
         ClaudeModel(id: "claude-sonnet-5", name: "Claude Sonnet 5"),
         ClaudeModel(id: "claude-haiku-4-5", name: "Claude Haiku 4.5"),
     ]
 
     static let defaultID = "claude-opus-5"
+
+    /// Models whose safety classifiers can decline a request with
+    /// `stop_reason: "refusal"`, and which therefore opt in to server-side
+    /// fallbacks. Anthropic selects the fallback target by refusal category,
+    /// so no target list belongs here. Membership is explicit rather than a
+    /// prefix match so an unverified future ID fails closed (no fallbacks)
+    /// instead of open (a 400 from an unsupported combination).
+    private static let fallbackCapableIDs: Set<String> = [
+        "claude-opus-5", "claude-fable-5", "claude-fable-5-1",
+    ]
+
+    static func supportsServerSideFallbacks(_ id: String) -> Bool {
+        fallbackCapableIDs.contains(id)
+    }
 }
 
 struct ClaudeAPIError: LocalizedError {
@@ -54,7 +69,7 @@ enum ClaudeClient {
                     // Server-side refusal fallbacks (recommended default for these models):
                     // a safety-classifier decline is re-served by Anthropic's recommended
                     // fallback model inside the same call.
-                    if model == "claude-opus-5" || model == "claude-fable-5" {
+                    if ClaudeModel.supportsServerSideFallbacks(model) {
                         request.setValue("server-side-fallback-2026-07-01", forHTTPHeaderField: "anthropic-beta")
                         body["fallbacks"] = "default"
                     }

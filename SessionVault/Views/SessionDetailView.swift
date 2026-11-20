@@ -183,7 +183,7 @@ struct SessionDetailView: View {
                 }
                 .labelsHidden()
                 .fixedSize()
-                TextField("Model (e.g. claude-fable-5)", text: $session.modelName)
+                TextField("Model (e.g. claude-fable-5-1)", text: $session.modelName)
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: 260)
             }

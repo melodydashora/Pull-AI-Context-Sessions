@@ -288,7 +288,7 @@ struct ContinueChatView: View {
                     }
                 }
                 let reply = streamingText.trimmingCharacters(in: .whitespacesAndNewlines)
-                if stopReason == "refusal" && reply.isEmpty {
+                if stopReason == "refusal" {
                     errorMessage = "Claude declined this request (safety classifiers)."
                 } else if !reply.isEmpty {
                     let assistantMessage = ChatMessage(index: nextIndex + 1, role: .assistant, text: reply)

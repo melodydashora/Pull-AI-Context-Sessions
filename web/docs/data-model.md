@@ -37,7 +37,7 @@
 | No sync, no backup, no sharing between devices | iCloud sync is only an idea (`apple/README.md:32`). One device, one writer. |
 | No stored settings | No `UserDefaults`, `@AppStorage` or `@SceneStorage` in the sources. Search text, the selected filter and the chosen Claude model are not remembered. The API key is in the Keychain (see claude-api.md). |
 
-The store file is an implementation detail of SwiftData (an earlier analysis reported an SQLite file with Apple-specific encodings for tags, dates and PDFs; not re-verified here). The web app never reads it. Data moves through the interchange format of section 6.
+The store file is an implementation detail of SwiftData (an SQLite file with framework-specific encodings; not examined for this document). The web app never reads it. Data moves through the interchange format of section 6.
 
 ### 2.2 Entities
 
@@ -849,7 +849,7 @@ Driver note: node-postgres returns `bigint` (for example `count(*)`) as a string
 
 ### 7.4 Large message bodies
 
-Real captures have produced single messages of about 1,000,000 characters (a whole shared page stored as one message). In UTF-8 that is 1 MB for ASCII and up to 4 MB otherwise. Consequences (PostgreSQL facts from its documentation, not executed here):
+A whole shared page stored as one message can reach about 1,000,000 characters. In UTF-8 that is 1 MB for ASCII and up to 4 MB otherwise. Consequences (PostgreSQL facts from its documentation, not executed here):
 
 | Topic | What happens | Rule |
 |---|---|---|

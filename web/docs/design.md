@@ -104,7 +104,7 @@ Alerts owned by the root view:
 
 | Alert | Elements | Behaviour | Line |
 |---|---|---|---|
-| "New Project" | text field with placeholder "Project name"; buttons "Create" and "Cancel"; message "Group sessions by what you're working on — e.g. `<three example names>`." (the examples are the owner's own project names; they are not repeated here) | "Create": trim spaces and tabs; if the result is not empty, insert the project and select it as the filter; clear the field. An empty name closes the alert and does nothing. No duplicate check. | :86-100 |
+| "New Project" | text field with placeholder "Project name"; buttons "Create" and "Cancel"; message "Group sessions by what you're working on — e.g. `<three example names>`." (three hard-coded example names; not repeated here) | "Create": trim spaces and tabs; if the result is not empty, insert the project and select it as the filter; clear the field. An empty name closes the alert and does nothing. No duplicate check. | :86-100 |
 | "Rename Project" | text field "Project name" prefilled; buttons "Rename" and "Cancel"; no message | "Rename": trim; if not empty, set the name. | :101-108 |
 
 ### 1.3 Session list
@@ -540,7 +540,7 @@ Each row gives the evidence and what to do instead. "Measured" refers to appendi
 |---|---|---|---|
 | B1 | Writes "1 turns". | SessionListView.swift:169; SessionDetailView.swift:213 | "1 turn", otherwise "`<n>` turns". |
 | B2 | Shows "Your Vault Is Empty" for every empty filter, and its text refers to "the built-in browser" and "this window". | SessionListView.swift:86-93 | One empty state per situation (section 4.10). |
-| B3 | The New Project message lists the owner's own project names as examples. | RootView.swift:99 | "Group sessions by what you're working on." |
+| B3 | The New Project message hard-codes example project names. | RootView.swift:99 | "Group sessions by what you're working on." |
 | B4 | The link placeholder shows a `claude.ai/code/session_…` link while the help text below recommends share links. | ImportSheet.swift:36, :60 | Placeholder "https://claude.ai/share/…". |
 | B5 | Says the provider "is detected automatically from links and transcript content", which the importer does only in part (import-rules.md). | ImportSheet.swift:92 | Wording that promises less (section 4.13). |
 | B6 | A reply is labelled "Claude" and shown as plain text while it streams, then becomes an "Assistant" bubble with code blocks once saved. | ContinueChatView.swift:165-177; Models.swift:31 | Same label and same renderer while streaming and after. |

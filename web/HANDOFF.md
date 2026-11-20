@@ -76,7 +76,7 @@ The documents were extracted from the Swift source before the owner's decisions 
 |---|---|---|
 | Phases 0 and 1 | `import-rules.md`, `fixtures/import/`, `reference/import-port/`; in `data-model.md` the interchange format, the context pack and the shared pure functions; in `design.md` the message rendering rules | nothing |
 | Phase 2 | In every document, the parts about the Apple app and its defects | `data-model.md`: user accounts and the fields that sync needs. `web-platform.md`: the sign-in and security baseline assume a single owner. `design.md`: sign-up and invitation screens. |
-| Phase 3 | `capture.md` sections on the Apple pipeline and its defects; `capture-scripts/` | `capture.md`: eight further defects proven on mock pages by the Replit session are being added; the tier order follows section 6 of this file, not the document's own recommendation. |
+| Phase 3 | `capture.md` sections on the Apple pipeline and its defects; `capture-scripts/` | `capture.md`: eight further defects proven on mock pages by the Replit session are being added; the tier order follows section 7 of this file, not the document's own recommendation. |
 | Phase 4 | `claude-api.md` parts A and B, the prompt module, the outcome rules and the test plan | `claude-api.md` part C: one stored key per user instead of one server key. |
 | Phase 5 | `web-platform.md` on installability, share target and browser storage | The sync protocol for the offline copy: a new document, `docs/sync.md`, is to come. |
 
@@ -160,7 +160,7 @@ As `docs/capture.md`, tier T3: the server opens a public share link in a headles
 - Fix, do not copy, the defects listed in `capture.md` and the eight proven on mock pages: a stray `data-index` element hijacking the capture, the wrong scroll container, image-only turns dropped, cross-origin images lost, silent limits on images, a scroll walk on static pages, content that arrives late, and nested articles returned twice.
 - The Replit session contributes its mock pages and harness as `fixtures/capture/`.
 
-Done when: every page under `fixtures/capture/` and `docs/capture-scripts/fixtures/` produces the documented turns and roles; the protections in `capture.md` are covered by tests, including refused hosts, refused redirects and refused private addresses; a sign-in page gives the documented warning or refusal; and, for each provider the owner has switched on, the owner has captured one real public share link.
+Done when: every page under `fixtures/capture/` and `docs/capture-scripts/fixtures/` produces the documented turns and roles; the protections in `capture.md` are covered by tests, including refused hosts, refused redirects and refused private addresses; a sign-in page gives the documented warning or refusal; and, for each provider the owner has switched on, the owner has captured one real public share link. That last check is made by the owner on the published app, never in the workspace or the development database.
 
 ### Phase 4: Claude features
 
@@ -168,7 +168,7 @@ Done when: every page under `fixtures/capture/` and `docs/capture-scripts/fixtur
 - Continue with Claude (streaming) and Summarize; refusals, truncation, errors and Stop handled as `docs/claude-api.md` specifies.
 - The model list comes from server configuration, not from client code, and uses the current model ids given in `docs/claude-api.md`, not the Apple app's list.
 
-Done when: with a scripted fake upstream, the cases in `docs/claude-api.md` C11 pass; no response of this server ever contains a key and keys are unreadable in a database dump (tests assert both); one user's key is never used for another user's request (a test asserts it); the owner has made one real exchange with a real key.
+Done when: with a scripted fake upstream, the cases in `docs/claude-api.md` C11 pass; no response of this server ever contains a key and keys are unreadable in a database dump (tests assert both); one user's key is never used for another user's request (a test asserts it); the owner has made one real exchange with a real key, on the published app, never in the workspace.
 
 ### Phase 5: installable, offline, share target
 
@@ -193,7 +193,8 @@ Privacy and security:
 - **Secrets** only in the platform's secret store. Nothing secret in the repository, in `.replit`, in client code or in a URL.
 - **The server opens a URL only for link capture** (phase 3), and only under the rules in `docs/capture.md`.
 - **Never serve the workspace folder.** A development or production server serves the app's own build output and nothing else. A static server started at the top of the workspace would publish every file there, including ignored ones such as puller output and local notes.
-- **No real data in the workspace or the development database**: no real transcripts, exports or database dumps. Use the fixtures.
+- **No real data in the workspace or the development database**: no real transcripts, exports or database dumps. Use the fixtures. Never ask for, load or keep a real session file there, not even to learn a format: the session on the Mac documents formats and writes the fixture by hand.
+- **No assistant or agent is pointed at production data.** Do not ask Replit Agent or any other tool to look into the production database or its logs: with other people's vaults that hands their transcripts to a third party. This also goes into the privacy policy of phase 6.
 - **Deleting means deleting**: account deletion removes rows, stored keys and files, and the local copies on a device are removed at sign-out.
 
 Fidelity to the Apple app:
@@ -213,10 +214,13 @@ Working in this repository (also in `../CLAUDE.md`):
 
 ## 9. What to ask the owner
 
-Only these need the owner. Each document ends with its own list of smaller decisions and the default to build until they are answered; take those defaults without asking.
+Only these need the owner. `import-rules.md` (section 7), `data-model.md` (section 12) and `claude-api.md` (C14) end with a list of smaller decisions and the default to build until they are answered; take those defaults without asking. In `capture.md`, `design.md` and `web-platform.md` such decisions are inline, marked "owner decision" or "open question"; where no default is given, ask.
 
 - The sign-in method, if none of the platform's options is clearly best, and the hosting plan and address (`docs/web-platform.md`).
 - For each provider (Claude, ChatGPT, Gemini): whether automated capture of public share links may be switched on, after reading that provider's terms.
 - When to open sign-up beyond invitations.
 - Privacy policy and terms, before phase 6.
+- How transcript text is stored at rest: the platform's encryption only, or encryption of the text fields by the app as well (`docs/web-platform.md` 11.6, `docs/data-model.md` 11.4). With other people's vaults this decides who can read them, so it is settled before the phase 2 schema is fixed.
 - Any wish to add something from "out of scope".
+
+One default that is not the owner's to revisit per import: the original input (pasted text, file bytes, captured strings) is not kept beside the imported session. It would store more private text than the product needs.

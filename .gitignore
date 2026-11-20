@@ -228,6 +228,15 @@ replit_zip_error_log.txt
 # ---- JavaScript tooling (for the planned web/ component) -----------------------
 node_modules/
 /web/**/dist/
+# Real data never belongs under web/. These catch the usual names of exports, dumps
+# and pulled sessions if one lands there by mistake.
+/web/**/sessionvault-vault-*.json
+/web/**/sessionvault-capture-*.json
+/web/**/session_*.json
+/web/**/session_*.md
+/web/**/db-dump*
+*.dump
+*.sql.gz
 /web/**/.vite/
 coverage/
 *.tsbuildinfo

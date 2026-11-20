@@ -397,7 +397,7 @@ Each prose segment is then cut at blank lines into paragraphs, each trimmed, and
 | 500 characters | `Views/ImportSheet.swift:208` | longest clipboard text treated as a link |
 | none | | file size, text size, number of sessions per file, messages per session, message length, title length |
 
-Fixture 22 has a turn of 3,282 characters; nothing is truncated. A capture of about 900,000 characters is stored as it is (reported).
+Fixture 22 has a turn of 3,282 characters; nothing is truncated. A whole-page capture of about 1,000,000 characters is stored as it is.
 
 ## 3. Part B: defects and accidents not to copy
 
@@ -670,9 +670,9 @@ Not verified here:
 
 Decisions for the owner:
 
-1. When a transcript comes with no link and no assistant name among its speaker labels, the Apple app guesses the provider from words in the text; that guess is what mislabelled the Gemini captures. This document drops the guess (W9): such imports are labelled by the picker (paste) or `Other` (files) until the user changes it. Is that acceptable?
+1. When a transcript comes with no link and no assistant name among its speaker labels, the Apple app guesses the provider from words in the text; that guess labels a Gemini page that mentions Claude as Claude (fixture 48). This document drops the guess (W9): such imports are labelled by the picker (paste) or `Other` (files) until the user changes it. Is that acceptable?
 2. Should the web app keep the original input next to each imported session so that it can be re-parsed when the rules improve (C11)?
 3. Should a pasted context pack be importable (W14), or is the interchange format enough?
 4. Should the web app save immediately, as the Apple app does, or always show the preview of C8 first?
-5. The split rule for Gemini pages (the whole-line labels in W6) rests on a description of the owner's captures, not on a page anyone has looked at for this document. May the text of one such page be inspected once to confirm or correct the rule? Until then it is a guess that fails safe.
+5. The split rule for Gemini pages (the whole-line labels in W6) rests on an earlier description, not on a page anyone has looked at for this document. One look at a real page is needed to confirm or correct the rule. Until then it is a guess that fails safe.
 6. Is importing the puller's `<id>.json` files wanted? If so, one real file is needed to document its structure (W3); none is in the repository and none was read.

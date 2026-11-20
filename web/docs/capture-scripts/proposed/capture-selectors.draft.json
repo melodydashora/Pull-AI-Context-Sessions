@@ -98,7 +98,7 @@
           "role": "assistant"
         }
       ],
-      "source": "not in the code; element names reported by an earlier review of cached page code (2026-11)",
+      "source": "not in the code; element names reported by an earlier review (2026-11)",
       "verified": "never",
       "fixture": "static-custom-elements-share.html"
     },

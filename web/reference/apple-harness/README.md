@@ -22,14 +22,14 @@ If `xcrun` reports that it requires Xcode, set `DEVELOPER_DIR` as the README at 
 Expected last line:
 
 ```text
-apple equal 59 different 0 skipped 2
+apple equal 61 different 0 skipped 2
 ```
 
 Fixtures 10 and 11 have no recorded Apple result and are not run: on fixture 10 the real importer never returns, and on fixture 11 the order of its result changes from run to run (`../../fixtures/import/README.md`).
 
 ## When the result differs
 
-- A line `CHANGED <path>` at the top only says that a Swift file differs from the one the manifest names. If the comparison still ends with "equal 59 different 0", behaviour did not change: record the new commit and the new SHA-256 values in `manifest.json` under `apple_side`, in a commit of its own.
+- A line `CHANGED <path>` at the top only says that a Swift file differs from the one the manifest names. If the comparison still ends with "equal 61 different 0", behaviour did not change: record the new commit and the new SHA-256 values in `manifest.json` under `apple_side`, in a commit of its own.
 - A `DIFF` line means the Apple app now behaves differently on that fixture. Do not edit the expected file to make it pass. Find out which change in the Swift source caused it, decide whether the web target (`*.expected.web.json`) is affected, and record the evidence in the commit.
 
 ## A date that cannot be printed
@@ -40,4 +40,4 @@ The harness prints a session's original date as text. A date that is not finite,
 
 It is not a test of the web app, and it is not needed to build the web app. The web targets are the `*.expected.web.json` and `*.expected.json` files; `../import-port/` checks those without a Mac.
 
-History: first run at commit `c227766` (2026-11-19). Run again at commit `ca37361` (2026-11-20) after a Copy button had been added to `MessageView.swift`: the raw output for the 55 cases was byte-identical to the first run. On 2026-11-20 ten further inputs were run at commit `cefc9ef`; two of them became fixtures 58 and 59, so 57 cases had an Apple result. Five more inputs were run the same day at commit `442726f`; two of them became fixtures 60 and 61, so 59 cases have an Apple result from then on.
+History: first run at commit `c227766` (2026-11-19). Run again at commit `ca37361` (2026-11-20) after a Copy button had been added to `MessageView.swift`: the raw output for the 55 cases was byte-identical to the first run. On 2026-11-20 ten further inputs were run at commit `cefc9ef`; two of them became fixtures 58 and 59, so 57 cases had an Apple result. Five more inputs were run the same day at commit `442726f`; two of them became fixtures 60 and 61, so 59 cases had an Apple result. Fourteen more inputs were run the same day at commit `9477c62`; two of them became fixtures 62 and 63, so 61 cases have an Apple result from then on.

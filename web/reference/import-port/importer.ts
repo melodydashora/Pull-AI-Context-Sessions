@@ -227,12 +227,20 @@ function cleanTranscriptLinesApple(lines: string[]): string[] {
 
 // Web: the same three removal rules, but a kept line keeps its indentation, and an indented
 // line (preformatted text, in practice code) is never removed.
-function cleanTranscriptLinesWeb(lines: string[]): string[] {
+function closedFenceLines(lines: string[]): boolean[] {
   const fenced = new Array<boolean>(lines.length).fill(false);
   for (const f of scanFences(lines)) {
     if (f.close === null) continue;
     for (let k = f.open; k <= f.close; k++) fenced[k] = true;
   }
+  return fenced;
+}
+
+// `alsoFenced` marks lines that a second reading of the same lines puts inside a closed fenced
+// block (W6: the text on a speaker line can open a block). They are copied untouched as well.
+function cleanTranscriptLinesWeb(lines: string[], alsoFenced?: boolean[]): string[] {
+  const fenced = closedFenceLines(lines);
+  if (alsoFenced) for (let k = 0; k < lines.length; k++) if (alsoFenced[k]) fenced[k] = true;
   const kept: string[] = [];
   let lastNonEmpty = "";
   for (let k = 0; k < lines.length; k++) {
@@ -335,11 +343,17 @@ function parseShareTextWeb(text: string, title: string): ImportedSession | null 
   let headerRemainder = "";
   let currentLines: string[] = [];
   const flush = () => {
-    let kept = cleanTranscriptLinesWeb(currentLines);
+    // W6: the lines of the turn are read twice, alone and with the text of the speaker line in
+    // front. When that text opens a fenced block the two readings close different blocks, and a
+    // line that either reading puts inside a closed block is never removed. For any other text
+    // the two readings mark the same lines.
+    const alone = closedFenceLines(currentLines);
+    const withLabel = headerRemainder === "" ? null : closedFenceLines([headerRemainder, ...currentLines]);
+    let kept = cleanTranscriptLinesWeb(currentLines, withLabel?.slice(1));
     // W6 (defect D19): the text on a speaker line is the first line of its turn, unless it is a
     // preview of what follows. Apple drops it whenever more text follows.
     if (headerRemainder !== "" && !isPreviewOf(headerRemainder, kept)) {
-      kept = cleanTranscriptLinesWeb([headerRemainder, ...currentLines]);
+      kept = cleanTranscriptLinesWeb([headerRemainder, ...currentLines], [false, ...alone]);
     }
     let cleaned = trimAll(kept.join("\n"));
     // A turn whose only text sits on its header line is kept instead of vanishing.

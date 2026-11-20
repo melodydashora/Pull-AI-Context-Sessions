@@ -1501,6 +1501,63 @@
         "W6"
       ],
       "difference": "Apple discards the text after the header whenever more text follows. The web app keeps it here: the next line begins with it, but continues with a digit in one turn and with a combining mark in the other, so the text does not end where a word ends and is the first line of the turn."
+    },
+    {
+      "id": "62-paste-share-fence-on-speaker-line",
+      "kind": "defect-fix",
+      "entry": "paste",
+      "input": "62-paste-share-fence-on-speaker-line.input.txt",
+      "input_bytes": 57,
+      "input_sha256": "3ee631a5ef3e56bc134c752f42d2729cc4877a36dd6d674a68178034c4c5376f",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "apple": "62-paste-share-fence-on-speaker-line.expected.apple.json",
+        "web": "62-paste-share-fence-on-speaker-line.expected.web.json"
+      },
+      "summary": "Share-page text in which a code fence opens on the speaker line itself and closes two lines later, in both turns. The line between the fences is a word that pages print as a button label: 'Report', 'Retry'.",
+      "covers": [
+        "a fenced block that opens on a speaker line protects the lines inside it",
+        "the text of a speaker line is not taken for a preview of its own closing fence"
+      ],
+      "rules": [
+        "D19",
+        "W6",
+        "W7"
+      ],
+      "difference": "Apple discards the text after the header whenever more text follows, and removes a label line also inside a fenced block: each turn is left with its closing fence alone, and 'Report' and 'Retry' are stored nowhere. The web app reads the lines of a turn twice, alone and with the text of the speaker line in front, and never removes a line that either reading puts inside a closed fenced block. Read alone, the turn begins with a line that is no preview target for the fence, so the fence stays the first line of its turn and the block is kept whole."
+    },
+    {
+      "id": "63-paste-share-fence-two-readings",
+      "kind": "defect-fix",
+      "entry": "paste",
+      "input": "63-paste-share-fence-two-readings.input.txt",
+      "input_bytes": 71,
+      "input_sha256": "c0dfd1f1ad6302e05e8d232d2918a19f7c3b9c745294aae69760fa628b5e3799",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "apple": "63-paste-share-fence-two-readings.expected.apple.json",
+        "web": "63-paste-share-fence-two-readings.expected.web.json"
+      },
+      "summary": "Share-page text with a fence on both speaker lines. In the first turn the fence is a preview: the turn repeats it and then closes the block. In the second turn a time line stands between the speaker line and the next fence, so each of the two readings of the turn closes a different block.",
+      "covers": [
+        "a fence on a speaker line that the turn repeats is a preview and is dropped once",
+        "a line inside a closed block under either reading of the turn is kept",
+        "the text of a speaker line is kept when the first line of the turn does not begin with it"
+      ],
+      "rules": [
+        "D19",
+        "W6",
+        "W7"
+      ],
+      "difference": "Apple leaves each turn with one fence line: 'Report', '10:42' and 'Retry' are stored nowhere. In the first turn the web app finds the fence of the speaker line again as the first line of the turn, takes it for a preview and drops it once; the block that the turn closes by itself keeps 'Report'. In the second turn the two readings close different blocks: with the speaker line in front, the time line is inside a block; read alone, 'Retry' is. Both lines are kept, the first line of the turn does not begin with the fence, and so the text of the speaker line stays the first line of the turn."
     }
   ]
 }

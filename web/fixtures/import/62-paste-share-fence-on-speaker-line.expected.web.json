@@ -1,0 +1,51 @@
+{
+  "fixture": "62-paste-share-fence-on-speaker-line",
+  "source": "web-target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "notes": [
+    "Share-page text in which a code fence opens on the speaker line itself and closes two lines later, in both turns. The line between the fences is a word that pages print as a button label: 'Report', 'Retry'.",
+    "Apple discards the text after the header whenever more text follows, and removes a label line also inside a fenced block: each turn is left with its closing fence alone, and 'Report' and 'Retry' are stored nowhere. The web app reads the lines of a turn twice, alone and with the text of the speaker line in front, and never removes a line that either reading puts inside a closed fenced block. Read alone, the turn begins with a line that is no preview target for the fence, so the fence stays the first line of its turn and the block is kept whole."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "```\nReport\n```",
+            "display_segments": [
+              {
+                "type": "code",
+                "language": null,
+                "code": "Report"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "```\nRetry\n```",
+            "display_segments": [
+              {
+                "type": "code",
+                "language": null,
+                "code": "Retry"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

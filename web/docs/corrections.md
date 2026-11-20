@@ -126,7 +126,7 @@ Also decided: a property NAME that contains U+0000 or a lone surrogate cannot be
 
 ## 3. Importer: seventeen points (import-rules.md, the reference port, design.md, capture.md)
 
-Reported by the builder while implementing the transcript importer. The 57 fixtures that existed when these points were decided, and their expected files, do not change; fixtures 58 to 61 came later, with W6. Points 16 and 17 are entries 1.5.1 and 1.4.1 above. Points 18 to 22 were added on 2026-11-20, after the points before them had been implemented and reviewed.
+Reported by the builder while implementing the transcript importer. The 57 fixtures that existed when these points were decided, and their expected files, do not change; fixtures 58 to 63 came later, with W6. Points 16 and 17 are entries 1.5.1 and 1.4.1 above. Points 18 to 22 were added on 2026-11-20, after the points before them had been implemented and reviewed.
 
 Rules (import-rules.md):
 

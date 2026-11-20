@@ -1,0 +1,52 @@
+{
+  "fixture": "63-paste-share-fence-two-readings",
+  "source": "apple-importer; records what the Apple app does today, NOT a target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "apple_status_message": "Imported 1 session from clipboard.",
+  "notes": [
+    "Share-page text with a fence on both speaker lines. In the first turn the fence is a preview: the turn repeats it and then closes the block. In the second turn a time line stands between the speaker line and the next fence, so each of the two readings of the turn closes a different block.",
+    "Apple leaves each turn with one fence line: 'Report', '10:42' and 'Retry' are stored nowhere. In the first turn the web app finds the fence of the speaker line again as the first line of the turn, takes it for a preview and drops it once; the block that the turn closes by itself keeps 'Report'. In the second turn the two readings close different blocks: with the speaker line in front, the time line is inside a block; read alone, 'Retry' is. Both lines are kept, the first line of the turn does not begin with the fence, and so the text of the speaker line stays the first line of the turn."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "```",
+            "display_segments": [
+              {
+                "type": "code",
+                "language": null,
+                "code": ""
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "```",
+            "display_segments": [
+              {
+                "type": "code",
+                "language": null,
+                "code": ""
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

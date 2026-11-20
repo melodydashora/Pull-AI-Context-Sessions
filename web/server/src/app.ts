@@ -34,17 +34,19 @@ export const SECURITY_HEADERS: Readonly<Record<string, string>> = {
 // Two answers have no response object and so cannot carry them. Node writes a bare
 // "400 Bad Request" for a request it cannot parse at all. In development, Vite writes the
 // WebSocket handshake of hot reload straight to the connection. Neither shows anything of the app.
-class SecuredResponse extends ServerResponse<IncomingMessage> {
-  constructor(req: IncomingMessage) {
-    super(req);
-    for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
-      this.setHeader(name, value);
+//
+// `headers` is the set to use. Production always takes the default, the eight headers above.
+// Only the development entry passes another set, and only for the editor's preview pane (dev.ts).
+export function createSecuredServer(headers: Readonly<Record<string, string>> = SECURITY_HEADERS) {
+  const entries = Object.entries(headers);
+  class SecuredResponse extends ServerResponse<IncomingMessage> {
+    constructor(req: IncomingMessage) {
+      super(req);
+      for (const [name, value] of entries) {
+        this.setHeader(name, value);
+      }
     }
   }
-}
-
-/** An HTTP server whose responses all start with the security headers. It has no routes yet. */
-export function createSecuredServer() {
   return createServer({ ServerResponse: SecuredResponse });
 }
 

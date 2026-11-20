@@ -99,7 +99,16 @@ describe("the production entry", () => {
       ],
       {
         // Only what the server reads. Nothing else of this machine's environment reaches the child.
-        env: { PATH: process.env.PATH ?? "", PORT: String(port), HOST: "127.0.0.1", BUILD_ID: "entrytest" },
+        // The two settings of the development preview pane are present on purpose: the
+        // production entry must send all eight headers all the same (asserted below).
+        env: {
+          PATH: process.env.PATH ?? "",
+          PORT: String(port),
+          HOST: "127.0.0.1",
+          BUILD_ID: "entrytest",
+          SESSIONVAULT_PREVIEW_PANE: "1",
+          REPLIT_DEV_DOMAIN: "workspace-dev.example",
+        },
         stdio: ["ignore", "pipe", "pipe"],
       },
     );

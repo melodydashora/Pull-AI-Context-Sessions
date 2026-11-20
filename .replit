@@ -25,7 +25,7 @@ name = "Web app (dev)"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd web && npm ci --no-audit --no-fund && npm run dev"
+args = "cd web && npm ci --no-audit --no-fund && SESSIONVAULT_PREVIEW_PANE=1 npm run dev"
 waitForPort = 5000
 
 [workflows.workflow.metadata]

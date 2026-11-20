@@ -17,6 +17,7 @@ import {
   createSecuredServer,
   type Pages,
   requestListener,
+  SECURITY_HEADERS,
 } from "./app.ts";
 import { buildOptions, closeOnSignal, type Environment, listen, listenTarget, startupLine } from "./start.ts";
 
@@ -44,12 +45,11 @@ const NONCE_PLACEHOLDER = "SESSIONVAULT-CSP-NONCE";
  * policy; modules, style sheets and the API keep the production policy. The hot-reload socket
  * needs nothing: it is same-origin, which connect-src 'self' covers.
  */
-export function developmentPolicy(nonce: string): string {
+export function developmentPolicy(nonce: string, base: string = CONTENT_SECURITY_POLICY): string {
   const source = `'nonce-${nonce}'`;
-  return CONTENT_SECURITY_POLICY.replace("script-src 'self'", `script-src 'self' ${source}`).replace(
-    "style-src 'self'",
-    `style-src 'self' ${source}`,
-  );
+  return base
+    .replace("script-src 'self'", `script-src 'self' ${source}`)
+    .replace("style-src 'self'", `style-src 'self' ${source}`);
 }
 
 // The suffix of every development address the platform hands out. An entry that starts with a
@@ -73,16 +73,67 @@ export function developmentHosts(env: Environment): string[] {
   return host.endsWith(REPLIT_DEV_SUFFIX) ? [host, REPLIT_DEV_SUFFIX] : [host];
 }
 
+// The one site that may show the development server inside a frame: the editor of the hosting
+// platform, whose preview pane is such a frame. An exact origin, never a pattern.
+const EDITOR_ORIGIN = "https://replit.com";
+
+/**
+ * The origins that may show the development server in a frame, or none.
+ *
+ * The app refuses to be framed (docs/web-platform.md 11.4), and the published app always does.
+ * The owner asked on 2026-11-20 that the preview pane of the workspace works. So the
+ * development server, and only it, lets the editor frame it when all of this holds: the
+ * workflow asks for it (SESSIONVAULT_PREVIEW_PANE is "1"), the server runs in the workspace
+ * (a development host is known), and it is not a published app (REPLIT_DEPLOYMENT is not "1").
+ * The workspace holds no real data, and this is the only place where the app is ever framed.
+ */
+export function previewPaneAncestors(env: Environment): string[] {
+  const inWorkspace = developmentHosts(env).length > 0 && env.REPLIT_DEPLOYMENT !== "1";
+  return inWorkspace && env.SESSIONVAULT_PREVIEW_PANE === "1" ? [EDITOR_ORIGIN] : [];
+}
+
+/**
+ * The headers of a development server that the given origins may frame. Three of the eight
+ * headers change, the other five stay as they are:
+ *   Content-Security-Policy: frame-ancestors names the origins in place of 'none'.
+ *   X-Frame-Options: left out. It can only say "nobody" or "same site".
+ *   Cross-Origin-Resource-Policy: left out. With "same-origin" a page on another site that
+ *     isolates itself cannot embed this one.
+ */
+export function previewPaneHeaders(ancestors: readonly string[]): Record<string, string> {
+  for (const origin of ancestors) {
+    // An https origin and nothing else: this text goes into a header.
+    if (!/^https:\/\/[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?$/.test(origin)) {
+      throw new Error("a frame ancestor must be an https origin");
+    }
+  }
+  if (ancestors.length === 0) {
+    return { ...SECURITY_HEADERS };
+  }
+  const headers: Record<string, string> = {};
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+    if (name === "X-Frame-Options" || name === "Cross-Origin-Resource-Policy") {
+      continue;
+    }
+    headers[name] =
+      name === "Content-Security-Policy"
+        ? value.replace("frame-ancestors 'none'", `frame-ancestors ${ancestors.join(" ")}`)
+        : value;
+  }
+  return headers;
+}
+
 /** What to tell the person who started the server: where the app can be opened. */
 export function developmentNotice(env: Environment): string[] {
   const [host] = developmentHosts(env);
   if (host === undefined) {
     return [];
   }
-  return [
-    `https://${host}/`,
-    "Open this address in its own browser tab: the preview pane inside the editor cannot show the app, because the app refuses on purpose to be displayed inside a frame.",
-  ];
+  const pane =
+    previewPaneAncestors(env).length > 0
+      ? "The preview pane of the editor shows this address. It can also be opened in its own browser tab. The published app refuses to be displayed inside a frame."
+      : "Open this address in its own browser tab: the preview pane inside the editor cannot show the app, because the app refuses on purpose to be displayed inside a frame.";
+  return [`https://${host}/`, pane];
 }
 
 export interface DevOptions {
@@ -94,6 +145,8 @@ export interface DevOptions {
   readonly hosts: readonly string[];
   /** Where Vite keeps its cache. A test passes a temporary folder; the default is Vite's own. */
   readonly cacheDir?: string;
+  /** Origins that may show this server in a frame (see previewPaneAncestors). Default: none. */
+  readonly frameAncestors?: readonly string[];
 }
 
 export interface DevApp {
@@ -105,7 +158,9 @@ export interface DevApp {
 /** Create the development server. The caller decides the port and when to listen. */
 export async function createDevApp(options: DevOptions): Promise<DevApp> {
   const { createServer } = await import("vite");
-  const server = createSecuredServer();
+  const headers = previewPaneHeaders(options.frameAncestors ?? []);
+  const basePolicy = headers["Content-Security-Policy"] ?? CONTENT_SECURITY_POLICY;
+  const server = createSecuredServer(headers);
   const vite = await createServer({
     root: APP_DIR,
     configFile: join(APP_DIR, "vite.config.ts"),
@@ -153,7 +208,10 @@ export async function createDevApp(options: DevOptions): Promise<DevApp> {
       const nonce = randomBytes(18).toString("base64");
       const template = await readFile(join(APP_DIR, "index.html"), "utf8");
       const html = await vite.transformIndexHtml("/index.html", template, pathname);
-      return { html: html.replaceAll(NONCE_PLACEHOLDER, nonce), policy: developmentPolicy(nonce) };
+      return {
+        html: html.replaceAll(NONCE_PLACEHOLDER, nonce),
+        policy: developmentPolicy(nonce, basePolicy),
+      };
     },
   };
   server.on(
@@ -186,7 +244,12 @@ export async function createDevApp(options: DevOptions): Promise<DevApp> {
 // import.meta.main exists from Node 24.2 on.
 if (import.meta.main) {
   const { version, build } = buildOptions(process.env);
-  const app = await createDevApp({ version, build, hosts: developmentHosts(process.env) });
+  const app = await createDevApp({
+    version,
+    build,
+    hosts: developmentHosts(process.env),
+    frameAncestors: previewPaneAncestors(process.env),
+  });
   const port = await listen(app.server, listenTarget(process.env));
   console.log(startupLine({ version, build }, port, true));
   for (const line of developmentNotice(process.env)) {

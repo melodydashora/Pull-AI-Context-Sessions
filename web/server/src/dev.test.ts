@@ -7,7 +7,15 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { isHostAllowed } from "./app.ts";
-import { createDevApp, type DevApp, developmentHosts, developmentNotice, developmentPolicy } from "./dev.ts";
+import {
+  createDevApp,
+  type DevApp,
+  developmentHosts,
+  developmentNotice,
+  developmentPolicy,
+  previewPaneAncestors,
+  previewPaneHeaders,
+} from "./dev.ts";
 import { ask, expectSecurityHeaders, HEADERS_11_4 } from "./test-support.ts";
 
 const PRODUCTION_POLICY = HEADERS_11_4["Content-Security-Policy"] ?? "";
@@ -76,6 +84,69 @@ describe("the development host", () => {
     expect(lines.join("\n").split(DEV_HOST)).toHaveLength(2);
     expect(lines.join("\n")).not.toContain("OTHER-MARKER");
     expect(developmentNotice({})).toEqual([]);
+  });
+
+  it("says that the preview pane works when the workflow asked for it", () => {
+    const lines = developmentNotice({ REPLIT_DEV_DOMAIN: DEV_HOST, SESSIONVAULT_PREVIEW_PANE: "1" });
+    expect(lines[0]).toBe(`https://${DEV_HOST}/`);
+    expect(lines[1]).toMatch(/preview pane of the editor shows this address/);
+    expect(lines[1]).toMatch(/published app refuses/);
+  });
+});
+
+// The owner asked that the preview pane of the workspace works. The pane is a frame on another
+// site, and the app refuses to be framed. Would catch: the relaxation reaching a published app,
+// applying without the workflow's request, naming a pattern, or touching another header.
+describe("the editor's preview pane", () => {
+  const EDITOR = "https://replit.com";
+
+  it("is allowed only on request, only in the workspace, and never in a published app", () => {
+    const workspace = { REPLIT_DEV_DOMAIN: DEV_HOST, SESSIONVAULT_PREVIEW_PANE: "1" };
+    expect(previewPaneAncestors(workspace)).toEqual([EDITOR]);
+    expect(previewPaneAncestors({ ...workspace, REPLIT_DEPLOYMENT: "1" })).toEqual([]);
+    expect(previewPaneAncestors({ REPLIT_DEV_DOMAIN: DEV_HOST })).toEqual([]);
+    expect(previewPaneAncestors({ REPLIT_DEV_DOMAIN: DEV_HOST, SESSIONVAULT_PREVIEW_PANE: "0" })).toEqual([]);
+    expect(previewPaneAncestors({ REPLIT_DEV_DOMAIN: DEV_HOST, SESSIONVAULT_PREVIEW_PANE: "true" })).toEqual(
+      [],
+    );
+    // Not in the workspace: no development host is known.
+    expect(previewPaneAncestors({ SESSIONVAULT_PREVIEW_PANE: "1" })).toEqual([]);
+  });
+
+  it("changes three headers and leaves the other five as they are", () => {
+    expect(previewPaneHeaders([])).toEqual(HEADERS_11_4);
+    const framed = previewPaneHeaders([EDITOR]);
+    expect(Object.keys(framed).sort()).toEqual(
+      Object.keys(HEADERS_11_4)
+        .filter((name) => name !== "X-Frame-Options" && name !== "Cross-Origin-Resource-Policy")
+        .sort(),
+    );
+    for (const [name, value] of Object.entries(framed)) {
+      if (name !== "Content-Security-Policy") {
+        expect(value, name).toBe(HEADERS_11_4[name]);
+      }
+    }
+    const production = PRODUCTION_POLICY.split("; ");
+    const policy = (framed["Content-Security-Policy"] ?? "").split("; ");
+    expect(policy).toHaveLength(production.length);
+    expect(policy.filter((directive, index) => directive !== production[index])).toEqual([
+      `frame-ancestors ${EDITOR}`,
+    ]);
+  });
+
+  it("accepts https origins only, because the text goes into a header", () => {
+    for (const bad of [
+      "http://replit.com",
+      "https://*.replit.com",
+      "https://replit.com/",
+      "https://replit.com; script-src *",
+      "'none'",
+      "*",
+      "https://a b",
+      "",
+    ]) {
+      expect(() => previewPaneHeaders([bad]), bad).toThrow();
+    }
   });
 });
 
@@ -372,4 +443,79 @@ describe("the development server", () => {
     expect(await upgrade(DEV_HOST)).toBe(101);
     expect(await upgrade("evil.example")).toBe(400);
   }, 60_000);
+});
+
+describe("the development server inside the editor's preview pane", () => {
+  const EDITOR = "https://replit.com";
+  let app: DevApp;
+  let port: number;
+  let cacheDir: string;
+
+  beforeAll(async () => {
+    delete process.env.__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS;
+    cacheDir = await mkdtemp(join(tmpdir(), "sessionvault-dev-pane-test-"));
+    app = await createDevApp({
+      version: "9.8.7",
+      build: "testbuild",
+      hosts: [DEV_HOST],
+      cacheDir,
+      frameAncestors: [EDITOR],
+    });
+    port = await new Promise<number>((done) => {
+      app.server.listen(0, "127.0.0.1", () => done((app.server.address() as AddressInfo).port));
+    });
+  }, 60_000);
+
+  afterAll(async () => {
+    await app?.close();
+    await rm(cacheDir, { recursive: true, force: true });
+  }, 60_000);
+
+  // Would catch: the pane still refused (a framing header left in), or more given up than the
+  // three headers (another header dropped, the nonce rule loosened, another directive changed).
+  it("lets the editor frame the page and gives up nothing else", async () => {
+    const page = await ask(port, "/");
+    expect(page.status).toBe(200);
+    expect(page.headers["x-frame-options"]).toBeUndefined();
+    expect(page.headers["cross-origin-resource-policy"]).toBeUndefined();
+    const policy = String(page.headers["content-security-policy"]);
+    const nonce = /script-src 'self' 'nonce-([A-Za-z0-9+/]{24})'/.exec(policy)?.[1] ?? "";
+    expect(nonce).not.toBe("");
+    const production = PRODUCTION_POLICY.split("; ");
+    const changed = policy.split("; ").filter((directive, index) => directive !== production[index]);
+    expect(changed).toEqual([
+      `script-src 'self' 'nonce-${nonce}'`,
+      `style-src 'self' 'nonce-${nonce}'`,
+      `frame-ancestors ${EDITOR}`,
+    ]);
+    for (const name of [
+      "X-Content-Type-Options",
+      "Referrer-Policy",
+      "Cross-Origin-Opener-Policy",
+      "X-Robots-Tag",
+      "Strict-Transport-Security",
+    ]) {
+      expect(page.headers[name.toLowerCase()], name).toBe(HEADERS_11_4[name]);
+    }
+  });
+
+  it("applies the same three changes, and no nonce, to every other response", async () => {
+    for (const path of ["/api/version", "/api/none", "/healthz", "/src/main.tsx", "/missing.js"]) {
+      const answer = await ask(port, path);
+      expect(answer.headers["x-frame-options"], path).toBeUndefined();
+      expect(answer.headers["cross-origin-resource-policy"], path).toBeUndefined();
+      expect(answer.headers["content-security-policy"], path).toBe(
+        PRODUCTION_POLICY.replace("frame-ancestors 'none'", `frame-ancestors ${EDITOR}`),
+      );
+      expect(answer.headers["x-content-type-options"], path).toBe("nosniff");
+      expect(answer.headers["strict-transport-security"], path).toBe(
+        HEADERS_11_4["Strict-Transport-Security"],
+      );
+    }
+  });
+
+  it("still refuses a foreign host name", async () => {
+    const answer = await ask(port, "/", { headers: { Host: "evil.example" } });
+    expect(answer.status).toBe(403);
+  });
 });

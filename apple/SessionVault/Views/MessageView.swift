@@ -5,16 +5,41 @@ import AppKit
 import UIKit
 #endif
 
+/// Puts plain text on the system clipboard (macOS and iOS).
+private func copyToPasteboard(_ text: String) {
+    #if os(macOS)
+    NSPasteboard.general.clearContents()
+    NSPasteboard.general.setString(text, forType: .string)
+    #else
+    UIPasteboard.general.string = text
+    #endif
+}
+
 struct MessageBubble: View {
     let message: ChatMessage
+    @State private var copied = false
 
     private var isUser: Bool { message.role == .user }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(message.role.label)
-                .font(.caption.bold())
-                .foregroundStyle(isUser ? Color.accentColor : .secondary)
+            HStack(spacing: 8) {
+                Text(message.role.label)
+                    .font(.caption.bold())
+                    .foregroundStyle(isUser ? Color.accentColor : .secondary)
+                Spacer(minLength: 0)
+                // Text selection works one paragraph at a time, so a long reply could not
+                // be copied in one go. This copies the whole message exactly as stored.
+                Button(action: copyMessage) {
+                    Label(copied ? "Copied" : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc")
+                        .font(.caption2)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                #if os(macOS)
+                .help("Copy this whole message")
+                #endif
+            }
             ForEach(MessageSegment.parse(message.text)) { segment in
                 switch segment.kind {
                 case .prose(let text):
@@ -30,6 +55,14 @@ struct MessageBubble: View {
             RoundedRectangle(cornerRadius: 10)
                 .fill(isUser ? Color.accentColor.opacity(0.08) : Color.secondary.opacity(0.06))
         )
+    }
+
+    private func copyMessage() {
+        copyToPasteboard(message.text)
+        copied = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            copied = false
+        }
     }
 }
 
@@ -161,12 +194,7 @@ private struct CodeBlockView: View {
     }
 
     private func copy() {
-        #if os(macOS)
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(code, forType: .string)
-        #else
-        UIPasteboard.general.string = code
-        #endif
+        copyToPasteboard(code)
         copied = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             copied = false

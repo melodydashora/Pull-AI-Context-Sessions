@@ -1,6 +1,6 @@
 # Data model, persistence, search, organisation, context packs and interchange format
 
-> **Status (2026-11-20).** Extracted from the Apple app's source, written for one owner and one server-side API key. The parts on what the Apple app does and on its defects are ready to build from. Where the web design here assumes a single owner or a single key, `../HANDOFF.md` section 2 wins, and section 5 there lists what is being revised.
+> **Status (revised 2026-11-20).** Extracted from the Apple app's source, then revised on 2026-11-20 for the decisions in `../HANDOFF.md` section 2: many users, each with a private vault; each user's own Claude API key, stored encrypted on the server; an online vault in PostgreSQL plus an offline copy on each device. Sections 2 to 6 and 8 to 10 (the Apple app, its defects, the interchange format, the shared functions, the test vectors) are as first published, apart from six corrected line references and one changed word. Section 7 is rewritten for many users and for sync; sections 11 and 12 are updated. The offline copy and its protocol are in `sync.md`. The SQL of section 7 has still not been executed (section 1).
 
 ## Summary
 
@@ -8,20 +8,28 @@
 - Organisation is: at most one project per session, an ordered list of lower-case tag strings, and a pin flag. There are no sort options. Lists are "pinned first, then newest import first". The timeline groups by calendar month of the "original date" in the device time zone.
 - Search is a case-insensitive substring test over title, summary and tags only. No tokenising, no trimming, diacritics matter, and message text is not searched.
 - A context pack is a fixed Markdown template with no size limit. It is a one-way format. The app has no structured export, backup or sync today.
-- For the web this document specifies: interchange JSON version 1 (`interchange-schema-v1.json` and `example-vault-export.json`, both machine-checked), a PostgreSQL schema draft with `owner_id` on every row, rules for message bodies of about 1,000,000 characters, an IndexedDB sketch for the browser-only alternative, and a note on what the Apple app needs later.
+- For the web this document specifies: interchange JSON version 1 (`interchange-schema-v1.json` and `example-vault-export.json`, both machine-checked and not changed by the revision), a PostgreSQL design for many users (section 7), rules for message bodies of about 1,000,000 characters, and a note on what the Apple app needs later.
+- Users: the product is for many people from the first day. Every row carries `owner_id`, the id of the user it belongs to. Ids are unique per user, and every key and foreign key starts with `owner_id`, so the database itself refuses a row that points at another user's row. "No user can see another user's data" is written as twelve testable rules (7.12).
+- Key custody: each user brings their own Claude API key. It is stored only on the server, in `user_api_keys`, encrypted by the application with a key from the platform's secret store (7.8). It is never sent back to a browser, never logged, never exported and never part of the offline copy.
+- Offline copy: the server database is the source of truth. Each device also keeps a copy in IndexedDB and queues the changes made offline. This document defines what the server stores for that: a change sequence per user (`seq`), `messages_rev`, deletion markers (`tombstones`) and a record of pushed mutations (7.9). The protocol and the layout on the device are in sync.md.
+- Storage is counted per user for quotas (7.10). Account deletion removes every row of the user (7.11).
+- A "copy whole message" action copies the stored message text unchanged (7.14). The Apple app has such a button since commit `e81828a`.
+- First release: attachment descriptors are stored, attachment bytes are not (`../HANDOFF.md` section 6; 7.2).
 - Section 9 gives expected results for the example file (list order, search hits, timeline groups, four context packs with SHA-256). They were produced by running the app's real Swift code and are meant as golden tests.
-- Main traps: `created_at` means the original conversation date and not a row timestamp; UUID letter case; timestamp fractions; NUL characters; huge messages; unknown fields must survive a round trip.
+- Main traps: `created_at` means the original conversation date and not a row timestamp; UUID letter case; timestamp fractions; NUL characters; huge messages; unknown fields must survive a round trip; the change sequence must come from a locked per-user counter, never from a database sequence or a clock (7.9).
 
 ## 1. Conventions and evidence
 
 - Sections are labelled **(A)** what the Apple app does today, **(B)** defects or accidents the web app should not copy, **(C)** what must differ because it is a web app. Sections 6 to 8 are new design.
+- Words: "the owner" is the person who owns this product (`../HANDOFF.md`). A "user" is anyone with an account. `owner_id` on a row is the id of the user the row belongs to. Sections 5, 6 and 8 were written before the product had accounts; where they say "owner" of a row or "per owner", read "the user whose vault is read or written".
 - `file:line` references are relative to the repository root, for example `apple/SessionVault/Models.swift:52`. After the first mention a bare file name is used. All such names are files of the live app: `Models.swift`, `Importers.swift`, `ContextPack.swift`, `ClaudeAPI.swift`, `WebCapture.swift` and `SessionVaultApp.swift` are in `apple/SessionVault/`; every `...View.swift`, `ImportSheet.swift`, `PDFViewer.swift` and `ProviderStyle.swift` is in `apple/SessionVault/Views/`. Nothing here refers to `reference/session-capture-ios/`. `README.md` means the root README; the app's own is written `apple/README.md`. A reference that starts with a colon, such as `:65`, continues in the file named immediately before it.
 - Non-ASCII characters inside quoted strings are written as `\uXXXX` escapes (for example `"Rename\u2026"`).
 - "Verified" means: observed by compiling the repository's real Swift files (`Models.swift`, `ContextPack.swift`, `Importers.swift`) together with a small test program and running it. Toolchain: Swift 6.4 in Swift 5 language mode (the project's setting), macOS 27.2. SwiftData was only used with in-memory stores or a throw-away store. The app itself was not run and no real vault was read.
 - "Inference" marks a conclusion of the author that the code does not show directly. "Not verified" marks something that could not be checked.
-- Nothing in section 7 (SQL) was executed: no PostgreSQL server was available.
+- Nothing in section 7 (SQL) was executed: no PostgreSQL server was available, neither when the section was first written nor when it was revised on 2026-11-20. The Replit workspace has a PostgreSQL 16.10 server (`../HANDOFF.md` section 3): applying 7.2 to a scratch database of that server is the first step of phase 2. No table is created in the database that `DATABASE_URL` names before the owner has settled the model for schema changes (web-platform.md 13.3, step 7). If a statement fails there, fix this document in a commit of its own. What section 7 says about locks, cascades and foreign keys is taken from the PostgreSQL documentation, not from a run; 7.3, 7.10, 7.11 and 7.12 list the tests that check it.
+- The rules that 7.9 provides the tables for (change sequence, deletion markers, repeated pushes) were run as a model with simulated devices and a fake server; sync.md 12.4 describes it. The model does not use SQL.
 - The JavaScript of section 8 was executed, with the type annotations removed, in JavaScriptCore (the `jsc` shell that ships with macOS; Node was not available). It reproduced the Swift results of section 9: the four context packs byte for byte, every search result, the list order and both timelines. The same rules were also re-implemented in Python from this text alone, with the same results. `parseTags` and the project comparator contain deliberate changes and were only checked against the examples given for them. The repair, import and export rules of 6.6 to 6.8 were exercised with a small reference implementation in the same shell (9.4).
-- Other handoff documents referred to: import-rules.md (parsers that produce sessions), capture.md (link capture and PDF creation), claude-api.md (continue and summarise), design.md (screens and rendering), web-platform.md (hosting, sign-in, HTTP API, browser APIs). Where one of them specifies behaviour of a flow it owns, it wins; this document wins for table, column and file-format definitions.
+- Other handoff documents referred to: import-rules.md (parsers that produce sessions), capture.md (link capture and PDF creation), claude-api.md (continue and summarise), design.md (screens and rendering), web-platform.md (hosting, sign-in, HTTP API, browser APIs), sync.md (the offline copy on each device, the change feed and the queue of changes made offline). Where one of them specifies behaviour of a flow it owns, it wins; this document wins for table, column and file-format definitions.
 
 ## 2. (A) What the Apple app stores today
 
@@ -33,8 +41,8 @@
 | On disk, autosave on, undo off | Defaults of that modifier (`inMemory: false, isAutosaveEnabled: true, isUndoEnabled: false`, read from the SDK interface). Verified: `mainContext.autosaveEnabled == true`, `undoManager == nil`. |
 | No explicit save anywhere | No call to `save()` exists in `apple/SessionVault`. Every edit is a direct mutation of a model object. |
 | No schema versions, no migration plan, no predicates | The only SwiftData annotations are `Models.swift:43`, `:65`, `:67` and six `@Query` properties (`RootView.swift:26-27`, `SessionListView.swift:9-10`, `SessionDetailView.swift:11`, `:16`). All filtering happens in memory. |
-| Store location on the Mac | `~/Library/Application Support/default.store` with `-shm`, `-wal` and a `.default_SUPPORT` folder (`README.md:75`). On iOS it is inside the app's container (inference). |
-| No sync, no backup, no sharing between devices | iCloud sync is only an idea (`apple/README.md:32`). One device, one writer. |
+| Store location on the Mac | `~/Library/Application Support/default.store` with `-shm`, `-wal` and a `.default_SUPPORT` folder (`README.md:99`). On iOS it is inside the app's container (inference). |
+| No sync, no backup, no sharing between devices | iCloud sync is only an idea (`apple/README.md:34`). One device, one writer. |
 | No stored settings | No `UserDefaults`, `@AppStorage` or `@SceneStorage` in the sources. Search text, the selected filter and the chosen Claude model are not remembered. The API key is in the Keychain (see claude-api.md). |
 
 The store file is an implementation detail of SwiftData (an SQLite file with framework-specific encodings; not examined for this document). The web app never reads it. Data moves through the interchange format of section 6.
@@ -131,7 +139,7 @@ Verified: sessions inserted in one loop get strictly increasing `importedAt` val
 - Order is `index` ascending. Two code paths sort: `orderedMessages` (`Models.swift:92-94`, used by the context pack, summarise and continue chat) and the detail view's `@Query(sort: \ChatMessage.index)` over all messages of the vault, filtered in memory by session (`SessionDetailView.swift:16`, `:24-27`).
 - Indexes are contiguous from 0 by construction. Nothing enforces uniqueness.
 - "N turns" in the list row and the detail header is `session.messages.count`, counting every role (`SessionListView.swift:169`, `SessionDetailView.swift:213`).
-- Segments are not stored. `MessageSegment.parse(message.text)` (`apple/SessionVault/Views/MessageView.swift:37-94`) splits the text into `prose(String)` and `code(language: String?, code: String)` each time a bubble is drawn. Algorithm (verified against 14 cases):
+- Segments are not stored. `MessageSegment.parse(message.text)` (`apple/SessionVault/Views/MessageView.swift:70-127`) splits the text into `prose(String)` and `code(language: String?, code: String)` each time a bubble is drawn. Algorithm (verified against 14 cases):
 
 ```text
 segments = []; prose = []; code = []; language = null; inCode = false
@@ -151,7 +159,7 @@ flushProse(): joined = prose.join("\n"); prose = []
               if joined trimmed of white space and line breaks != "": emit prose(joined)   # joined itself is not trimmed
 ```
 
-- Each prose segment is then split on blank lines into paragraphs and rendered with inline-only Markdown (`MessageView.swift:110-123`); headings, lists and tables are not rendered as blocks. Rendering belongs to design.md.
+- Each prose segment is then split on blank lines into paragraphs and rendered with inline-only Markdown (`MessageView.swift:143-156`); headings, lists and tables are not rendered as blocks. Rendering belongs to design.md.
 
 ### 2.7 Binary data
 
@@ -258,7 +266,7 @@ The search text is view state of the list column and is not stored.
 |---|---|---|
 | List row | provider (chip), `isPinned`, `title` (1 line), `summary` (1 line, only if not empty), `importedAt` as a relative phrase, `messages.count` as `"N turns"`, tags | `SessionListView.swift:143-196` |
 | Detail header | `title`, provider, project, `modelName`, tags, `summary`, `sourceURL`, `createdAt`, `importedAt`, `messages.count`; toolbar: whether `snapshotPDF` exists, `isPinned` | `SessionDetailView.swift:50-91`, `:163-218` |
-| Transcript | all messages of the session: `role`, `text`, in index order | `SessionDetailView.swift:24-45`, `Views/MessageView.swift:8-34` |
+| Transcript | all messages of the session: `role`, `text`, in index order | `SessionDetailView.swift:24-45`, `Views/MessageView.swift:18-67` |
 | Sidebar | counts of 3.4, project names, tag list | `RootView.swift:118-184` |
 | Continue chat, summarise | all messages: `role`, `text`; writes described in 4.3 | `ContinueChatView.swift:248-305`, `SessionDetailView.swift:119-161` |
 
@@ -306,7 +314,7 @@ Exact rules:
 - `<role label>` is `User`, `Assistant`, `System` or `Note` (2.3).
 - Every message is included: all roles, empty texts too. Message text is inserted unchanged; nothing is escaped.
 - Because the lines are joined with `"\n"` and the last element is an empty string, the result ends with exactly one line break: `...---\n`, or `## Transcript\n` when there are no messages.
-- Limits and truncation: none. There is no size cap, no token budget and no shortening. A session with a 1,000,000-character message produces a pack of that size. ("Token-budgeted context packs" is only an idea, `apple/README.md:35`.)
+- Limits and truncation: none. There is no size cap, no token budget and no shortening. A session with a 1,000,000-character message produces a pack of that size. ("Token-budgeted context packs" is only an idea, `apple/README.md:37`.)
 - Not included: project, pin state, import date, ids, message count, the PDF.
 
 Section 9.3 contains complete outputs.
@@ -365,7 +373,7 @@ Never written after creation: `sourceURL`, `importedAt`, `snapshotPDF`, and a me
 | B8 | The detail view loads every message of the whole vault and filters in memory | `SessionDetailView.swift:16`, `:24-27` | Query by session id, ordered by position. |
 | B9 | Deleting a session or project is immediate, with no confirmation and no undo | `SessionListView.swift:131-140`, `RootView.swift:140-143` | Confirm, or offer undo. Owner decision whether a trash is wanted. |
 | B10 | An empty title can be stored | `SessionDetailView.swift:165` | Store what the user typed, but display an empty title as `Untitled`; or refuse to commit an empty title. |
-| B11 | Continue chat overwrites `modelName` with the Claude model id, also for sessions that came from another provider; the pack then reads for example `Origin: ChatGPT (claude-opus-5)` | `ContinueChatView.swift:297`, `ContextPack.swift:11-12` | Record the model on the reply message (`messages.model`). Set `sessions.model` only when it is empty. claude-api.md owns this flow; the data model supports both choices. |
+| B11 | Continue chat overwrites `modelName` with the Claude model id, also for sessions that came from another provider; the pack then reads for example `Origin: ChatGPT (claude-opus-5)` | `ContinueChatView.swift:297`, `ContextPack.swift:11-12` | Record the model on the reply message (`messages.model`). Set `sessions.model` only when it is empty. Decided since: only when it is empty and the session's provider is `claude` (section 12, item 6). claude-api.md owns this flow; the data model supports both choices. |
 | B12 | "Summarize" replaces a summary the user wrote, without asking | `SessionDetailView.swift:154` | Ask before replacing a non-empty summary. Owned by claude-api.md. |
 | B13 | Text is stored with whatever line endings arrived; with CR LF the code-fence parser fails (the language becomes `python\r` and the block never closes) | verified with `MessageSegment.parse` | Stored message text uses LF only. Normalise `\r\n` and lone `\r` to `\n` at the import boundary (import-rules.md) and when reading interchange files. |
 | B14 | Fence parser accidents: a prose line that merely starts with three backticks swallows the rest of the message as code; four-backtick fences and `~~~` fences are not understood | verified, 2.6 | Render with a CommonMark-compliant Markdown library (design.md). The stored text is not changed. |
@@ -378,7 +386,7 @@ Never written after creation: `sourceURL`, `importedAt`, `snapshotPDF`, and a me
 
 | # | Topic | What the web app must do |
 |---|---|---|
-| C1 | Persistence | Rows in a server database, each with `owner_id`; every query and every write is scoped to the signed-in owner. No object graph, no autosave: each edit is an explicit request (debounce text fields). |
+| C1 | Persistence | Rows in a server database, each with `owner_id`; every query and every write is scoped to the signed-in user. No object graph, no autosave: each edit is an explicit request (debounce text fields). |
 | C2 | Identity | UUIDs created by the server (`gen_random_uuid()`) or by the client (`crypto.randomUUID()`, which needs a secure context). |
 | C3 | Several devices | The same vault can be open twice. Keep `updated_at`; appending a message must be atomic on the server (7.3); last write wins per field update. |
 | C4 | Lists | Never load message text for lists. Keep `message_count` and `text_bytes` on the session. Return only a short summary preview in list rows (summaries can be long). Page long lists and long transcripts. |
@@ -602,7 +610,11 @@ exportDocument(owner, scope, options):
 
 ## 7. PostgreSQL design
 
+Revised on 2026-11-20 for many users and for sync. 7.1 to 7.6 keep their numbers: 7.2 and 7.3 are rewritten, 7.1 and 7.5 are adjusted, 7.4 and 7.6 are unchanged. 7.7 to 7.14 are new. Tables: `users` (formerly `owners`), `projects`, `sessions`, `messages`, `attachments`, `blobs` (not in the first release), `tombstones`, `sync_mutations`, `user_api_keys`, `user_settings`.
+
 ### 7.1 Field mapping: Swift, JSON, PostgreSQL
+
+Every PostgreSQL table below also has `owner_id` (7.2). It has no counterpart in Swift or in the interchange format.
 
 Session
 
@@ -625,6 +637,7 @@ Session
 | `orderedMessages`, `provider` (computed) | none | none | derived |
 | none | any unknown property | `extra jsonb` | |
 | none | none | `message_count`, `text_bytes`, `search_text` | derived, maintained by the app |
+| none | none | `seq`, `messages_rev`, `import_hash`, `stored_bytes` | server only: sync (7.9) and storage accounting (7.10). Never written to an interchange file, never read from one. |
 
 Message
 
@@ -647,7 +660,8 @@ Project
 | `name: String` | `name` | `name text`, `name_key text` | `name_key` derived (8.4) |
 | `createdAt: Date` | `created_at` | `created_at timestamptz(3)` | |
 | none | `updated_at` | `updated_at timestamptz(3)` | new |
-| `sessions` (nullify) | derived from `sessions[].project_id` | `sessions.project_id ... ON DELETE SET NULL` | |
+| `sessions` (nullify) | derived from `sessions[].project_id` | `sessions.project_id`, cleared by the application before the project is deleted (7.9) | |
+| none | none | `seq` | server only (7.9) |
 
 Attachment (new; today only `snapshotPDF` exists)
 
@@ -664,34 +678,38 @@ Attachment (new; today only `snapshotPDF` exists)
 
 ### 7.2 Schema draft
 
-Draft, not executed (section 1). PostgreSQL 14 or newer.
+Draft, not executed (section 1). PostgreSQL 14 or newer, as before; the workspace has 16.10. The draft uses no extension, trigger, function, procedure or domain: the hosting platform's publish step does not carry triggers, functions, procedures, domains or grants to production, and extensions are unverified there (web-platform.md 10.5). `gen_random_uuid()` is built into PostgreSQL since version 13 and needs no extension.
 
 ```sql
-CREATE EXTENSION IF NOT EXISTS pg_trgm;      -- only for the two *_trgm indexes below
-
--- One row per person. Sign-in columns belong to web-platform.md; if that document names
--- this table differently, use its table and keep the owner_id columns below.
-CREATE TABLE owners (
-    id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    display_name  text NOT NULL DEFAULT '',
-    created_at    timestamptz NOT NULL DEFAULT now()
+-- One row per person who may use the app (7.7). Formerly "owners".
+CREATE TABLE users (
+    id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),   -- the value of every owner_id
+    auth_subject   text NOT NULL UNIQUE,                         -- this person's id in the sign-in library or provider
+    status         text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'deleting')),
+    created_at     timestamptz NOT NULL DEFAULT now(),
+    change_seq     bigint  NOT NULL DEFAULT 0 CHECK (change_seq >= 0),      -- last change sequence number handed out (7.9)
+    session_count  integer NOT NULL DEFAULT 0 CHECK (session_count >= 0),   -- storage accounting (7.10)
+    stored_bytes   bigint  NOT NULL DEFAULT 0 CHECK (stored_bytes >= 0)     -- sum of sessions.stored_bytes (7.10)
 );
 
 CREATE TABLE projects (
-    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    owner_id    uuid NOT NULL REFERENCES owners (id) ON DELETE CASCADE,
+    owner_id    uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    id          uuid NOT NULL DEFAULT gen_random_uuid(),
     name        text NOT NULL CHECK (name ~ '\S'),
     name_key    text NOT NULL,                        -- app-computed, see 8.4
     created_at  timestamptz(3) NOT NULL DEFAULT now(),
     updated_at  timestamptz(3) NOT NULL DEFAULT now(),
+    seq         bigint NOT NULL,                      -- change sequence number of the last change (7.9)
     extra       jsonb NOT NULL DEFAULT '{}'::jsonb,
-    CONSTRAINT projects_owner_name_key UNIQUE (owner_id, name_key)
+    PRIMARY KEY (owner_id, id),
+    CONSTRAINT projects_owner_name_key UNIQUE (owner_id, name_key),
+    CONSTRAINT projects_owner_seq_key  UNIQUE (owner_id, seq)
 );
 
 CREATE TABLE sessions (
-    id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    owner_id       uuid NOT NULL REFERENCES owners (id) ON DELETE CASCADE,
-    project_id     uuid REFERENCES projects (id) ON DELETE SET NULL,   -- app must check same owner
+    owner_id       uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    id             uuid NOT NULL DEFAULT gen_random_uuid(),
+    project_id     uuid,                                 -- same user's project, see sessions_project_fkey
     title          text NOT NULL DEFAULT 'Untitled',
     provider       text NOT NULL DEFAULT 'other' CHECK (provider <> ''),
     model          text NOT NULL DEFAULT '',
@@ -704,24 +722,33 @@ CREATE TABLE sessions (
     updated_at     timestamptz(3) NOT NULL DEFAULT now(),
     message_count  integer NOT NULL DEFAULT 0 CHECK (message_count >= 0),
     text_bytes     integer NOT NULL DEFAULT 0 CHECK (text_bytes >= 0),
+    stored_bytes   bigint  NOT NULL DEFAULT 0 CHECK (stored_bytes >= 0),   -- bytes charged to the quota (7.10)
     search_text    text NOT NULL DEFAULT '',          -- app-computed, see 8.1
-    extra          jsonb NOT NULL DEFAULT '{}'::jsonb
+    seq            bigint NOT NULL,                   -- change sequence number of the last change (7.9)
+    messages_rev   integer NOT NULL DEFAULT 1 CHECK (messages_rev >= 1),   -- +1 when the message list is replaced (7.9)
+    import_hash    text NOT NULL DEFAULT '',          -- fingerprint of the messages at creation (7.9)
+    extra          jsonb NOT NULL DEFAULT '{}'::jsonb,
+    PRIMARY KEY (owner_id, id),
+    CONSTRAINT sessions_project_fkey  FOREIGN KEY (owner_id, project_id) REFERENCES projects (owner_id, id),
+    CONSTRAINT sessions_owner_seq_key UNIQUE (owner_id, seq)
 );
 COMMENT ON COLUMN sessions.created_at  IS 'Original date of the conversation, user-editable. NOT the row creation time.';
 COMMENT ON COLUMN sessions.imported_at IS 'When the session first entered a vault. Never updated. Default list order.';
 COMMENT ON COLUMN sessions.updated_at  IS 'Last change to the session or its messages. Set by the application.';
 
-CREATE INDEX sessions_list_idx     ON sessions (owner_id, is_pinned DESC, imported_at DESC, id);
-CREATE INDEX sessions_timeline_idx ON sessions (owner_id, created_at DESC, id);
-CREATE INDEX sessions_project_idx  ON sessions (owner_id, project_id);
-CREATE INDEX sessions_provider_idx ON sessions (owner_id, provider);
-CREATE INDEX sessions_tags_idx     ON sessions USING gin (tags);
-CREATE INDEX sessions_search_trgm  ON sessions USING gin (search_text gin_trgm_ops);
+CREATE INDEX sessions_list_idx        ON sessions (owner_id, is_pinned DESC, imported_at DESC, id);
+CREATE INDEX sessions_timeline_idx    ON sessions (owner_id, created_at DESC, id);
+CREATE INDEX sessions_project_idx     ON sessions (owner_id, project_id);
+CREATE INDEX sessions_provider_idx    ON sessions (owner_id, provider);
+CREATE INDEX sessions_import_hash_idx ON sessions (owner_id, import_hash);
+-- Left out of the first release, see the notes:
+-- CREATE INDEX sessions_tags_idx    ON sessions USING gin (tags);
+-- CREATE INDEX sessions_search_trgm ON sessions USING gin (search_text gin_trgm_ops);   -- needs the pg_trgm extension
 
 CREATE TABLE messages (
-    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    owner_id    uuid NOT NULL REFERENCES owners (id) ON DELETE CASCADE,
-    session_id  uuid NOT NULL REFERENCES sessions (id) ON DELETE CASCADE,
+    owner_id    uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    id          uuid NOT NULL DEFAULT gen_random_uuid(),
+    session_id  uuid NOT NULL,
     position    integer NOT NULL CHECK (position >= 0),   -- "index" in Swift and JSON
     role        text NOT NULL DEFAULT 'unknown' CHECK (role <> ''),
     text        text NOT NULL DEFAULT '',                 -- flattened text; can be megabytes
@@ -730,16 +757,19 @@ CREATE TABLE messages (
     model       text NOT NULL DEFAULT '',
     created_at  timestamptz(3),                              -- NULL for imported transcripts
     extra       jsonb NOT NULL DEFAULT '{}'::jsonb,
-    CONSTRAINT messages_session_position_key UNIQUE (session_id, position)
+    PRIMARY KEY (owner_id, id),
+    CONSTRAINT messages_session_fkey FOREIGN KEY (owner_id, session_id)
+        REFERENCES sessions (owner_id, id) ON DELETE CASCADE,
+    CONSTRAINT messages_session_position_key UNIQUE (owner_id, session_id, position)
 );
 -- No b-tree, unique or hash index may ever include messages.text (7.4).
--- Optional, see 7.5:
+-- Optional, see 7.5 (needs the pg_trgm extension):
 -- CREATE INDEX messages_text_trgm ON messages USING gin (text gin_trgm_ops);
 
 CREATE TABLE attachments (
-    id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    owner_id     uuid NOT NULL REFERENCES owners (id) ON DELETE CASCADE,
-    session_id   uuid NOT NULL REFERENCES sessions (id) ON DELETE CASCADE,
+    owner_id     uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    id           uuid NOT NULL DEFAULT gen_random_uuid(),
+    session_id   uuid NOT NULL,
     kind         text NOT NULL DEFAULT 'other' CHECK (kind <> ''),
     sha256       text NOT NULL CHECK (sha256 ~ '^[0-9a-f]{64}$'),
     media_type   text NOT NULL DEFAULT 'application/octet-stream',
@@ -747,14 +777,17 @@ CREATE TABLE attachments (
     filename     text NOT NULL DEFAULT '',
     created_at   timestamptz(3) NOT NULL DEFAULT now(),
     extra        jsonb NOT NULL DEFAULT '{}'::jsonb,
-    CONSTRAINT attachments_session_kind_sha_key UNIQUE (session_id, kind, sha256)
+    PRIMARY KEY (owner_id, id),
+    CONSTRAINT attachments_session_fkey FOREIGN KEY (owner_id, session_id)
+        REFERENCES sessions (owner_id, id) ON DELETE CASCADE,
+    CONSTRAINT attachments_session_kind_sha_key UNIQUE (owner_id, session_id, kind, sha256)
 );
 CREATE INDEX attachments_owner_sha_idx ON attachments (owner_id, sha256);
 
--- The bytes, stored once per owner and hash. No foreign key from attachments on purpose:
--- a descriptor may exist while its bytes are missing (6.4).
+-- NOT IN THE FIRST RELEASE (see the notes). The bytes, stored once per user and hash. No foreign key
+-- from attachments on purpose: a descriptor may exist while its bytes are missing (6.4).
 CREATE TABLE blobs (
-    owner_id     uuid NOT NULL REFERENCES owners (id) ON DELETE CASCADE,
+    owner_id     uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     sha256       text NOT NULL CHECK (sha256 ~ '^[0-9a-f]{64}$'),
     byte_length  integer NOT NULL CHECK (byte_length >= 0),
     data         bytea,              -- the bytes, or NULL when they live in object storage
@@ -763,19 +796,68 @@ CREATE TABLE blobs (
     PRIMARY KEY (owner_id, sha256),
     CHECK (data IS NOT NULL OR storage_key IS NOT NULL)
 );
+
+-- One row per deleted project or session, so that other devices learn of the deletion (7.9, sync.md 3.4).
+CREATE TABLE tombstones (
+    owner_id    uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    entity      text NOT NULL CHECK (entity IN ('project', 'session')),
+    entity_id   uuid NOT NULL,
+    seq         bigint NOT NULL,
+    deleted_at  timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (owner_id, entity, entity_id),
+    CONSTRAINT tombstones_owner_seq_key UNIQUE (owner_id, seq)
+);
+
+-- One row per mutation a device has pushed, so that a repeated push has no second effect (7.9, sync.md 6).
+CREATE TABLE sync_mutations (
+    owner_id     uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    mutation_id  uuid NOT NULL,
+    result       jsonb NOT NULL,     -- outcome without the row: status, code, kind and id of the record, small extras
+    applied_at   timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (owner_id, mutation_id)
+);
+CREATE INDEX sync_mutations_age_idx ON sync_mutations (owner_id, applied_at);
+
+-- The user's own Anthropic API key, encrypted by the application (7.8). At most one row per user.
+CREATE TABLE user_api_keys (
+    owner_id      uuid PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
+    ciphertext    bytea NOT NULL,                                   -- AES-256-GCM output followed by the 16-byte tag
+    nonce         bytea NOT NULL CHECK (octet_length(nonce) = 12),  -- random, new for every encryption
+    key_version   integer NOT NULL CHECK (key_version >= 1),        -- which wrapping key encrypted this row
+    last4         text NOT NULL,                                    -- last four characters of the key, for display
+    status        text NOT NULL DEFAULT 'unknown' CHECK (status IN ('unknown', 'ok', 'rejected')),
+    created_at    timestamptz NOT NULL DEFAULT now(),               -- when this key was saved
+    updated_at    timestamptz NOT NULL DEFAULT now(),               -- last change of this row
+    checked_at    timestamptz,                                      -- last check against Anthropic
+    last_used_at  timestamptz                                       -- last Claude request made with it
+);
+
+-- Preferences that follow the user to other devices (7.7). At most one row per user, created on first write.
+CREATE TABLE user_settings (
+    owner_id    uuid PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
+    data        jsonb NOT NULL DEFAULT '{}'::jsonb,
+    updated_at  timestamptz NOT NULL DEFAULT now()
+);
 ```
 
 Notes on the draft:
 
-- Design choices that are the author's (inference, not derived from the Apple app): single-column UUID primary keys with owner scoping done in queries; `''` instead of `NULL` for absent strings (mirrors the Swift defaults and removes a three-state problem); `search_text`, `message_count` and `text_bytes` maintained by the application in the same transaction as the change they depend on; `position` as the SQL name for the message index.
+- Keys. Ids are unique per user, not across the database: every primary key of a data table is `(owner_id, id)` and every foreign key between data tables starts with `owner_id`. The database itself therefore refuses a session that points at another user's project, or a message that points at another user's session. The same UUID may exist under two users; the two rows have nothing to do with each other. 7.7 gives the reasons. An earlier version of this draft had single-column keys and named these composite keys as "optional hardening when more owners exist"; with many users they are the design.
+- Design choices that are the author's (inference, not derived from the Apple app): `''` instead of `NULL` for absent strings (mirrors the Swift defaults and removes a three-state problem); `search_text`, `message_count`, `text_bytes`, `stored_bytes`, `seq`, `messages_rev` and the counters on `users` maintained by the application in the same transaction as the change they depend on; `position` as the SQL name for the message index.
 - Timestamps that travel in interchange files are `timestamptz(3)`: millisecond precision, so that the database, a JavaScript `Date` and the JSON text hold exactly the same instant. With the default microsecond precision a value written by `now()` would no longer equal itself after a round trip through the browser.
 - `segments` is `NULL` for every message that is one plain text segment, which is all data that exists today. When it is not `NULL` it holds the complete segment array including the text, and `text` holds `flattenText(segments)`.
-- `updated_at` is set by the application on every change of a session row or of its messages or attachments, and on every project change. Imports write the value from the file. A database trigger would overwrite imported values, so do not use one.
+- `updated_at` is set by the application on every change of a session row or of its messages or attachments, and on every project change; `seq` is set in the same statement (7.9). Imports write the `updated_at` of the file and still get a new `seq`. A database trigger would overwrite imported values and would not reach production, so do not use one.
+- Deleting a project. There is deliberately no `ON DELETE SET NULL` on `sessions_project_fkey`. The application first clears `project_id` on the project's sessions, giving each a new `seq`, and then deletes the project (7.9): other devices learn of a change only through `seq`. A delete that skips the first step fails on the foreign key instead of silently leaving devices out of date.
+- `CHECK` constraints are guards. No rule in this document relies on one; validate in the application. Whether every kind of constraint survives the publish step is unverified (web-platform.md 13.1, check 4).
+- Left out on purpose: the GIN index on `tags` and both trigram indexes. One user's sessions are few enough to filter through the indexes that start with `owner_id`; the trigram indexes need the `pg_trgm` extension; and whether GIN indexes survive the publish step is unverified. Results are the same without them. Add them only after checking the hosting platform (web-platform.md 10.5).
+- First release: descriptors, no bytes. `../HANDOFF.md` section 6 puts stored page snapshots and images inside transcripts out of scope. So the first release creates `attachments`, because descriptors have to survive an import and a later export (6.4, 6.5), and creates neither `blobs` nor any route that stores or serves bytes. Bytes that arrive in an interchange file are not stored; the descriptor is kept (the "omitted" way of 6.4) and the import report says how many originals were left out. Step 4 of 6.7 has nothing to do until `blobs` exists. The `blobs` definition and the next two notes apply from the day the owner asks for stored originals.
 - Where to keep the bytes (`bytea` or object storage) is a hosting decision for web-platform.md. `bytea` keeps everything in one backup and is reasonable for PDFs of a few megabytes; set a hard upload limit (suggestion: 50 MB per object). PDFs are already compressed: `ALTER TABLE blobs ALTER COLUMN data SET STORAGE EXTERNAL;` avoids pointless compression attempts and makes `substring(data FROM x FOR n)` cheap, which is enough to serve HTTP range requests.
 - After sessions are deleted, remove unreferenced bytes: `DELETE FROM blobs b WHERE NOT EXISTS (SELECT 1 FROM attachments a WHERE a.owner_id = b.owner_id AND a.sha256 = b.sha256);`
-- Optional hardening when more owners exist: row-level security on every table with `owner_id`, and composite foreign keys `(owner_id, project_id)` so that a session cannot reference another owner's project.
+- Row-level security is not part of the draft. 7.13 says how it could be added behind the application's own checks and what has to be verified on the hosting platform first.
 
 ### 7.3 Queries that define behaviour
+
+Every statement names `owner_id`, bound to the id of the signed-in user, and every join repeats it (7.12, rule I3).
 
 List (3.4), with the tie-break the Apple app lacks:
 
@@ -783,7 +865,7 @@ List (3.4), with the tie-break the Apple app lacks:
 SELECT s.id, s.title, s.provider, s.model, left(s.summary, 300) AS summary_preview, s.tags, s.is_pinned,
        s.created_at, s.imported_at, s.updated_at, s.project_id, s.message_count,
        EXISTS (SELECT 1 FROM attachments a JOIN blobs b ON b.owner_id = a.owner_id AND b.sha256 = a.sha256
-               WHERE a.session_id = s.id AND a.kind = 'original_pdf') AS has_original
+               WHERE a.owner_id = s.owner_id AND a.session_id = s.id AND a.kind = 'original_pdf') AS has_original
 FROM sessions s
 WHERE s.owner_id = $1
   -- one of, depending on the active filter:
@@ -791,11 +873,13 @@ WHERE s.owner_id = $1
   --   AND s.project_id = $2
   --   AND s.provider = $2                                        (claude, chatgpt, gemini)
   --   AND s.provider NOT IN ('claude', 'chatgpt', 'gemini')      (the "Other" filter)
-  --   AND s.tags @> ARRAY[$2]::text[]                            (@> uses the GIN index; = ANY does not)
+  --   AND s.tags @> ARRAY[$2]::text[]
   -- and, when a search is active (8.1):
   --   AND s.search_text LIKE '%' || $3 || '%' ESCAPE '\'
 ORDER BY s.is_pinned DESC, s.imported_at DESC, s.id ASC;
 ```
+
+In the first release there is no `blobs` table (7.2): select `false AS has_original` in place of the `EXISTS`.
 
 Timeline: same filters and search, `ORDER BY s.created_at DESC, s.id ASC`, no pinned-first. The browser groups by month in its own time zone (8.5).
 
@@ -806,8 +890,8 @@ SELECT count(*) AS all_count, count(*) FILTER (WHERE is_pinned) AS pinned_count
 FROM sessions WHERE owner_id = $1;
 
 SELECT p.id, p.name, count(s.id) AS session_count
-FROM projects p LEFT JOIN sessions s ON s.project_id = p.id
-WHERE p.owner_id = $1 GROUP BY p.id;                 -- sort in the app with 8.4
+FROM projects p LEFT JOIN sessions s ON s.owner_id = p.owner_id AND s.project_id = p.id
+WHERE p.owner_id = $1 GROUP BY p.owner_id, p.id;     -- sort in the app with 8.4
 
 SELECT t AS tag, count(*) AS session_count
 FROM sessions s CROSS JOIN LATERAL unnest(s.tags) AS t
@@ -817,35 +901,68 @@ WHERE s.owner_id = $1 GROUP BY t ORDER BY t COLLATE "C";   -- code-point order, 
 Transcript of one session, never `SELECT *` from a list:
 
 ```sql
-SELECT id, position, role, text, segments, model, created_at
+SELECT id, position, role, text, segments, model, created_at, extra
 FROM messages WHERE owner_id = $1 AND session_id = $2 ORDER BY position;
 ```
 
-Appending a message (continue chat) so that two devices cannot produce the same position:
+Appending a message (continue chat) so that two devices cannot produce the same position. It runs inside the write transaction of 7.9, which is what gives the session its new `seq`:
 
 ```sql
 BEGIN;
-SELECT 1 FROM sessions WHERE id = $1 AND owner_id = $2 FOR UPDATE;      -- one appender per session at a time
-INSERT INTO messages (id, owner_id, session_id, position, role, text, text_bytes, model, created_at)
-VALUES ($3, $2, $1,
-        (SELECT COALESCE(MAX(position), -1) + 1 FROM messages WHERE session_id = $1),
+SELECT change_seq, session_count, stored_bytes FROM users
+WHERE id = $2 AND status = 'active' FOR NO KEY UPDATE;                    -- 7.9 step 1: one writer per user at a time
+SELECT 1 FROM sessions WHERE owner_id = $2 AND id = $1 FOR UPDATE;         -- no row: the session was deleted; roll back
+INSERT INTO messages (owner_id, id, session_id, position, role, text, text_bytes, model, created_at)
+VALUES ($2, $3, $1,
+        (SELECT COALESCE(MAX(position), -1) + 1 FROM messages WHERE owner_id = $2 AND session_id = $1),
         $4, $5, $6, $7, now())
 RETURNING position;
-UPDATE sessions SET message_count = message_count + 1, text_bytes = text_bytes + $6, updated_at = now()
-WHERE id = $1 AND owner_id = $2;
+UPDATE sessions SET message_count = message_count + 1, text_bytes = text_bytes + $6,
+                    stored_bytes = stored_bytes + $8,                      -- 7.10: what this message is charged
+                    updated_at = now(), seq = $9                           -- $9 = change_seq + 1
+WHERE owner_id = $2 AND id = $1;
+UPDATE users SET change_seq = $9, stored_bytes = stored_bytes + $8 WHERE id = $2;
 COMMIT;
 ```
 
-Consistency check for tests (must return no rows):
+A Claude turn that commits a user message and a reply does both inserts in one such transaction and gives the session one new `seq`.
+
+Consistency checks for tests (each must return no rows):
 
 ```sql
-SELECT s.id FROM sessions s
-LEFT JOIN (SELECT session_id, count(*) AS c, COALESCE(sum(text_bytes), 0) AS b FROM messages GROUP BY session_id) m
-       ON m.session_id = s.id
+-- session counters agree with the messages
+SELECT s.owner_id, s.id FROM sessions s
+LEFT JOIN (SELECT owner_id, session_id, count(*) AS c, COALESCE(sum(text_bytes), 0) AS b
+           FROM messages GROUP BY owner_id, session_id) m
+       ON m.owner_id = s.owner_id AND m.session_id = s.id
 WHERE s.message_count <> COALESCE(m.c, 0) OR s.text_bytes <> COALESCE(m.b, 0);
+
+-- positions are 0..n-1 without gaps
+SELECT owner_id, session_id FROM messages GROUP BY owner_id, session_id
+HAVING min(position) <> 0 OR max(position) <> count(*) - 1;
+
+-- no change sequence number is used twice within a user, and none is above the user's counter
+SELECT owner_id, seq FROM (
+    SELECT owner_id, seq FROM projects UNION ALL
+    SELECT owner_id, seq FROM sessions UNION ALL
+    SELECT owner_id, seq FROM tombstones) x
+GROUP BY owner_id, seq HAVING count(*) > 1;
+SELECT x.owner_id FROM (
+    SELECT owner_id, max(seq) AS top FROM (
+        SELECT owner_id, seq FROM projects UNION ALL
+        SELECT owner_id, seq FROM sessions UNION ALL
+        SELECT owner_id, seq FROM tombstones) y GROUP BY owner_id) x
+JOIN users u ON u.id = x.owner_id WHERE x.top > u.change_seq;
+
+-- no live row has a deletion marker
+SELECT t.owner_id, t.entity_id FROM tombstones t
+WHERE (t.entity = 'session' AND EXISTS (SELECT 1 FROM sessions s WHERE s.owner_id = t.owner_id AND s.id = t.entity_id))
+   OR (t.entity = 'project' AND EXISTS (SELECT 1 FROM projects p WHERE p.owner_id = t.owner_id AND p.id = t.entity_id));
 ```
 
-Driver note: node-postgres returns `bigint` (for example `count(*)`) as a string. Cast counts to `integer` in SQL or convert in code.
+The storage counters have their own check in 7.10.
+
+Driver note: node-postgres returns `bigint` (for example `count(*)`, `seq`, `stored_bytes`) as a string. Cast counts to `integer` in SQL or convert in code. A JavaScript number holds every integer up to 2^53 exactly, which no `seq` or byte count here reaches; convert to a number, not to a `BigInt`, so that the value can go into JSON.
 
 ### 7.4 Large message bodies
 
@@ -870,7 +987,7 @@ A whole shared page stored as one message can reach about 1,000,000 characters. 
 Parity search (title, summary, tags): section 8.1 defines `search_text` and the needle; the SQL is the `LIKE` line in 7.3. Notes:
 
 - Lower-casing and Unicode normalisation happen in TypeScript, never with SQL `lower()` or `ILIKE`: their handling of non-ASCII letters depends on the database's locale settings, and a database created with the `C` locale folds ASCII only.
-- `LIKE` on a pre-lower-cased column with the `gin_trgm_ops` index gives substring semantics, which is what the Apple app has. For a vault of a few thousand sessions the index is not even needed; it is there for growth. If the hosting platform does not offer `pg_trgm`, drop the two trigram indexes; results stay correct.
+- `LIKE` on a pre-lower-cased column gives substring semantics, which is what the Apple app has. The query always carries `owner_id = $1`, so it reads one user's sessions; for a vault of a few thousand sessions no further index is needed. The trigram index (`gin_trgm_ops`) is left out of the first release (7.2); results are the same without it.
 - Escape the needle for `LIKE`: prefix `\`, `%` and `_` with `\`.
 - Do not build `search_text` in SQL as a generated column or index expression: `array_to_string` is not immutable, so the definition is rejected, and `lower()` has the locale problem above. Compute the column in the application.
 
@@ -885,8 +1002,9 @@ ORDER BY m.session_id, m.position
 LIMIT 200;
 ```
 
-- Without an index this reads every message body of the owner. Estimate: about a second per 100 MB of text. Run it on submit, not on every keystroke, and start without an index.
-- Add `messages_text_trgm` when the vault's text grows beyond roughly 100 MB and the plan has the disk space. The index supports `ILIKE`. With more than one owner, add the `btree_gin` extension and index `(owner_id, text gin_trgm_ops)`.
+- Without an index this reads every message body of the one user who searches, and of nobody else (`m.owner_id = $1`). Estimate: about a second per 100 MB of text. Run it on submit, not on every keystroke, and start without an index.
+- `messages_text_trgm` would support `ILIKE`, but it needs the `pg_trgm` extension, and an index that is useful with many users needs `btree_gin` as well, to put `owner_id` in front: `(owner_id, text gin_trgm_ops)`. Extensions are not relied on (7.2). Treat this index as a later optimisation that has to be verified on the hosting platform first.
+- On a device, transcript search can only cover the transcripts that are in the offline copy (sync.md 5).
 - `ILIKE` here inherits the locale caveat above; for ASCII it is always case-insensitive.
 - Word-based full-text search (`tsvector`, `websearch_to_tsquery`) is an alternative with ranking, but it matches whole words, not substrings, so `cycle` would no longer find `bicycle`, and code identifiers split unpredictably. If it is ever added: fill a plain `tsvector` column from the application with `to_tsvector('simple', left(text, 100000))` or per chunk, and catch the size error.
 
@@ -896,11 +1014,325 @@ App-specific values that are not part of the interchange standard go into the `e
 
 | Value | Defined in | Stored at | In an interchange file |
 |---|---|---|---|
-| Capture metadata: method, requested URL, strategy id, selectors version, extractor version, partial flag, warnings, capture time | capture.md 7.3 | `sessions.extra`, key `x_capture`, one object; property names in `snake_case` (`method`, `requested_url`, `strategy_id`, `selectors_version`, `extractor_version`, `partial`, `warnings`, `captured_at`) | session property `x_capture` (the example file's session 5 has one) |
+| Capture metadata: method, requested URL, strategy id, selectors version, extractor version, partial flag, warnings, capture time | capture.md 7.3 | `sessions.extra`, key `x_capture`, one object; property names in `snake_case` (`method`, `requested_url`, `strategy_id`, `selectors_version`, `extractor_version`, `partial`, `warnings`, `captured_at`; and, since the revision of capture.md 7.3, `images_seen` and `page_type`) | session property `x_capture` (the example file's session 5 has one) |
 | Details about a page snapshot (for example whether the page scrolled as a whole) | capture.md | `attachments.extra`, key `x_capture` | attachment property `x_capture` |
-| Marker of an incomplete assistant reply | claude-api.md C5 | `messages.extra`, key `x_claude`. That document writes the key as `claude`; use `x_claude` so that the rule above holds. | message property `x_claude` |
+| Marker of an incomplete assistant reply | claude-api.md C5 | `messages.extra`, key `x_claude`, as claude-api.md C5 now writes it. | message property `x_claude` |
 
 `sessions.source_url` stays the one link shown to the user. capture.md decides which URL that is on the web (the requested or the final one); the other one belongs in `x_capture`.
+
+### 7.7 Users and accounts
+
+New on 2026-11-20. `users` is this product's own table. A sign-in library or provider proves who a person is (web-platform.md decides which); from it this product needs one stable identifier and nothing else.
+
+| Column | Type | Written by | Meaning |
+|---|---|---|---|
+| `id` | `uuid` | database default, once | The user. The value of every `owner_id`. Never changes. |
+| `auth_subject` | `text`, unique | the sign-in hook, once | The id that the sign-in library or provider gives this person, as text. The value is the library's; this product stores it to find the row and never changes it. |
+| `status` | `text` | server (account routes, the owner's tooling) | `active`, `suspended` or `deleting`; second table below. |
+| `created_at` | `timestamptz` | database default | When the row was created. |
+| `change_seq` | `bigint` | server, in every write transaction (7.9) | Last change sequence number handed out for this user. |
+| `session_count`, `stored_bytes` | `integer`, `bigint` | server, in the same transaction as the change (7.10) | Storage accounting. |
+
+Owned by the sign-in library, in tables of its own that this document does not specify: the e-mail address and its verification, credentials or passkeys, the browser sign-in sessions, and whatever the invitation gate stores. Do not let the library create, alter or migrate `users`, and do not copy its columns into `users`: an e-mail address stored twice has to be deleted twice.
+
+Rules:
+
+1. A `users` row is inserted by the server-side sign-in hook the first time a person signs in after passing the invitation check. Nothing a browser sends can create a row or choose its `id`.
+2. On every request the server takes the user id from the sign-in session and from nowhere else: not from a path, a query string, a header or a body.
+3. The `owner_id` that every data row already had now means: the `users.id` of the user the row belongs to. Nothing else about the column changes.
+4. A table in another document that belongs to one user carries `owner_id uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE`. This replaces `REFERENCES owners (id)` in claude-api.md C5 (`claude_turns`) and in web-platform.md 11.2. A table whose ids are chosen by a browser has `PRIMARY KEY (owner_id, id)`, and a reference to a session is `FOREIGN KEY (owner_id, session_id) REFERENCES sessions (owner_id, id) ON DELETE CASCADE`. For `claude_turns` that also puts the one-running-turn index on `(owner_id, session_id)`.
+5. `user_settings.data` holds preferences that must follow the user to another device, as one JSON object. The document that owns a preference defines its key. The keys for the user's own model list and Claude preferences (`../HANDOFF.md` section 1: the list is the user's choice, not a fixed menu) are defined by claude-api.md C16 and C6, which decide their names and shapes: `claude_models`, `claude_model_info`, `claude_default_model`, `claude_fallbacks` and `claude_cache_ttl`. The row is read and written online; it is not part of the change feed.
+
+| `status` | Sign-in | Read, search, export | Write, capture, Claude | Set by |
+|---|---|---|---|---|
+| `active` | yes | yes | yes | default |
+| `suspended` | yes | yes | no: `403 account_suspended` | the owner |
+| `deleting` | no | no | no | account deletion (7.11) |
+
+Uniqueness, all of it per user:
+
+| What | Constraint |
+|---|---|
+| Ids of projects, sessions, messages, attachments | `PRIMARY KEY (owner_id, id)` |
+| Project names, trimmed and without case (8.4) | `UNIQUE (owner_id, name_key)` |
+| Position of a message in its session | `UNIQUE (owner_id, session_id, position)` |
+| Attachment descriptor in its session | `UNIQUE (owner_id, session_id, kind, sha256)` |
+| Change sequence numbers | `UNIQUE (owner_id, seq)` in each table; unique across the three tables by construction (7.9) |
+| Deletion marker | `PRIMARY KEY (owner_id, entity, entity_id)` |
+| Pushed mutation | `PRIMARY KEY (owner_id, mutation_id)` |
+| Claude API key, settings | one row per user |
+| Session titles, tags, source links | none; duplicates are allowed (B2) |
+
+Why ids are unique per user and not across the database:
+
+1. Ids are made in browsers (sync.md 3.1). With a database-wide key a browser could send an id that another user already has: the insert would fail, which tells the sender that the id exists, and an honest sender would have to renumber. With `(owner_id, id)` nothing a user sends can collide with, or probe for, another user's row.
+2. Interchange import stays repeatable. A file exported by one user can be imported by another user of the same server any number of times, and each import finds the rows the previous one created. With a database-wide key, the rule in 6.7 would give the session a fresh UUID on every import and create a duplicate each time.
+3. So the rule in 6.7, "if an insert fails because the id exists under a different owner, give the incoming entity a fresh UUID", can never trigger with this schema. It stays in 6.7 for a store that keeps a single-column key.
+
+### 7.8 The user's Claude API key
+
+New on 2026-11-20. Each user brings their own Anthropic API key (`../HANDOFF.md` sections 2 and 3). `user_api_keys` holds it encrypted by the application: the database never sees the key or the key that encrypts it. claude-api.md owns the routes, the check against Anthropic and the error codes; this section owns the stored form.
+
+| Column | Type | Written by | Meaning |
+|---|---|---|---|
+| `owner_id` | `uuid`, primary key | key service | One key per user. |
+| `ciphertext` | `bytea` | key service | AES-256-GCM encryption of the key's UTF-8 bytes, followed by the 16-byte authentication tag. |
+| `nonce` | `bytea`, 12 bytes | key service | Random, new for every encryption (`crypto.randomBytes(12)`). Never reused, never derived from anything. |
+| `key_version` | `integer` | key service | Which wrapping key encrypted this row. |
+| `last4` | `text` | key service | The last four characters of the key, shown as "ends in ..." so that the user can tell keys apart. No longer part of the key is ever stored in plain form. |
+| `status` | `text` | key service | `ok`: Anthropic accepted the key at `checked_at`. `rejected`: Anthropic answered 401 with it. `unknown`: stored, but the check could not be made. The same three values as `keyStatus` in claude-api.md C2. |
+| `created_at` | `timestamptz` | key service | When this key was saved. Replacing the key sets it again. |
+| `updated_at` | `timestamptz` | key service | Last change of the row (status, re-encryption). |
+| `checked_at` | `timestamptz`, null | key service | Last check against Anthropic. |
+| `last_used_at` | `timestamptz`, null | key service | Last Claude request sent with it. |
+
+Encryption:
+
+- Wrapping keys: 32 random bytes each, base64, in the platform's secret store, one secret per version. Proposed names: `USER_KEY_ENC_KEY_V1`, `USER_KEY_ENC_KEY_V2`, and so on. The version used for new encryptions is the configuration value `USER_KEY_ENC_VERSION`. The production values exist only in production secrets; the workspace has a throw-away value of its own.
+- Associated data: the ASCII string `sessionvault:user-api-key:` followed by the lower-case `owner_id`. A row copied to another user does not decrypt.
+- One module, the key service, is the only code that reads or writes this table and the only code that ever holds a plain key. It offers four things: save, remove, status, and "run this function with the user's key".
+
+| Event | Steps, in order |
+|---|---|
+| Save or replace | 1. Trim. Refuse an empty value, a value over 512 characters, or one with white space or control characters. 2. Check it against Anthropic as claude-api.md specifies. 3. Encrypt with the current version and a new nonce. 4. In one statement insert the row or overwrite every column of the existing one (`INSERT ... ON CONFLICT (owner_id) DO UPDATE`); nothing of the old key stays in the row. 5. Answer with `status` and `last4`, nothing else. |
+| Use | 1. Read the row of the signed-in user. 2. Decrypt with the wrapping key named by `key_version` and that user's associated data. 3. Give the key to the Anthropic client for this one request and keep no copy afterwards. 4. Set `last_used_at`; on a 401 from Anthropic set `status` to `rejected`. |
+| Remove | Delete the row. That user's Claude features are off until a key is saved again. |
+| Rotate the wrapping key | 1. Add the secret for version n+1. 2. Set `USER_KEY_ENC_VERSION` to n+1 and publish. 3. Whenever a row with a lower `key_version` is used, re-encrypt it with the new version and a new nonce. 4. When `SELECT count(*) FROM user_api_keys WHERE key_version < $1` is 0, remove the old secret. Rows that are never used can be deleted instead; their users enter the key again. |
+| A wrapping key is lost | Its rows cannot be decrypted and nothing else is affected: delete them, and those users enter their keys again. The wrapping key therefore needs no backup. |
+| Account deletion | The row goes with the user (7.11). |
+
+Never:
+
+1. Never return the key, or any part of it other than `last4`, in a response, a stream event or an error message. Not to the user who owns it either.
+2. Never write the key, the ciphertext or a wrapping key to a log, an error report or a test snapshot. The route that receives the key logs no body, and the Anthropic SDK's debug logging stays off in production (claude-api.md C5 and web-platform.md 11.8).
+3. Never put the key into the change feed, the offline copy, an interchange file, `user_settings`, a URL or a cookie. The request that saves a key is never queued for later sending (sync.md 10).
+4. Never use one user's row for another user's request. The key service takes the user id from the sign-in session and uses it as associated data, so a mix-up fails to decrypt instead of spending the wrong person's money.
+5. Never keep a decrypted key in a cache that outlives the request.
+6. Never let the Anthropic client find a credential of its own. Given no key, the SDK looks for one in the environment (`ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, a stored profile). So the published app has none of these, and the key service refuses to build a client unless it holds the signed-in user's decrypted key. Otherwise one failed decrypt would quietly spend somebody else's money: the owner's, if a server key from the earlier design were still set.
+
+What removing a key does not do: the deleted row stays in the platform's point-in-time history and backups until they age out (web-platform.md 10.5), and Anthropic knows nothing of the removal. Where the user removes a key, say that revoking it in the Claude Console is what makes it useless at once.
+
+Tests (they are the "done when" of phase 4 in `../HANDOFF.md`): a dump of `user_api_keys`, every response and every log line of a test run contain no test key; with two users and two test keys, the fake upstream of claude-api.md C11 sees each user's own key only; a row copied from user A to user B fails to decrypt; after a replacement no row has the old `last4`; with `ANTHROPIC_API_KEY` set to a marker value in the test environment, a Claude request of a user without a stored key is refused, and the fake upstream sees no request and never the marker.
+
+### 7.9 Columns and tables for sync
+
+New on 2026-11-20. The offline copy on each device (sync.md) is kept in step by a change sequence per user. This section says what the server stores for it; sync.md defines the requests and what a device does.
+
+| Table | Column | Type | Written by | When |
+|---|---|---|---|---|
+| `users` | `change_seq` | `bigint NOT NULL DEFAULT 0` | server | Read and advanced under a row lock in every transaction that writes vault data. |
+| `projects` | `seq` | `bigint NOT NULL` | server | On insert and on every change of the row. |
+| `sessions` | `seq` | `bigint NOT NULL` | server | On insert and on every change of the row, of its message list (append or replace) or of its attachment descriptors. |
+| `sessions` | `messages_rev` | `integer NOT NULL DEFAULT 1` | server | Plus 1 when the message list is replaced as a whole (the "updated" outcome of 6.7). Not changed by an append. |
+| `sessions` | `import_hash` | `text NOT NULL DEFAULT ''` | server | Once, when the session is created. Never changed. |
+| `messages` | none | | | Messages carry no sync column. A device knows the state of a transcript from two fields of its session, `messages_rev` and `message_count` (sync.md 5). |
+| `attachments` | none | | | Descriptors travel inside their session's row; any change to them gives the session a new `seq`. |
+| `tombstones` | all | see 7.2 | server | One row when a project or a session is deleted. |
+| `sync_mutations` | all | see 7.2 | server | One row per mutation a device has pushed, with its outcome. |
+
+Existing columns that sync relies on: `updated_at` (the server's time when the vault accepted the change; a device's clock never sets it and no rule compares clocks), `message_count`, `text_bytes`.
+
+Never taken from a pushed mutation: `seq`, `messages_rev`, `import_hash`, `updated_at`, `message_count`, `text_bytes`, `stored_bytes`, `search_text`, `name_key`, and everything in `users`. The server computes them from what it stores. The one value of this list that can come from outside is `updated_at`, and only in an interchange import, which keeps the time written in the file (6.7).
+
+The write transaction. Every change to `projects`, `sessions`, `messages`, `attachments` or `tombstones` runs inside this frame, whatever its cause: a pushed mutation, an interchange import, the commit of a Claude turn, a capture result.
+
+```sql
+BEGIN;
+-- 1. Lock the user's counter. A second writer for the same user waits here until the first has committed.
+SELECT change_seq, session_count, stored_bytes FROM users
+WHERE id = $1 AND status = 'active' FOR NO KEY UPDATE;      -- no row: this user may not write; roll back
+-- 2. Read, check, write. The n-th row changed in this transaction gets the number change_seq + n.
+-- 3. Store the last number used and the new counters.
+UPDATE users SET change_seq = $2, session_count = $3, stored_bytes = $4 WHERE id = $1;
+COMMIT;
+```
+
+Rules for the numbers:
+
+1. Every changed project row, every changed session row and every new tombstone gets a number of its own. Within one user no two rows ever hold the same number, and a number is never used again.
+2. Order inside one transaction: a project before a session that refers to it; the sessions that are cleared of a project before that project's tombstone.
+3. A change that changes nothing (the same title again) takes no number.
+4. Do not replace the counter by a database sequence, a timestamp or a transaction id. A sequence hands out its numbers before commit, so a transaction with a lower number can commit after a device has already read past it, and that device never sees the row. The row lock makes commit order and number order the same within a user. The whole feed depends on this one property.
+5. `FOR NO KEY UPDATE` is the lock an ordinary `UPDATE` takes. It does not block the foreign-key checks of other tables that refer to `users`.
+6. Step 1 is the first statement of the transaction that touches a data row, and write transactions run at the default isolation level, `READ COMMITTED`: there the waiting writer goes on with the counter as the first writer left it. Under `REPEATABLE READ` it would fail with a serialisation error instead.
+
+What the server does, in order:
+
+| Operation | Steps |
+|---|---|
+| Delete a session | Delete the row (messages and attachments go by cascade). Insert a tombstone with the next number. Lower the counters on `users`. |
+| Delete a project | For each of its sessions, ordered by id: set `project_id` to null, `updated_at` to now and `seq` to the next number. Delete the project. Insert its tombstone with the next number. |
+| Replace a session's messages (6.7 "updated") | Delete the old message rows, insert the new ones, set `message_count`, `text_bytes` and `stored_bytes`, add 1 to `messages_rev`, give the session the next number. No tombstone per message. Refused with `turn_in_progress` while a Claude turn is running for the session; the import report then lists the session as kept. |
+| Append messages (Claude turn) | 7.3. `messages_rev` stays. |
+| Create a row whose id has a tombstone (only interchange import does this; a device cannot, sync.md 6.5) | Delete the tombstone. Insert the row with the next number. A session created this way starts with `messages_rev` equal to the `seq` of the tombstone it replaces, which is above every earlier `messages_rev` of that id, so that a device that still holds the old transcript drops it (sync.md 5.1). |
+| Store bytes for a descriptor (once `blobs` exists) | Give every session of the user that lists that `sha256` the next number, so that devices learn that the original can now be opened. |
+
+Tombstones hold the kind of record, its id, its number and the time of deletion, and nothing of its content. In the first release they are kept for as long as the account exists: they are tiny, and forgetting them safely takes three more protocol rules (sync.md 14). Account deletion removes them.
+
+`sync_mutations` is what makes a repeated push harmless. Its key is `(owner_id, mutation_id)`, so one user cannot replay or observe another user's mutation. `result` holds the outcome as sync.md 6.6 defines it, without the row: status, error code, the kind and id of the record, and small extras such as the id of an existing project. No title, no name, no text. Applied and refused outcomes are both recorded, in the same transaction as the effect. Rows older than 90 days may be deleted the next time the same user pushes; sync.md 6.8 says what a replay after that does.
+
+`import_hash` is the lower-case hex SHA-256 over the session's messages as created, in position order, each written as: the role, a line feed, the decimal UTF-8 byte length of the text, a line feed, the text, a line feed. It is `''` for a session created without messages. Title, dates and ids are not part of it, so the same transcript imported on two devices gets the same value. When a session is created and other sessions of the same user have the same non-empty value, the request that created it is told their ids (sync.md 7, case 10). Nothing is merged or refused because of it.
+
+The feed query (sync.md 4), one snapshot for the whole page:
+
+```sql
+BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
+SELECT seq, 'project' AS entity, 'upsert' AS op, id        FROM projects   WHERE owner_id = $1 AND seq > $2
+UNION ALL
+SELECT seq, 'session',           'upsert',       id        FROM sessions   WHERE owner_id = $1 AND seq > $2
+UNION ALL
+SELECT seq, entity,              'delete',       entity_id FROM tombstones WHERE owner_id = $1 AND seq > $2
+ORDER BY seq
+LIMIT $3;                               -- page size + 1: the extra row only tells that more exist
+-- Then, still in this transaction: the listed project rows; the listed session rows without owner_id,
+-- search_text, import_hash and stored_bytes; the attachments of those sessions; users.change_seq.
+COMMIT;
+```
+
+The three `UNIQUE (owner_id, seq)` constraints are the indexes this query walks. Read the three tables in one snapshot as shown: if one of them is read earlier than the others, a row committed in between is skipped for good once the cursor has moved past its number.
+
+### 7.10 Storage accounting and limits
+
+New on 2026-11-20, for the per-user storage limits of phase 6.
+
+| Counter | Meaning | Maintained |
+|---|---|---|
+| `sessions.stored_bytes` | Bytes this session is charged for: its message text, the JSON text of non-plain `segments` and of `extra` of its messages, its summary, and its own `extra`. Exact definition below. | By the server whenever one of those changes, in the same transaction. |
+| `users.stored_bytes` | Sum of `sessions.stored_bytes` of the user. | By the same difference, in the same transaction (7.9 step 3). |
+| `users.session_count` | Number of sessions of the user. | Plus or minus 1 when a session is created or deleted. |
+
+`sessions.text_bytes` stays what it was: the UTF-8 length of the message text alone, for token estimates, paging and size warnings. It is not the quota figure.
+
+Definition of `stored_bytes`, as the statement the server runs after writing a session's rows:
+
+```sql
+SELECT octet_length(s.summary) + octet_length(s.extra::text)
+     + COALESCE((SELECT sum(m.text_bytes + COALESCE(octet_length(m.segments::text), 0) + octet_length(m.extra::text))
+                 FROM messages m WHERE m.owner_id = s.owner_id AND m.session_id = s.id), 0) AS stored_bytes
+FROM sessions s WHERE s.owner_id = $1 AND s.id = $2;
+```
+
+It does not read `messages.text` (it uses `text_bytes`), so it is cheap even for megabyte messages. For an append, adding the same expression for the new rows gives the same result.
+
+Limits. The names are proposals. The values are suggested defaults for the invitation phase; they are configuration, not constants (section 12, decision 9).
+
+| Limit | Default | Checked | Refused with |
+|---|---|---|---|
+| `VAULT_MAX_STORED_BYTES`: stored bytes per user | 1 GiB | before a session is created, before an import, before a Claude turn starts | `quota_exceeded` |
+| `VAULT_MAX_SESSIONS`: sessions per user | 10,000 | before a session is created | `quota_exceeded` |
+| `VAULT_MAX_PROJECTS`: projects per user | 500 | before a project is created | `quota_exceeded` |
+| One session at creation | one request of 32 MB (web-platform.md 13.4) | on receipt | HTTP `413` |
+| Messages per session | 100,000 (the Claude API takes no more in one request, claude-api.md C9) | create, import | `validation` |
+| `title` | 1,000 characters | create, edit, import | `validation` |
+| `summary` | 1 MiB of UTF-8 | create, edit, import | `validation` |
+| `model`; `source_url` | 200; 4,000 characters | create, edit, import | `validation` |
+| `provider`; message `role` | 200 characters each, checked before any normalisation | create, edit, import | `validation` |
+| `tags` | 50 tags of at most 100 characters each | create, edit, import | `validation` |
+| Project `name` | 200 characters | create, rename, import | `validation` |
+| Attachment descriptors per session; `filename`; descriptor `extra` | 50; 255 characters; 2 kB of JSON text | import | `validation` |
+
+Rules:
+
+1. A quota is checked before work starts and never at commit. A Claude reply that has been generated is always stored, even if it takes the user over the limit; the next turn is refused.
+2. Over the limit, everything that adds no data keeps working: reading, search, editing fields, deleting, export, and the sync of the user's devices.
+3. `quota_exceeded` is HTTP `413` on a route that creates one thing, and a per-mutation code inside a push (sync.md 6.6). The message names the limit that was hit and nothing about other users. The answer also carries `limit`, one of `stored_bytes`, `sessions` or `projects`: as `error.details.limit` on an HTTP error, and as the property `limit` of a push result (sync.md 6.6), so that the interface can choose its sentence (design.md 4.15.1).
+4. Everything large is counted, and what is not counted is capped by the table: title, model, link, tags and attachment descriptors of one session add up to well under 0.3 MB. A user who filled every one of them in every session would store under 3 GB beyond the quota at the default session limit. Lower the limits before sign-up is opened if that matters.
+5. Once `blobs` exists: add `users.blob_bytes bigint` with a limit of its own.
+
+Check for tests (must return no rows):
+
+```sql
+SELECT u.id FROM users u
+LEFT JOIN (SELECT owner_id, count(*) AS c, COALESCE(sum(stored_bytes), 0) AS b FROM sessions GROUP BY owner_id) s
+       ON s.owner_id = u.id
+WHERE u.session_count <> COALESCE(s.c, 0) OR u.stored_bytes <> COALESCE(s.b, 0);
+```
+
+and, per session, `stored_bytes` equals the result of the definition above.
+
+### 7.11 Account deletion
+
+New on 2026-11-20. Deleting an account removes the user's data from the live database in one pass, at the user's own request and after a fresh sign-in check. web-platform.md owns the route and the check; this section owns what is removed and in what order.
+
+1. Set `users.status` to `deleting` and end every sign-in session of the user. From here on no request of this user is served, and no write transaction can start (7.9 step 1 finds no active row). Cancel the user's running Claude turns and active capture jobs by the same means as a key removal (claude-api.md C15.5) and a capture cancel (capture.md 8.3a): their rows are deleted in step 3, and a heartbeat that then finds no row must stop the work at once.
+2. If attachment bytes are kept outside the database (`blobs.storage_key`), delete those objects.
+3. Delete the user's rows, one table at a time, every statement with `WHERE owner_id = $1`, in this order: `claude_turns` and any capture jobs, `sync_mutations`, `tombstones`, `sessions` (messages and attachments go by cascade), `projects`, `blobs`, `user_api_keys`, `user_settings`. For a large vault delete `sessions` in batches (for example 200 at a time), each batch in a transaction of its own.
+4. Have the sign-in library delete its records for `auth_subject`: e-mail address, credentials and sign-in sessions. The record that an invitation or recovery code was used is kept, without the user (web-platform.md 11.2, `auth_codes_used`; 11.10, rule 9): a code never works twice.
+5. Delete the `users` row. `ON DELETE CASCADE` on every `owner_id` is the safety net for a table that step 3 forgot.
+
+If the process stops between steps the row stays in `deleting`. Look for such rows at server start and continue from step 2; every step can be repeated.
+
+| Removed | Not removed by this |
+|---|---|
+| Projects, sessions, messages, attachment descriptors and bytes | Copies in the platform's point-in-time history and backups, until they age out (web-platform.md 10.5). |
+| The stored Claude API key | The key itself at Anthropic. The user revokes it in the Claude Console. |
+| Turn records, capture jobs, deletion markers, mutation records, settings | Log lines, which hold ids and sizes only, until the platform's retention ends (web-platform.md 10.8). |
+| The sign-in library's records for this person | Files that the user exported or downloaded before. |
+| The offline copy on the device that asked (sync.md 2.6) | Offline copies on the user's other devices, until each of them next reaches the server: it then finds itself signed out and removes everything it had received from the server (sync.md 2.6); changes that were never sent stay on that device until they are discarded there. A device that never comes online again keeps its copy until its site data is cleared. |
+| | Copies in the Apple app. They never were on this server. |
+
+Tests: after deleting user A, `SELECT count(*) FROM <table> WHERE owner_id = $A` is 0 for every table with an `owner_id`, no `users` row exists for A, the sign-in library knows nothing of A's subject, the invitation code that A used is still refused, and for a second user B the row counts and a digest over B's rows are unchanged. Stop the process after the first batch of step 3 and check that a restart finishes the job. Delete a user who has a project with sessions in it, both through steps 3 to 5 and with nothing but `DELETE FROM users`, to confirm that the cascade and `sessions_project_fkey` do not get in each other's way (from the documentation they do not; not executed).
+
+### 7.12 Isolation rules
+
+New on 2026-11-20. "No user can see or change another user's data" (`../HANDOFF.md` section 8), written as statements that tests can check. A and B are two users, each with data. "B unchanged" means: a digest over B's rows in every table is the same before and after.
+
+| # | Statement | Test |
+|---|---|---|
+| I1 | Every table that holds user data has `owner_id uuid NOT NULL REFERENCES users (id)`, and every primary key and every foreign key between such tables starts with `owner_id`. | A catalog query lists the tables without an `owner_id` column: exactly `users` and the sign-in library's own tables, whose names start with `auth_` (web-platform.md 11.2). |
+| I2 | The user id of a request comes from the server-side sign-in session only. The one place where a client names a user, the `user` and `user_id` of the two sync requests (sync.md 2.7), never selects whose data is read or written: a value that is not the session's user causes the refusal `wrong_user` and nothing else. | Send A's cookie together with B's user id in every place a client can put one (path, query string, body, header): it has no effect, except that the two sync requests answer `wrong_user`; B unchanged. |
+| I3 | Every SQL statement on a data table contains `owner_id = $n` bound to that id, also inside joins and sub-selects. All such statements live in one data-access module whose functions take the user id as their first argument. | Call every function of the module as A with the ids of B's rows: nothing is returned, nothing is changed. Review rule: no SQL on these tables outside the module. |
+| I4 | Asking for another user's row gets the same answer as asking for a row that does not exist: `404 not_found`. Never `403`, never a different body. | For every route that takes an id: as A, send an id of B and a random id; status and body are the same. |
+| I5 | A row cannot refer to another user's row. | As A, move A's session into B's project by id: the session ends with no project (sync.md 7, case 8) and B is unchanged. The same update written directly in SQL fails on `sessions_project_fkey`. |
+| I6 | Ids chosen by a browser are scoped to their user. | As A, create a session with the id of one of B's sessions: A gets a session of A's own with that id; B unchanged; each user's list shows only their own. |
+| I7 | Lists, counts, tag lists, search, timeline, export and the change feed read the caller's rows only. | Give A and B a project of the same name and sessions with the same title and tag: every list and count of A comes from A's rows alone; A's export and A's change feed from cursor 0 contain no id of B. |
+| I8 | Change sequence numbers, cursors and mutation ids mean nothing across users. | A sends a cursor value taken from B and replays a `mutation_id` that B used: A receives A's rows only (or `resync_required`), and the mutation is applied as a new one, to A's data. |
+| I9 | The stored Claude API key of one user is never used for, shown to, or decryptable as another user (7.8). | The tests of 7.8. |
+| I10 | Storage counters and quotas of one user do not depend on another user's data. | B fills B's quota; A can still import. The check of 7.10 holds for both. |
+| I11 | Deleting A's account leaves B unchanged (7.11). | The tests of 7.11. |
+| I12 | Logs carry user ids, row ids and sizes only. | Run the suite with the log captured; search it for the titles, texts, tags, names, e-mail addresses and keys the tests used: none is found. |
+
+These are the isolation tests that `../HANDOFF.md` section 7 requires for phase 2 and section 8 requires for every endpoint. A route that is added later is added to I2, I4 and I7.
+
+### 7.13 Row-level security as a second line
+
+New on 2026-11-20. The isolation of 7.12 is enforced by application code and proved by tests. PostgreSQL row-level security can stand behind it, so that a statement that forgets `owner_id` returns nothing instead of everything. It is not in the first schema and nothing may rely on it, for the reasons in the table.
+
+How it would be added, for each data table (`projects`, `sessions`, `messages`, `attachments`, `blobs`, `tombstones`, `sync_mutations`, `user_api_keys`, `user_settings`, `claude_turns`, `capture_jobs`; not `users`, which sign-in has to read before the user is known):
+
+```sql
+ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sessions FORCE ROW LEVEL SECURITY;            -- makes the policy apply to the table's owner too
+CREATE POLICY sessions_owner ON sessions
+    USING      (owner_id = NULLIF(current_setting('app.user_id', true), '')::uuid)
+    WITH CHECK (owner_id = NULLIF(current_setting('app.user_id', true), '')::uuid);
+```
+
+and every transaction begins with `SELECT set_config('app.user_id', $1, true);`. The third argument limits the value to the transaction, which is what a connection pool needs. With no value set the comparison is null and no row is visible: it fails closed. `current_setting` and `set_config` are built in; no function of the app's own is needed.
+
+| Fact | Consequence |
+|---|---|
+| The publish step carries row-level security policies to production, but not grants, and roles only in a limited way (web-platform.md 10.5). | A separate, less privileged database role for the app cannot be relied on. The app connects as whatever role `DATABASE_URL` names. |
+| A policy does not apply to a superuser, to a role with `BYPASSRLS`, or, without `FORCE`, to the owner of the table. What the role behind `DATABASE_URL` is, in the workspace and in production, is not known. | Check in both databases: `SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user;`. If either column is true, policies do nothing for the app. |
+| `FORCE ROW LEVEL SECURITY`, a table setting and not a policy, is not copied by the publish step, as the platform's own page says (web-platform.md 10.5). Whether `ENABLE ROW LEVEL SECURITY` survives it is unverified. | After a publish, in production: `SELECT relname, relrowsecurity, relforcerowsecurity FROM pg_class WHERE relname = 'sessions';` |
+| No triggers, functions or extensions (7.2). | The policy above needs none. |
+| Some work crosses users: the checks of 7.3 and 7.10, the deletion sweep of 7.11, a usage report for the owner. | It runs user by user with the variable set, or in the test database without `FORCE`. |
+
+A test that shows whether it protects anything: in one transaction set `app.user_id` to A and run `SELECT count(*) FROM sessions WHERE owner_id = $B` while B has sessions. The answer must be 0. If it is not, row-level security is doing nothing for this role, and then it must be left out, not trusted.
+
+Recommendation: build phase 2 without it. Consider it for phase 6 if the checks above pass in production.
+
+### 7.14 Copying a whole message
+
+New on 2026-11-20. `../HANDOFF.md` section 1: every message and every reply can be copied whole with one action, not only code blocks.
+
+- (A) The Apple app has this since commit `e81828a`. A Copy button beside the role label of every message puts `message.text` on the pasteboard: the stored string as it is, code fences included (`apple/SessionVault/Views/MessageView.swift:33-41`, `:60-66`). The button reads "Copied" for 1.5 seconds. Before that commit only code blocks had a Copy button (`:173-178`, `:196-202`). Read in the source; the commit message says the button was built for macOS and the iOS simulator and was not clicked in a running app.
+- Web rule: the action copies `messages.text` of that message, which is the flattened text of 6.3, unchanged: no role label, no trimming, no rendering, no change of line endings or punctuation. It is the same string that the context pack and the Claude API history use for that message.
+- A message with segments that are not text copies its text segments only, joined the way `flattenText` joins them. Attachments and unknown segments are not copied.
+- It works offline for every message whose text is on the device (sync.md 5), from the offline copy, with the same result.
+- A reply that is still streaming is not stored yet; claude-api.md and design.md decide what its copy control does. From the `done` event on, the stored text is what is copied.
+- The text is taken from memory inside the click handler (web-platform.md 6.1, rule 5). Size is no reason to shorten it: a message of 1,000,000 characters is copied whole.
+- The control, its label and its feedback belong to design.md.
 
 ## 8. Shared pure functions (TypeScript)
 
@@ -1251,6 +1683,8 @@ Total about 500 to 600 lines (estimate). Limits to accept at first: only the inl
 
 ### 11.1 If instead the vault lives only in the browser (IndexedDB)
 
+Not chosen (`../HANDOFF.md` section 2: an online vault plus an offline copy on each device). The decided product does use IndexedDB, but as a copy of the server vault that the server can always refill. That copy is specified in sync.md 8, which replaces the table below for that purpose: it has other stores and no unique index on project names. What follows describes the browser-only alternative and is kept for the record.
+
 Sections 6, 8 and 9 stay unchanged. Section 7 is replaced by one IndexedDB database, for example `sessionvault`, version 1. There is no `owner_id`.
 
 | Object store | Key path | Indexes | Holds |
@@ -1271,7 +1705,7 @@ Sections 6, 8 and 9 stay unchanged. Section 7 is replaced by one IndexedDB datab
 
 ### 11.2 If instead the API key is kept in the browser
 
-No table changes. The key is browser-local state, never a column and never part of an interchange file. The `model` fields are unaffected.
+Not chosen (`../HANDOFF.md` sections 2 and 3): each user's key is stored on the server, encrypted (7.8), and the browser never calls Anthropic. Under this alternative `user_api_keys` would not exist; the key would be browser-local state, never a column. In both designs the key is never part of an interchange file, and the `model` fields are unaffected.
 
 ### 11.3 If instead a different stack is chosen
 
@@ -1287,14 +1721,31 @@ web-platform.md 11.6 offers, as an option, encrypting message text in the applic
 - Ciphertext does not compress: compress before encrypting if size matters, and the TOAST compression notes of 7.4 no longer help.
 - Interchange files are plain text by definition. Export decrypts and import encrypts; an export is then the most sensitive artefact the app can produce.
 - Sections 6, 8 and 9 are unchanged.
+- Sync is unchanged: the server decrypts before it answers, and the offline copy on a device is plain text either way (sync.md 10). `import_hash` (7.9) is computed from the plain text and reveals whether two sessions have the same messages; keep it or drop it with that in mind.
+- The wrapping-key handling of 7.8 (versions in the secret store, associated data that names the user and the row) is the model to follow for the data key.
+
+### 11.5 If instead there were one owner and one server-side key
+
+This is what the document assumed when it was first written; `../HANDOFF.md` section 2 decided otherwise. For the record, what it would change:
+
+- `users` would hold one row, and 7.7, 7.10, 7.11 and 7.12 would have little to do. The keys that start with `owner_id` would cost nothing and could stay.
+- `user_api_keys` would not exist: the one key would be a production secret (claude-api.md C2 as first written), and the owner would pay for every Claude request.
+- 7.9 and sync.md would be unchanged: one person with several devices needs them just the same.
 
 ## 12. Decisions for the owner
 
-1. Should search also look inside message text? Today it does not. Recommendation: yes, as an explicit "also search transcripts" option.
-2. When the same session was changed in both apps, which copy wins on import? Proposed default: the later `updated_at`; equal times keep the existing copy and report a conflict.
-3. Is it acceptable that projects with the same name (ignoring case) become one project when vaults are merged?
-4. Should deleting ask for confirmation or go to a trash? The Apple app deletes at once.
-5. Should the web app keep and show PDF originals that came from the Apple app (binary storage on the server), and should exports include them by default?
-6. Should "Continue with Claude" keep replacing the session's model label, or only fill it when empty (recommended)?
-7. Are diacritic-insensitive search (`cafe` finds `Caf\u00E9`) and multi-word "all words" search wanted? Both would differ from the Apple app.
-8. Which app is the main copy? Version 1 offers manual export and import with merge, not live synchronisation; deletions do not travel.
+The numbers are cited by other documents and are kept. Items that have been decided stay in the list with the decision. Items 9 to 13 are new; they follow from the decisions of 2026-11-20. Build the stated default until the owner answers. Questions about the offline copy itself are in sync.md 15.
+
+1. Open. Should search also look inside message text? Today it does not. Recommendation: yes, as an explicit "also search transcripts" option. On a device without a connection it can only cover the transcripts held in the offline copy (7.5).
+2. Open. When the same session was changed in both apps, which copy wins on import? Proposed default: the later `updated_at`; equal times keep the existing copy and report a conflict. On the web, `updated_at` is the time the server accepted a change, not the time a device made it (7.9).
+3. Open. Is it acceptable that projects with the same name (ignoring case) become one project when vaults are merged? The same rule now also applies when two devices of one user create the same name while offline (sync.md 7, case 9).
+4. Open. Should deleting ask for confirmation or go to a trash? The Apple app deletes at once. Default: confirm, then delete for good; the user's other devices learn of it through a deletion marker (7.9). A trash would be a synced state of the session, not a marker, and would need a column and a purge rule.
+5. Decided for the first release (`../HANDOFF.md` section 6): PDF originals and images are neither stored nor shown, and exports carry their descriptors without bytes (7.2). Still open: whether and when the owner wants them. The `blobs` design is ready for that day.
+6. Decided (`../HANDOFF.md` section 5: follow claude-api.md): the answering model is stored on each reply (`messages.model`), and `sessions.model` is filled only when it is empty and the session's provider is `claude` (claude-api.md C5).
+7. Open. Are diacritic-insensitive search (`cafe` finds `Caf\u00E9`) and multi-word "all words" search wanted? Both would differ from the Apple app.
+8. Partly decided. Among web devices the server vault is the main copy and the devices follow it (`../HANDOFF.md` section 2, sync.md). Between the Apple app and the web vault it is still manual export and import with merge, not synchronisation, and deletions do not travel. Open: which of the two the owner treats as the main copy.
+9. New. Storage limits per user (7.10). Defaults: 1 GiB of stored bytes, 10,000 sessions, 500 projects; over a limit, new imports are refused and everything else keeps working. Which numbers should apply before sign-up is opened?
+10. New. What may a suspended user still do (7.7)? Default: sign in, read and export, but not add or change anything.
+11. New. Account deletion (7.11). Default: at once and for good, after a fresh sign-in check and a typed confirmation; copies in the platform's backups age out by themselves. The alternative is a grace period of some days in which the account can be restored.
+12. New. May the owner, as operator, see per-user figures? Default: a script that lists user id, status, session count and stored bytes from `users`, and never titles, text, tags or e-mail addresses.
+13. New. `user_api_keys.last4` shows the last four characters of a user's key to that user (7.8). Default: yes, it is how a person tells two keys apart. The alternative is to show only the date the key was saved.

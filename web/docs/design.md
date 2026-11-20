@@ -1,29 +1,35 @@
 # SessionVault design handoff: screens, interaction and visual design
 
-> **Status (2026-11-20).** Extracted from the Apple app's source, written for one owner and one server-side API key. The parts on what the Apple app does and on its defects are ready to build from. Where the web design here assumes a single owner or a single key, `../HANDOFF.md` section 2 wins, and section 5 there lists what is being revised.
+> **Status (revised 2026-11-20).** Extracted from the Apple app's source, then revised on 2026-11-20 for the decisions in `../HANDOFF.md` section 2: a product for many users, each with an account and a private vault; each user's own Anthropic API key, stored encrypted on the server and never sent back to the browser; an online vault plus an offline copy on each device, whose offline changes are queued and sent later. Parts 1 to 3 (the Apple app, its defects, what a web app must do differently) are as first published, apart from the per-message Copy button that the Apple app gained in commit `e81828a`, corrected line references, and the rows that spoke of one owner or one server key. In part 4 the tokens, layout rules, wireframes, components and rendering rules stand; the screens and rules that the decisions add are in section 4.15 and the open questions in 4.16; text that 4.15 replaces is marked "Superseded". Nothing in part 4 has been built or run in a browser.
 
 ## Summary
 
 - This document describes every screen of the Apple app (SwiftUI, macOS and iOS) as the code shows it, and then specifies the same product as a responsive web app: tokens, components, layout rules, wireframes, interaction, accessibility and an icon mapping.
 - The Apple app is a three-column split view (library, session list, session detail) with four sheets (import, capture browser, continue with Claude, original PDF) and three alerts. It has no settings screen, no accounts and no custom colours: everything uses SwiftUI semantic styles and the default system accent.
+- Since commit `e81828a` every message bubble of the Apple app has a Copy button that copies the whole message as stored; before, only code blocks had one (section 1.10.1).
 - The web app keeps the structure and the wording. At phone widths (below 600 px) the three columns become a stack of three routes; from 600 px there are two panes, from 1024 px three.
-- Four things cannot be carried over and are redesigned: the in-app capture browser (a web page cannot embed and read another site, so the link section offers "open, copy, paste" and, where the server supports it, a server-side capture), the Keychain key-entry screen (the key is a server secret), the PDF sheet (the original opens in a new browser tab) and system alerts, sheets and share sheets (accessible dialogs, the Web Share API and downloads).
+- Four things cannot be carried over and are redesigned: the in-app capture browser (a web page cannot embed and read another site, so the link section offers "open, copy, paste" and, where the server supports it, a server-side capture), the Keychain key-entry screen (each user types their own Anthropic API key into a key screen; the server stores it encrypted and never sends it back), the PDF sheet (the original opens in a new browser tab; not in the first release) and system alerts, sheets and share sheets (accessible dialogs, the Web Share API and downloads).
 - Do not copy the Apple colours as text colours: measured on the screenshots, provider chip text has a contrast of 1.95:1 to 3.30:1 and secondary text 3.4:1. Section 4.2 gives tokens whose pairs were all checked against WCAG AA.
 - Sessions can be very long (hundreds of turns, and single messages of several hundred thousand characters). The Apple app renders everything eagerly. Sections 4.7.4 and 4.7.5 say how to render giant messages and where windowing is required.
 - Transcripts are untrusted text. The renderer must build elements, never HTML strings, and must filter link schemes (section 4.7.3). Appendix 5.4 has a tested reference implementation of the text rules.
-- Web-only additions are specified in section 4.11: sign-in, install prompt, share-target landing screen, offline indicator and settings.
+- Web-only additions are specified in sections 4.11 and 4.15. Section 4.15 was added on 2026-11-20 and holds what the decided product needs: sign-in and sign-out, invitation entry, settings with export and account deletion, the Claude key screen, the model chooser, copying a whole message, the offline state, the import review and link capture from the server. Where 4.15 and an earlier section differ, 4.15 wins.
+- Users: the web app is a product for many people. Everyone signs in to an account of their own and sees only their own vault; sign-up is by invitation at first. No screen, count, search result or message shows anything of another user (4.15.1).
+- Key custody: each user enters their own Anthropic API key. It is sent once to the server, stored there encrypted, used only for that user's requests and never sent back. The interface shows whether a key is saved, its last four characters and its status, never the key (4.15.5). The browser never calls Anthropic.
+- Offline copy: the online vault is the source of truth. Each device keeps a copy for reading, importing and editing without a connection; changes made offline are queued, shown as waiting and sent later; where the server settles a conflict against the user's change, a notice says so (4.15.8, sync.md).
+- How it is used: free-form questions to a model of the user's choosing, with the answer taken elsewhere. The chat has no preset questions and no templates; the model chooser offers the server's list plus a field for any other model id; every message and every reply has a copy-whole-message action at every width and with the keyboard, and code blocks keep their own (4.15.6, 4.15.7). Summarize stays one explicit action.
 
 ## How to read this document
 
-- Part 1 (A) is what the Apple app does today. Part 2 (B) lists defects and accidents of the Apple implementation that the web app should not copy. Part 3 (C) lists what must differ because it is a web app. Part 4 is the design handoff.
+- Part 1 (A) is what the Apple app does today. Part 2 (B) lists defects and accidents of the Apple implementation that the web app should not copy. Part 3 (C) lists what must differ because it is a web app. Part 4 is the design handoff. Its section 4.15 was added on 2026-11-20 for the decided product; text that it replaces is marked "Superseded" and kept, so that references to those sections still resolve.
 - Citations are `path:line` relative to the repository root. Inside a subsection that names its file, a bare `:123` means a line in that file; directly after a named file (`RootView.swift:86-100, :135`) it means a line in that same file. A file name without a folder is in apple/SessionVault/Views/, except Models.swift, ClaudeAPI.swift, ContextPack.swift, Importers.swift, WebCapture.swift and SessionVaultApp.swift, which are in apple/SessionVault/.
 - In part 1 a statement is something the cited code or screenshot shows, unless it is tagged "(inference)". Inferences are mostly about how SwiftUI renders a construct on a platform for which the repository has no screenshot. Parts 2 to 4 are recommendations; facts in them that I could not check are tagged "(unverified)".
 - UI strings are quoted exactly. Three non-ASCII characters are part of many strings and must be kept: the ellipsis `…` (U+2026), the em dash `—` (U+2014) and the middle dot `·` (U+00B7). The wireframes abbreviate them as `...`, `-` and `.`; the string tables are authoritative.
 - `<n>`, `<title>` and similar are placeholders. All example content (titles, links, ids) is synthetic.
-- Other handoff documents: data-model.md (fields, shared functions, interchange format), import-rules.md (parsers), capture.md (link capture), claude-api.md (Continue and Summarize), web-platform.md (hosting, sign-in, installable app, security). Where this document touches their subject it describes only the interface and defers to them; section numbers of those documents are quoted as they stood when this one was finished.
+- Other handoff documents: data-model.md (fields, shared functions, interchange format), import-rules.md (parsers), capture.md (link capture), claude-api.md (Continue and Summarize), web-platform.md (hosting, sign-in, installable app, security), sync.md (the offline copy on each device, the queue of changes made offline, conflicts). Where this document touches their subject it describes only the interface and defers to them; section numbers of those documents are quoted as they stood when this one was finished. Section 4.15 quotes data-model.md, sync.md, claude-api.md, web-platform.md and capture.md as revised on 2026-11-20, and import-rules.md as published in commit `e81828a` (appendix 5.5).
 - Evidence I produced is described in the appendix (section 5): colour samples from the three screenshots, contrast computations, and a run of the app's own message-splitting code.
+- Words: "the owner" is the person who owns this product (`../HANDOFF.md`). A "user" is anyone with an account. A "device" is one browser profile or one installed copy of the app (sync.md 1).
 
-Working assumptions (as given): one signed-in owner with a server-side vault; the Anthropic key is a server secret; TypeScript, React and Vite as an installable single-page app; the Apple app continues to exist. "If instead" notes mark where the design changes under the alternatives.
+Decided product (`../HANDOFF.md` sections 1 to 3; it replaces the working assumptions this document was first written under): accounts for many users, each with a private vault, sign-up by invitation at first; each user's own Anthropic API key, kept on the server and never sent back; an online vault with an offline copy on each device; free-form questions to a model of the user's choosing; TypeScript, React and Vite as an installable single-page app; the Apple app continues to exist. The earlier assumptions, one signed-in owner and the Anthropic key as one server secret, are now alternatives: the "If instead" notes describe them and mark them as not chosen.
 
 ---
 
@@ -104,7 +110,7 @@ Alerts owned by the root view:
 
 | Alert | Elements | Behaviour | Line |
 |---|---|---|---|
-| "New Project" | text field with placeholder "Project name"; buttons "Create" and "Cancel"; message "Group sessions by what you're working on — e.g. `<three example names>`." (three hard-coded example names; not repeated here) | "Create": trim spaces and tabs; if the result is not empty, insert the project and select it as the filter; clear the field. An empty name closes the alert and does nothing. No duplicate check. | :86-100 |
+| "New Project" | text field with placeholder "Project name"; buttons "Create" and "Cancel"; message "Group sessions by what you're working on — e.g. `<three example names>`." (three example names, which the web app does not use: B3) | "Create": trim spaces and tabs; if the result is not empty, insert the project and select it as the filter; clear the field. An empty name closes the alert and does nothing. No duplicate check. | :86-100 |
 | "Rename Project" | text field "Project name" prefilled; buttons "Rename" and "Cancel"; no message | "Rename": trim; if not empty, set the name. | :101-108 |
 
 ### 1.3 Session list
@@ -368,7 +374,7 @@ File: apple/SessionVault/Views/MessageView.swift.
 
 #### 1.10.1 Bubble
 
-`MessageBubble` (:8-34): a full-width, leading-aligned block with padding 12 and corner radius 10. Bubbles are not aligned left and right by speaker.
+`MessageBubble` (:18-67): a full-width, leading-aligned block with padding 12 and corner radius 10. Bubbles are not aligned left and right by speaker.
 
 | Role (stored value) | Label (apple/SessionVault/Models.swift:28-35) | Label colour | Background |
 |---|---|---|---|
@@ -377,11 +383,24 @@ File: apple/SessionVault/Views/MessageView.swift.
 | `system` | "System" | secondary | same |
 | `unknown` | "Note" | secondary | same |
 
-The label is `caption` bold. Below it come the segments of the message with spacing 8.
+The label is `caption` bold. It is the first element of a header row (:26-42, spacing 8); a spacer pushes the Copy button described below to the trailing edge. Below the header row come the segments of the message with spacing 8.
+
+Copy button of the bubble (:33-41 and :60-66; added in commit `e81828a`). Every bubble has it, whatever the role:
+
+| Property | Value | Line |
+|---|---|---|
+| label and symbol | "Copy" with `doc.on.doc`; after a press "Copied" with `checkmark` | :34 |
+| style | `caption2`, plain button style, secondary colour | :35-38 |
+| tooltip | "Copy this whole message", on macOS only | :39-41 |
+| action | puts `message.text` on the system pasteboard as plain text: the stored string, whole, with its code fences and without the role label | :60-61, :9-16 |
+| "Copied" state | set by the press and cleared 1.5 seconds later. Each press schedules its own reset, so a second press inside that time copies again but does not keep the label beyond the first reset (read from the code) | :62-65 |
+| disabled state, keyboard shortcut | none | |
+
+The button is part of `MessageBubble`, so it appears in the detail transcript (SessionDetailView.swift:41-43) and on every stored message of the Continue sheet (ContinueChatView.swift:114-116). The thinking bubble and the live bubble of that sheet are separate views without it (ContinueChatView.swift:153-177): a reply can be copied whole only once it is stored. The commit message says that the button was built for macOS and the iOS simulator and was not clicked in a running app.
 
 #### 1.10.2 Splitting a message into prose and code
 
-`MessageSegment.parse` (:46-93), as ordered steps:
+`MessageSegment.parse` (:79-126), as ordered steps:
 
 ```
 segments = []; proseLines = []; codeLines = []; language = none; inCode = false
@@ -418,7 +437,7 @@ Results of running this exact code on synthetic input (appendix 5.3):
 
 #### 1.10.3 Prose
 
-`ProseView` (:96-124):
+`ProseView` (:129-157):
 
 1. Split the prose on the exact sequence `\n\n`, trim each part, drop empty parts. A line holding only spaces does not end a paragraph.
 2. Each paragraph is parsed with `AttributedString(markdown:)` and the option `.inlineOnlyPreservingWhitespace`; if parsing throws, the plain text is shown.
@@ -443,17 +462,17 @@ What that option does, verified by running it (appendix 5.3):
 
 #### 1.10.4 Code block
 
-`CodeBlockView` (:126-175):
+`CodeBlockView` (:159-203):
 
 - A full-width box, corner radius 8, filled with the primary colour at 6 % opacity.
 - Header row (padding 10 horizontal, 6 top): the language tag when present (`caption2`, secondary), a spacer, and a plain button "Copy" with symbol `doc.on.doc` (`caption2`, secondary).
-- Copy puts the code on the clipboard; the button reads "Copied" with a `checkmark` for 1.5 seconds (:163-174).
+- Copy puts the code on the clipboard; the button reads "Copied" with a `checkmark` for 1.5 seconds (:196-202).
 - The code is one `Text` in the monospaced `callout` font with padding 10, selectable, inside a horizontal scroll view: lines never wrap. No syntax colouring, no line numbers, no height limit.
 
 #### 1.10.5 Long messages and copy actions
 
 - There is no long-message handling: no collapsing, no "show more", no truncation. A message of any length is laid out in full, and the detail view builds all messages at once (SessionDetailView.swift:31-45). Only the Continue sheet uses a lazy stack (ContinueChatView.swift:113).
-- Copy actions that exist: per code block (above) and the whole session as a context pack (section 1.4.1). There is no per-message copy; text can be selected.
+- Copy actions that exist: per message (section 1.10.1, since commit `e81828a`), per code block (above) and the whole session as a context pack (section 1.4.1). Text can also be selected (`.textSelection(.enabled)`, :140 and :185); the comment at :31-32 says that selection works one paragraph at a time and gives that as the reason for the per-message button.
 
 ### 1.11 Keyboard, pointer and other inputs
 
@@ -480,13 +499,13 @@ Text styles used (sizes are Apple's defaults at the standard text size; they are
 | `title2` bold | 22 | 17 | session title field (SessionDetailView.swift:166); "Connect to Claude" (ContinueChatView.swift:72) |
 | `title3` bold | 20 | 15 | timeline month header (SessionListView.swift:106) |
 | `headline` | 17 semibold | 13 bold | row title (SessionListView.swift:158) |
-| `body` | 17 | 13 | prose (MessageView.swift:103); live reply (ContinueChatView.swift:171) |
+| `body` | 17 | 13 | prose (MessageView.swift:136); live reply (ContinueChatView.swift:171) |
 | `callout` | 16 | 12 | status and error texts (ImportSheet.swift:102, LinkCaptureView.swift:33, ContinueChatView.swift:74, :157, :184) |
-| `callout`, monospaced | 16 | 12 | code (MessageView.swift:151) |
+| `callout`, monospaced | 16 | 12 | code (MessageView.swift:184) |
 | `subheadline` | 15 | 11 | row summary (SessionListView.swift:162); import section headers, semibold (ImportSheet.swift:172) |
 | `caption` | 12 | 10 | row meta line, timeline count, source link, counts, help texts (SessionListView.swift:110, :171; SessionDetailView.swift:202, :214; ImportSheet.swift:57, :61, :73, :76, :93) |
-| `caption` bold | 12 | 10 | role label (MessageView.swift:16) |
-| `caption2` | 11 | 10 | row tags, code language, Copy, composer model line (SessionListView.swift:175; MessageView.swift:136, :142; ContinueChatView.swift:210) |
+| `caption` bold | 12 | 10 | role label (MessageView.swift:28) |
+| `caption2` | 11 | 10 | row tags, code language, both Copy buttons, composer model line (SessionListView.swift:175; MessageView.swift:35, :169, :175; ContinueChatView.swift:210) |
 | `caption2` semibold | 11 | 10 | provider chip (SessionListView.swift:190) |
 | system 44 / 30 | | | key-entry icon (ContinueChatView.swift:68) / send icon (:230) |
 
@@ -497,9 +516,9 @@ Spacing and radii (points):
 | list row | stack spacing 4; chip row and meta row spacing 6; vertical padding 2 | SessionListView.swift:147-180 |
 | provider chip | inner spacing 3; padding 7 x 2; capsule | SessionListView.swift:186-194 |
 | detail | stack spacing 16; default padding (16); header spacing 8; field rows spacing 12 | SessionDetailView.swift:31, :46, :164, :168 |
-| message bubble | spacing 8; padding 12; radius 10 | MessageView.swift:14, :28-31 |
-| paragraphs | spacing 8 | MessageView.swift:100 |
-| code block | header padding 10 and 6; code padding 10; radius 8 | MessageView.swift:147-153, :158 |
+| message bubble | spacing 8; header row spacing 8; padding 12; radius 10 | MessageView.swift:25, :26, :53-56 |
+| paragraphs | spacing 8 | MessageView.swift:133 |
+| code block | header padding 10 and 6; code padding 10; radius 8 | MessageView.swift:180-186, :191 |
 | chat | message spacing 12; banner padding 12, radius 10; composer field padding 14 x 9, radius 18, 1-point border; send button 34 x 34 | ContinueChatView.swift:113, :197-198, :219-222, :234 |
 | capture bar | spacing 12; padding 10 | LinkCaptureView.swift:29, :63 |
 | key entry | spacing 14; maximum width 340 | ContinueChatView.swift:65, :95 |
@@ -524,7 +543,7 @@ Colours as used:
 
 Dark mode: nothing in the code is specific to it; all colours are semantic and adapt automatically (inference: there is no dark screenshot).
 
-Motion: banner 0.2 s ease in and out (ContinueChatView.swift:149); send button colour 0.15 s (:238); thinking dots as in section 1.7.2; "Copied!" for 2 s (SessionDetailView.swift:238) and "Copied" for 1.5 s (MessageView.swift:171).
+Motion: banner 0.2 s ease in and out (ContinueChatView.swift:149); send button colour 0.15 s (:238); thinking dots as in section 1.7.2; "Copied!" for 2 s (SessionDetailView.swift:238) and "Copied" for 1.5 s (MessageView.swift:63, :199).
 
 Text size: all text uses system text styles, so it follows the user's text-size setting on iOS (inference).
 
@@ -579,8 +598,8 @@ Each row gives the evidence and what to do instead. "Measured" refers to appendi
 | B24 | "Cancel" in the capture browser does not stop a running capture; the session is saved anyway when it finishes. | LinkCaptureView.swift:39-56 | Cancel aborts the request; nothing is saved. |
 | B25 | The capture button stays enabled during the first steps of a capture, so a second press starts a second capture and a duplicate session. | LinkCaptureView.swift:43-45, :61; WebCapture.swift:147 | Disable the button from the press until the request has settled. |
 | B26 | A streaming reply cannot be stopped, and the view jumps to the bottom on every chunk even when the user has scrolled up. | ContinueChatView.swift:129-140, :225-227 | A Stop control; follow the output only while the user is at the bottom. What is stored after a stop is defined in claude-api.md. |
-| B27 | The model choice is not remembered. | ContinueChatView.swift:14 | The choice is remembered on the device and shown in settings (section 4.11.5). |
-| B28 | A stored API key can never be removed or replaced from the UI. | apple/SessionVault/ClaudeAPI.swift:167-169 is never called | Not applicable with a server-side key. If the key is kept in the browser instead, settings must offer Replace and Remove. |
+| B27 | The model choice is not remembered. | ContinueChatView.swift:14 | The choice is remembered: the user's default model is an account setting, and the chat remembers the last pick on the device (section 4.15.6). |
+| B28 | A stored API key can never be removed or replaced from the UI. | apple/SessionVault/ClaudeAPI.swift:167-169 is never called | The key screen offers Replace Key and Remove Key for the user's own stored key (section 4.15.5). (Superseded on 2026-11-20: "Not applicable with a server-side key.") |
 | B29 | The timeline list has no delete gesture although the flat list has one. | SessionListView.swift:59-81 | The same row menu in every list. |
 | B30 | The shared PDF file name only replaces `/`; a title containing a colon, question mark, quote, asterisk, angle bracket, vertical bar or backslash gives a name that is invalid on Windows. | PDFViewer.swift:36-38 | `safeFileName` in appendix 5.4 (the same rule as data-model.md B15 and web-platform.md B9). |
 
@@ -589,10 +608,10 @@ Each row gives the evidence and what to do instead. "Measured" refers to appendi
 | # | What the Apple app does | Evidence | Web app instead |
 |---|---|---|---|
 | B31 | Builds every message when a session opens, and loads every message in the vault before filtering to the session. | SessionDetailView.swift:16, :24-27, :31-45 | Load one session's messages; render as described in sections 4.7.4 and 4.7.5. |
-| B32 | Code fences break with Windows line endings, with fences longer than three backticks and with one-line fences. | MessageView.swift:69-85; table in section 1.10.2 | The fence rules of section 4.7.1. |
-| B33 | Inline Markdown changes technical text: `__init__` loses its underscores and turns bold, backslashes before punctuation vanish, and `[x](javascript:…)` becomes a link. | MessageView.swift:116-123; appendix 5.3 | The inline grammar of section 4.7.2 and the safety rules of 4.7.3. |
-| B34 | An empty fenced block is drawn as an empty box with a Copy button. | MessageView.swift:59-63 | Skip code blocks whose text is empty or only white space. |
-| B35 | A paragraph ends only at exactly two consecutive line breaks; a line holding spaces does not end it. | MessageView.swift:110-114 | A blank line may contain spaces and tabs. |
+| B32 | Code fences break with Windows line endings, with fences longer than three backticks and with one-line fences. | MessageView.swift:102-118; table in section 1.10.2 | The fence rules of section 4.7.1. |
+| B33 | Inline Markdown changes technical text: `__init__` loses its underscores and turns bold, backslashes before punctuation vanish, and `[x](javascript:…)` becomes a link. | MessageView.swift:149-156; appendix 5.3 | The inline grammar of section 4.7.2 and the safety rules of 4.7.3. |
+| B34 | An empty fenced block is drawn as an empty box with a Copy button. | MessageView.swift:92-96 | Skip code blocks whose text is empty or only white space. |
+| B35 | A paragraph ends only at exactly two consecutive line breaks; a line holding spaces does not end it. | MessageView.swift:143-147 | A blank line may contain spaces and tabs. |
 | B36 | A summary written by Summarize is long and contains code blocks (its prompt asks for every code block verbatim), but it is shown as raw text in a field of two to six lines. | SessionDetailView.swift:134-140, :196-198 | A reading state that draws the summary like a message, and an editing state (section 4.6.4, rule 6). |
 
 ### 2.6 Not user features
@@ -601,6 +620,13 @@ Each row gives the evidence and what to do instead. "Measured" refers to appendi
 |---|---|---|---|
 | B37 | Three launch arguments for automation are compiled into the app. | RootView.swift:75-85; ImportSheet.swift:122-130 | Nothing. Tests navigate to routes. |
 
+### 2.7 Added on 2026-11-20
+
+| # | What the Apple app does | Evidence | Web app instead |
+|---|---|---|---|
+| B38 | The Copy button of a message and the Copy button of each code block inside it carry the same label, "Copy"; only macOS adds a tooltip to the first. A screen reader announces the same name for both (inference: not tested with VoiceOver). | MessageView.swift:34, :39-41, :174 | The visible label stays "Copy" on both; the accessible names are "Copy message" and "Copy code" (section 4.15.7). |
+| B39 | A reply can be copied whole only after it is stored: the live bubble has no Copy button, and the text of a reply whose request fails is cleared from the screen. | ContinueChatView.swift:165-177, :299-303 | Text that arrived before a failure stays on screen and can be copied (section 4.6.7; section 4.15.7, rule 9). |
+
 ---
 
 ## 3. What the web app must do differently because it is a web app (C)
@@ -608,9 +634,9 @@ Each row gives the evidence and what to do instead. "Measured" refers to appendi
 | # | Apple app | Web app | Where specified |
 |---|---|---|---|
 | C1 | A capture browser sheet shows the page; the user signs in inside it and presses Capture. | A web page cannot embed another site and read its content, so there is no capture browser. The link section always offers "open the link, copy, paste"; where the server supports it (capture.md, tier T3) it also offers a server-side capture of public share links with progress, review and failure states. | 4.5.6, 4.6.6 |
-| C2 | The API key is typed into the app and kept in the Keychain. | The key is a server secret: no key-entry screen. If the server has no key, a "Claude Isn't Set Up" notice replaces the composer and the Summarize action. | 4.5.7, 4.6.7 |
-| C3 | Data is local: no loading, saving or failure states. | Every read and write crosses the network: skeletons, retry, optimistic edits with a failure path, refresh when the window becomes visible again. | 4.10 |
-| C4 | No accounts. | Sign-in screen; an expired session returns to it and then back to where the user was. | 4.11.1 |
+| C2 | The API key is typed into the app and kept in the Keychain. | Each user types their own Anthropic API key into a key screen. The server checks it, stores it encrypted and never sends it back; the screen shows only whether a key is saved, its last four characters and its status, and offers Replace and Remove. A user without a key gets a "Connect to Claude" block in place of the composer, and a dialog when Summarize is pressed; both lead to the key screen. (Superseded on 2026-11-20: "The key is a server secret: no key-entry screen.") | 4.15.5, 4.6.7 |
+| C3 | Data is local: no loading, saving or failure states. | The vault is on the server. With the offline copy (the default) lists and sessions are read from the copy on the device, and every change goes into a queue that is sent in the background: states "not sent yet" and "not saved", and notices. Without the copy, and until its first sync has finished, every read crosses the network: skeletons, retry, a failure path, refresh when the window becomes visible again. | 4.10, 4.15.8 |
+| C4 | No accounts. | Accounts for many users: sign-in and sign-out, an invitation step while sign-up is by invitation, account deletion. An expired session returns to sign-in and then back to where the user was. | 4.15.2, 4.15.3, 4.15.4 |
 | C5 | Navigation state lives in the view. | Every screen has a URL; browser Back and the Android back gesture go up one level and close dialogs. Paths carry only opaque ids: no title, tag, search text or link may appear in a path or query string (web-platform.md 13.2). | 4.4 |
 | C6 | System alerts, sheets, context menus, swipe actions. | Accessible dialogs and menus built from web primitives. No swipe actions (they collide with the browser's own back gesture). Every row has a visible "more" button; right-click is an extra on desktop. | 4.6.9, 4.8 |
 | C7 | "Paste Transcript" reads the clipboard freely. | Reading the clipboard needs a user gesture and a permission or paste prompt (web-platform.md 6.1). A paste box is the main control and the button an extra; pasted text is held in memory and imported with a second press. | 4.6.6 |
@@ -623,14 +649,21 @@ Each row gives the evidence and what to do instead. "Measured" refers to appendi
 | C14 | Native lists cope with eager rendering up to a point. | Browsers do not: windowing for the session list and chunked rendering for transcripts. | 4.7.4, 4.7.5 |
 | C15 | Dates use the system locale through Foundation. | `Intl.DateTimeFormat` and `Intl.RelativeTimeFormat` with the browser locale. | 4.6.3 |
 | C16 | The OS handles the notch and the keyboard. | `100dvh`, `env(safe-area-inset-*)`, a composer that stays above the on-screen keyboard, and 16 px inputs so iOS Safari does not zoom on focus. | 4.3, 4.8.5 |
-| C17 | One app on one device. | The same vault can be open in several tabs and on several devices; lists and details refresh when the window becomes visible and after edits. | 4.10 |
-| C18 | Not applicable. | Installable app, share target, offline indicator, update notice, settings. | 4.11 |
+| C17 | One app on one device. | The same vault can be open in several tabs and on several devices. Each device follows the server through the change feed of sync.md; lists and details follow each sync run. Where two devices disagree, the server decides by fixed rules, and the device whose change lost says so in a notice. | 4.10, 4.15.8 |
+| C18 | Not applicable. | Installable app, share target, the offline copy and its indicators, update notice, settings, accounts and invitations, the Claude key screen, the model chooser. | 4.11, 4.15 |
 | C19 | Not applicable. | Browser find-in-page, text selection and printing are expected to work in a transcript; the rendering technique is chosen to keep them. | 4.7.5 |
-| C20 | The device calls Anthropic itself; a reply is lost if the request fails. | The server runs each Claude request (claude-api.md): the interface needs a first-use notice, a confirmation for large requests, Stop, and states for replies that are still running, were cut off or were interrupted. | 4.6.7 |
+| C20 | The device calls Anthropic itself; a reply is lost if the request fails. | The server runs each Claude request with the signed-in user's own API key (claude-api.md): the interface needs a first-use notice, a confirmation for large requests, Stop, and states for replies that are still running, were cut off or were interrupted. | 4.6.7 |
+| C21 | Added on 2026-11-20. A Copy button on every message bubble copies the stored text (section 1.10.1). | The same action on every message and every reply, in every layout, with the keyboard and from the offline copy; the clipboard is written inside the click handler. Code blocks keep their own button. | 4.15.7 |
+| C22 | Added on 2026-11-20. One person's data on that person's own devices. | Many users on one server: every screen shows the signed-in user's vault only, and a record of another user looks exactly like one that does not exist. | 4.15.1 |
+| C23 | Added on 2026-11-20. The models offered are a fixed list in the code (section 1.7.2). | The list comes from the server, and the user may type any other model id. | 4.15.6 |
 
-If instead the vault is stored only in the browser (IndexedDB, no server): drop the sign-in screen; C3 shrinks to short local waits; the offline indicator only concerns Claude and link capture; "Export Vault" becomes the only backup, so settings must show when the last export was made and say that clearing site data deletes the vault.
+Alternatives. `../HANDOFF.md` section 2 has decided against the first three; they are kept for the record and must not be built.
 
-If instead the key is kept in the browser: keep the "Connect to Claude" screen of section 1.7.1 with one sentence changed ("The key is stored in this browser and sent only to api.anthropic.com."), and add Replace and Remove to settings.
+If instead there were one owner and one server-side key (what this document first assumed; not chosen): there would be no invitation step, no account deletion, no key screen and no model list of the user's own; sign-in would be the one-owner screen of 4.5.1 and 4.11.1; a missing key would be a matter of server set-up, shown as the "Claude Isn't Set Up" block that 4.5.7 used to draw. The offline copy and its notices would stay, because one person with several devices needs them just the same.
+
+If instead the vault is stored only in the browser (IndexedDB, no server; not chosen): drop the sign-in screen; C3 shrinks to short local waits; the offline indicator only concerns Claude and link capture; "Export Vault" becomes the only backup, so settings must show when the last export was made and say that clearing site data deletes the vault.
+
+If instead the key is kept in the browser (not chosen: each user's key is kept on the server, encrypted): keep the "Connect to Claude" screen of section 1.7.1 with one sentence changed ("The key is stored in this browser and sent only to api.anthropic.com."), and add Replace and Remove to settings. What this note asked for is now part of the main design in another form: a key screen with Replace Key and Remove Key (4.15.5).
 
 If instead another front-end stack is chosen: nothing in part 4 depends on React. The tokens are plain CSS custom properties and the reference implementation in appendix 5.4 is plain JavaScript.
 
@@ -640,7 +673,7 @@ If instead the Apple app is retired: nothing changes here, except that "the same
 
 ## 4. Design handoff for the web app
 
-Everything in this part is a specification written for the web app. It follows part 1 wherever the feature is the same, applies the corrections of part 2 and the constraints of part 3, and adds the web-only screens.
+Everything in this part is a specification written for the web app. It follows part 1 wherever the feature is the same, applies the corrections of part 2 and the constraints of part 3, and adds the web-only screens. Section 4.15 holds the screens and rules added on 2026-11-20 for the decided product (`../HANDOFF.md` section 2); where it differs from an earlier section of this part, 4.15 wins.
 
 ### 4.1 Principles
 
@@ -649,7 +682,10 @@ Everything in this part is a specification written for the web app. It follows p
 3. Native-feeling. System fonts, the platform's own form controls (`<select>`, `<input type="date">`, the file picker), the OS light or dark appearance, the platform's back behaviour.
 4. Same words. Where a feature is the same as in the Apple app, use its strings unchanged (part 1), including Title Case for titles and buttons. New strings follow the same style (section 4.13).
 5. Nothing blocks reading. Imports, saves and Claude requests report progress in place; only destructive confirmations are modal.
-6. No features beyond the Apple app except those listed in section 4.11.
+6. No features beyond the Apple app except those listed in sections 4.11 and 4.15.
+7. Free-form. The user asks their own questions of a model of their own choosing and takes the answer elsewhere. No preset questions, no prompt templates, no suggested replies, no output format imposed by the interface. Summarize is the one prepared action, and it runs only when it is pressed.
+8. Everything can be copied whole. Every message, every reply and every code block has a copy action in every layout, by pointer, touch and keyboard.
+9. Private by construction. A user sees their own vault and nothing else: no screen, count, search result, suggestion or error text depends on another user's data. A saved API key is never displayed.
 
 ### 4.2 Design tokens
 
@@ -816,6 +852,7 @@ Notes on the tokens:
 - The theme follows `prefers-color-scheme`. The Apple app has no appearance switch, so the web app has none either. Set `<meta name="theme-color">` to `#FFFFFF` (light) and `#121214` (dark) with `media` attributes.
 - Under `forced-colors: active` (Windows high contrast) backgrounds disappear: give bubbles, chips, code blocks, banners and buttons a `1px solid transparent` border so that they keep an outline.
 - A non-default root font size must scale everything: sizes are `rem`, widths that hold text are `rem` or fluid.
+- Section 4.15 adds no token. The colour pairs it uses that were not part of the first check are computed in appendix 5.6.
 
 Type roles:
 
@@ -884,7 +921,7 @@ Rules:
 5. Sticky elements: the list header (title, Import, search field) at the top of the list; the detail toolbar at the top of the detail; timeline month headers directly below the list header; the composer at the bottom of the chat.
 6. Safe areas: add `env(safe-area-inset-top)` to top bars, `env(safe-area-inset-bottom)` to the composer and to the last element of each page, and the left and right insets to pane paddings. The viewport meta tag needs `viewport-fit=cover`.
 7. The detail toolbar shows as many actions as fit, in the order of section 4.6.4, and moves the rest into an overflow menu from the end. Compact: Continue, Summarize, Pin, then overflow (as in screenshot 02). Expanded: all of them, with Download Context Pack in the overflow menu.
-8. Dialog widths: New, Rename, confirmations `--width-dialog-sm`; Import `--width-dialog-md`; Continue `--width-dialog-lg`. A dialog never exceeds the viewport minus 32 px in either direction; its body scrolls.
+8. Dialog widths: New, Rename, confirmations `--width-dialog-sm`; Import `--width-dialog-md`; Continue `--width-dialog-lg`. A dialog never exceeds the viewport minus 32 px in either direction; its body scrolls. The dialogs added in section 4.15 name their size there.
 9. Every layout must work at 320 px width and at 200 % browser zoom without horizontal scrolling of the page. Code blocks scroll horizontally inside themselves.
 10. Right-to-left: use logical properties (`margin-inline`, `padding-inline`, `inset-inline`) throughout, and `dir="auto"` on message text and on the title, summary and tag fields.
 
@@ -894,13 +931,17 @@ The routes below are a suggestion that matches the layouts; where web-platform.m
 
 | Route | Screen | Compact | Medium and expanded |
 |---|---|---|---|
-| `/sign-in` | sign-in | page | centred card |
+| `/sign-in` | sign-in (4.15.2) | page | centred card |
+| `/invite` | invitation entry and account creation (4.15.3; web-platform.md 11.10). A code that arrives in a link is in the fragment, `/invite#code=<code>`, never in the path or the query string. | page | centred card |
+| `/recover` | setting a new password with a recovery code (4.15.2), in the same way: `/recover#code=<code>` | page | centred card |
 | `/library` | library | page | redirects to `/sessions` (the library is a pane or drawer) |
 | `/sessions` | session list. Query parameters select the filter: none, `view=pinned`, `view=timeline`, `project=<id>`, `provider=<claude, chatgpt, gemini or other>`. The tag filter and the search text are user content and go into the fragment, which is never sent to the server: `#tag=<tag>&q=<search text>`, both percent-encoded. | page | list pane; the detail pane shows "No Session Selected" |
 | `/sessions/<id>` (the same query and fragment are kept) | session detail | page | detail pane beside the list |
 | `/sessions/<id>/continue` | Continue with Claude | page | dialog over the detail |
 | `/import` | Import Sessions; after a share from another app the same screen with the shared content first (4.11.3) | page | dialog over the current screen |
 | `/settings` | settings | page | replaces list and detail panes |
+| `/settings/claude-key` | the user's Anthropic API key (4.15.5) | page | dialog over settings |
+| `/notices` | notices of the offline copy (4.15.8) | page | dialog over the current screen |
 
 ```
 compact:   /library  ->  /sessions?...  ->  /sessions/<id>  ->  /continue
@@ -908,6 +949,9 @@ compact:   /library  ->  /sessions?...  ->  /sessions/<id>  ->  /continue
                               +->  /import        /library -> /settings
 
 expanded:  [ library | /sessions?... | /sessions/<id> ]   dialogs: /import, /continue
+
+signed out:  /sign-in  <->  /invite        /recover -> /sign-in
+signed in:   /settings -> /settings/claude-key        any screen -> /notices
 ```
 
 - Browser Back, the Android back gesture and Escape close a dialog route and return to the screen below it; on compact, Back goes up the stack. Opening a dialog pushes a history entry; closing it with its own button goes back one entry instead of pushing another.
@@ -916,6 +960,8 @@ expanded:  [ library | /sessions?... | /sessions/<id> ]   dialogs: /import, /con
 - Selecting a filter keeps the open session (as in section 1.1) and keeps the search text.
 - When a screen needs sign-in, remember the requested address and return to it afterwards.
 - Restore the list's scroll position and focus the row that was opened when the user comes back from a detail.
+- `/sign-in`, `/invite` and `/recover` are the only screens shown without a signed-in user; every other route leads to `/sign-in` first (4.15.2).
+- `/settings/claude-key` and `/notices` are dialog routes like `/import`: Back closes them.
 
 ### 4.5 Wireframes
 
@@ -932,7 +978,11 @@ Icon abbreviations: `tray` all sessions, `pin`, `cal` timeline, `dir` folder, `d
 
 Phone frames are about 360 px wide, desktop frames 1280 px. The wireframes show structure and reading order, not exact sizes; sizes come from the tokens. Strings are abbreviated with ASCII; the exact strings are in part 1 and section 4.13.
 
+Added on 2026-11-20: `[Copy]` on the first line of a bubble is the copy-whole-message button of 4.15.7 (the `[Copy]` inside a code block copies the code only), and `(Copy)` is that button while it is disabled. Further icon abbreviations used in 4.15: `key` API key, `up` changes waiting to be sent, `bell` notices, `off` no connection.
+
 #### 4.5.1 Sign-in
+
+> **Superseded (2026-11-20)** by section 4.15.2, which has the sign-in for many users and its wireframes. The drawings below show the sign-in for one owner (a passphrase and an optional one-time code) that this document first assumed. Do not build from them. They are kept so that references to 4.5.1 still resolve; the card, its width and its place on the screen are unchanged.
 
 Phone:
 
@@ -1059,11 +1109,11 @@ Desktop (three panes; the list is the middle column, a selected session is shown
 | [spk]  Claude            | (msg ChatGPT)                  | imported Nov 12, 2026 . 42 turns                       |
 | [msg]  ChatGPT           | Seed starting calendar   [...] |--------------------------------------------------------|
 | [dia]  Gemini            | 2 days ago . 1 turn            | +--------------------------------------------------+   |
-| [ ? ]  Other             |--------------------------------| | User                                             |   |
+| [ ? ]  Other             |--------------------------------| | User                                      [Copy] |   |
 |                          |                                | | How big should each bay be?                      |   |
 | Tags                     |                                | +--------------------------------------------------+   |
 | [ # ]  compost           |                                | +--------------------------------------------------+   |
-| [ # ]  gears             |                                | | Assistant                                        |   |
+| [ # ]  gears             |                                | | Assistant                                 [Copy] |   |
 |                          |                                | | About one cubic metre each works well.           |   |
 |                          |                                | | +----------------------------------------------+ |   |
 |                          |                                | | | text                                  [Copy] | |   |
@@ -1090,7 +1140,7 @@ Tablet (600 to 1023 px): list and detail side by side; the library is a drawer o
 | (dia Gemini)                   | ...                                    |
 | Rear derailleur indexi.. [...] |----------------------------------------|
 | yesterday . 8 turns            | +-----------------------------------+  |
-|--------------------------------| | User                              |  |
+|--------------------------------| | User                       [Copy] |  |
 +--------------------------------+----------------------------------------+
 ```
 
@@ -1176,11 +1226,11 @@ Phone:
 | imported Nov 12, 2026 . 42 turns       |
 +----------------------------------------+
 | +------------------------------------+ |
-| | User                               | |
+| | User                        [Copy] | |
 | | How big should each bay be?        | |
 | +------------------------------------+ |
 | +------------------------------------+ |
-| | Assistant                          | |
+| | Assistant                   [Copy] | |
 | | About one cubic metre each works   | |
 | | well.                              | |
 | | +------------------------------+   | |
@@ -1312,16 +1362,16 @@ Phone (a full-screen page; the composer stays above the on-screen keyboard):
 | [x]  Continue with Claude   [model v]  |
 +----------------------------------------+
 | +------------------------------------+ |
-| | User                               | |
+| | User                        [Copy] | |
 | | How big should each bay be?        | |
 | +------------------------------------+ |
 | +------------------------------------+ |
-| | Assistant                          | |
+| | Assistant                   [Copy] | |
 | | About one cubic metre each works   | |
 | | well.                              | |
 | +------------------------------------+ |
 | +------------------------------------+ |
-| | User                               | |
+| | User                        [Copy] | |
 | | And how often should I turn it?    | |
 | +------------------------------------+ |
 | +----------------------------+         |
@@ -1341,15 +1391,15 @@ Desktop (a dialog 720 px wide, height `min(88dvh, 900px)`):
     | Continue with Claude                 Model [Claude Opus 5.5 v]    [x]|
     +----------------------------------------------------------------------+
     | +------------------------------------------------------------------+ |
-    | | User                                                             | |
+    | | User                                                      [Copy] | |
     | | How big should each bay be?                                      | |
     | +------------------------------------------------------------------+ |
     | +------------------------------------------------------------------+ |
-    | | Assistant                                                        | |
+    | | Assistant                                                 [Copy] | |
     | | About one cubic metre each works well.                           | |
     | +------------------------------------------------------------------+ |
     | +------------------------------------------------------------------+ |
-    | | User                                                             | |
+    | | User                                                      [Copy] | |
     | | And how often should I turn it?                                  | |
     | +------------------------------------------------------------------+ |
     | +----------------------------+                                       |
@@ -1364,30 +1414,30 @@ Desktop (a dialog 720 px wide, height `min(88dvh, 900px)`):
 
 While a reply streams, the thinking bubble is replaced by a normal Assistant bubble that grows, and `(^)` becomes a Stop button. The error banner appears above the composer only when there is an error.
 
-Variants of the last bubble, and the block that replaces the composer when the server has no key (both widths):
+Variants of the last bubble, and the block that takes the composer's place while the signed-in user has no API key saved (both widths). The block was redrawn on 2026-11-20 (4.15.5). It supersedes the block titled "Claude Isn't Set Up", which told of a missing server key ("Claude is not set up on this server. Add an Anthropic API key to the server's secrets."). The bubble of a reply that was cut off lost its "Continue" button on the same day (4.6.7):
 
 ```
 +----------------------------------------+   +----------------------------------------+
 | +------------------------------------+ |   | +------------------------------------+ |
-| | Assistant                          | |   | | Assistant                          | |
+| | Assistant                   [Copy] | |   | | Assistant                   [Copy] | |
 | | Turn it every two weeks, and       | |   | | ...and then cover the              | |
 | | Stopped                            | |   | | This reply was cut off by the      | |
-| +------------------------------------+ |   | | length limit.       [ Continue ]   | |
+| +------------------------------------+ |   | | length limit.                      | |
 +----------------------------------------+   | +------------------------------------+ |
                                              +----------------------------------------+
 
 +----------------------------------------+
-|                 [spk]                  |
-|          Claude Isn't Set Up           |
-|  Claude is not set up on this server.  |
-|  Add an Anthropic API key to the       |
-|  server's secrets.                     |
+|                 [key]                  |
+|           Connect to Claude            |
+|     Add your Anthropic API key in      |
+|        Settings to use Claude.         |
+|            [ Add API Key ]             |
 +----------------------------------------+
 ```
 
 #### 4.5.8 Original (PDF)
 
-The web app has no PDF screen of its own. "View Original" is a link that opens the stored PDF in a new browser tab, where the browser's own viewer provides scrolling, zoom, search, download and sharing (section 4.6.8). There is nothing to draw at either width.
+The web app has no PDF screen of its own. "View Original" is a link that opens the stored PDF in a new browser tab, where the browser's own viewer provides scrolling, zoom, search, download and sharing (section 4.6.8). There is nothing to draw at either width. First release: no original is stored (`../HANDOFF.md` section 6; data-model.md 7.2), so the action does not appear yet.
 
 #### 4.5.9 Dialogs and menus
 
@@ -1413,7 +1463,7 @@ The same at both widths: a card 400 px wide, or the screen width minus 32 px on 
 +----------------------------------+   +----------------------------------+   +----------------------------------+
 ```
 
-The project-name error line appears only after the name was refused. The other confirmations (first use of Claude, a summary that was cut off, the passphrase check before an export) have the same shape; their texts are in sections 4.13 and 4.11.5.
+The project-name error line appears only after the name was refused. The other confirmations (first use of Claude, a summary that was cut off, the fresh sign-in check before an export or an account deletion, signing out with unsent changes, removing the API key, deleting the account) have the same shape; their texts are in sections 4.13 and 4.15.
 
 Menus (anchored to the button that opened them; on desktop the session and project menus also open on right-click):
 
@@ -1430,6 +1480,8 @@ Menus (anchored to the button that opened them; on desktop the session and proje
 "Delete" is drawn in `--color-danger`. `(v)` marks the current project. "Pin" reads "Unpin" for a pinned session.
 
 #### 4.5.10 Settings
+
+> **Superseded (2026-11-20)** by section 4.15.4, which has the settings screen of the decided product and its wireframes. The drawings below show the first design: a key held by the server ("Claude is ready."), an offline copy that is off by default, and no account deletion. Do not build from them. They are kept so that references to 4.5.10 still resolve.
 
 Phone:
 
@@ -1591,6 +1643,8 @@ Desktop (offline bar across the top of the window; install row above Settings in
 +--------------------------+-----------------------------------------------------------------------------------------+
 ```
 
+The place and shape of the bar, the install row and the drop overlay stand. The wording of the bar is superseded by section 4.15.8 (2026-11-20): changes made offline are saved on the device and sent later, so the bar no longer says that they cannot be saved.
+
 #### 4.5.13 Empty, loading and error states
 
 Phone, empty vault (first run):
@@ -1650,6 +1704,8 @@ Names are suggestions. Props are written in TypeScript form; field names follow 
 
 Dialogs: prefer the native `<dialog>` element with `showModal()`, which gives a focus trap, Escape and an inert page without a library. Any component library must work under the Content-Security-Policy of web-platform.md 11.4, which forbids `<style>` elements created at run time: test dialogs, menus and tooltips against the production build with the policy enforced. All visuals come from the tokens, in static CSS files.
 
+Components, types and props added on 2026-11-20 for section 4.15 are listed in 4.15.11.
+
 #### 4.6.1 Shared types
 
 ```ts
@@ -1681,10 +1737,10 @@ Display names: providers "Claude", "ChatGPT", "Gemini", "Other"; roles "User", "
 
 | Component | Props | States and behaviour |
 |---|---|---|
-| AppShell | `layout: "compact" \| "medium" \| "expanded"`, `online: boolean` | Arranges panes per section 4.3. Hosts the offline bar, the drop overlay, toasts and dialogs. Owns the window-level drag handlers (section 4.8.4). |
+| AppShell | `layout: "compact" \| "medium" \| "expanded"`, `online: boolean`, `sync: SyncSummary`, `account: "active" \| "suspended"`, `notices: Notice[]` | Arranges panes per section 4.3. Hosts the status bar of 4.15.8 (it takes the place of the offline bar), the drop overlay, toasts and dialogs. Owns the window-level drag handlers (section 4.8.4). |
 | TopBar | `title?: string`, `leading?: { label: string; href: string } \| "drawer"`, `actions: Action[]` | Sticky, `--size-topbar` high. A hairline appears once content is scrolled under it. Actions that do not fit move into an overflow menu. |
-| LibraryNav | `counts: { all: number; pinned: number }`, `projects: { id; name; sessionCount }[]`, `tags: string[]`, `active: Filter` | Sections, order, icons and badges of section 1.2. Projects in the order of `projectComparator` (data-model.md 8.4), tags in the order the server returns. A badge of 0 is not drawn. The Tags section is omitted when there is no tag. If the active project is deleted or the active tag no longer exists, the filter becomes All Sessions. Loading: three skeleton rows under Projects. Failed: one line "Couldn't load." with "Try Again". Footer: the install row when eligible (4.11.2), then "Settings". |
-| LibraryItem | `icon`, `label`, `badge?: number`, `active: boolean`, `iconColor?`, `menu?: MenuItem[]` | Height `--size-control` with a fine pointer, `--size-touch` otherwise. States: default, hover (`--color-hover`), focus-visible, active (`--color-selected`, `aria-current="page"`), pressed. Project items have a "more" button (and the same menu on right-click) with "Rename…" and "Delete". "New Project…" is a button that looks like an item, in `--color-accent`, weight 500. |
+| LibraryNav | `counts: { all: number; pinned: number }`, `projects: { id; name; sessionCount }[]`, `tags: string[]`, `active: Filter` | Sections, order, icons and badges of section 1.2. Projects in the order of `projectComparator` (data-model.md 8.4), tags in the order the server returns. A badge of 0 is not drawn. The Tags section is omitted when there is no tag. If the active project is deleted or the active tag no longer exists, the filter becomes All Sessions. Loading: three skeleton rows under Projects. Failed: one line "Couldn't load." with "Try Again". Footer: the sync row when it has something to say (4.15.8), the install row when eligible (4.11.2), then "Settings". |
+| LibraryItem | `icon`, `label`, `badge?: number`, `active: boolean`, `iconColor?`, `menu?: MenuItem[]` | Height `--size-control` with a fine pointer, `--size-touch` otherwise. States: default, hover (`--color-hover`), focus-visible, active (`--color-selected`, `aria-current="page"`), pressed. Project items have a "more" button (and the same menu on right-click) with "Rename…" and "Delete". "New Project…" is a button that looks like an item, in `--color-accent`, weight 500. A project that has not been sent yet or was not saved carries the marker of 4.15.8. |
 
 #### 4.6.3 Session list
 
@@ -1692,8 +1748,8 @@ Display names: providers "Claude", "ChatGPT", "Gemini", "Other"; roles "User", "
 |---|---|---|
 | SessionList | `filter: Filter`, `query: string`, `items: SessionListItem[]`, `status: "loading" \| "ready" \| "loadingMore" \| "error"`, `hasMore: boolean`, `selectedId?: string` | Filter, search and order rules of section 1.3.1 as data-model.md implements them (query trimmed; data-model.md 8.1). Timeline variant: `timelineGroups` of data-model.md 8.5. Windowed (section 4.7.5). States in section 4.10. |
 | ListHeader | `title: string`, `onImport()` | The filter title (table in section 1.1), the Import icon button (tooltip and label "Import") and the search field. In the medium layout a leading button opens the library drawer. |
-| SearchField | `value`, `onChange(value)`, `placeholder = "Search titles, summaries, tags"` | `type="search"`. A clear button when not empty; Escape clears. Wait 200 ms after the last keystroke before asking the server, and keep the previous results visible until the new ones arrive. |
-| SessionRow | `item: SessionListItem`, `variant: "default" \| "timeline"`, `selected: boolean` | Lines of section 1.3.2 with four changes: an empty title shows "Untitled"; the summary line is `summaryLine(summaryPreview)` (appendix 5.4); the meta line is "`<relative import time>` · `<n>` turn(s)" in the default variant and "`<original date>` · `<n>` turn(s)" in the timeline, the date from `{ day: "numeric", month: "short" }`; "1 turn" is singular. The relative time comes from `relativeParts` (appendix 5.4), sits in a `<time datetime>` element with the full date as its `title`, and is refreshed once a minute. The whole row is one link; the "more" button is a sibling of the link, never inside it. Minimum height 64 px. States: default, hover, focus-visible, selected (`--color-selected`), pressed. |
+| SearchField | `value`, `onChange(value)`, `placeholder = "Search titles, summaries, tags"` | `type="search"`. A clear button when not empty; Escape clears. Wait 200 ms after the last keystroke before asking the server, and keep the previous results visible until the new ones arrive. With the offline copy the search runs on the device and needs no request (sync.md 2.4). |
+| SessionRow | `item: SessionListItem`, `variant: "default" \| "timeline"`, `selected: boolean` | Lines of section 1.3.2 with four changes: an empty title shows "Untitled"; the summary line is `summaryLine(summaryPreview)` (appendix 5.4); the meta line is "`<relative import time>` · `<n>` turn(s)" in the default variant and "`<original date>` · `<n>` turn(s)" in the timeline, the date from `{ day: "numeric", month: "short" }`; "1 turn" is singular. The relative time comes from `relativeParts` (appendix 5.4), sits in a `<time datetime>` element with the full date as its `title`, and is refreshed once a minute. The whole row is one link; the "more" button is a sibling of the link, never inside it. Minimum height 64 px. States: default, hover, focus-visible, selected (`--color-selected`), pressed. A session that has not been sent yet or was not saved carries the marker of 4.15.8 at the end of its meta line. |
 | ProviderChip | `provider: ProviderId` | Icon (12 px) and name, gap 3 px, padding 2 px by 7 px, `--radius-pill`, caption2 at weight 600, colours from the provider tokens. Not interactive. |
 | TimelineHeader | `label: string`, `count: number` | Label in the section role, "`<n>` session" or "`<n>` sessions" in caption, secondary, at the trailing edge. Sticky. |
 | EmptyState | `icon`, `title`, `description?`, `action?` | Centred block: icon 40 px in `--color-text-tertiary`, title in the title role, description in callout, secondary, at most 22rem wide, optional button. |
@@ -1702,20 +1758,20 @@ Display names: providers "Claude", "ChatGPT", "Gemini", "Other"; roles "User", "
 
 | Component | Props | States and behaviour |
 |---|---|---|
-| DetailToolbar | `hasOriginal: boolean`, `isPinned: boolean`, `summarize: "idle" \| "running"`, `copied: boolean`, `canShare: boolean`, `claudeConfigured: boolean` | Actions in this order: View Original (a link, only with an original; section 4.6.8), Continue with Claude, Summarize (keeps code intact), Pin or Unpin, Copy Context Pack, Share Context Pack (only when sharing is possible), Download Context Pack (always in the overflow menu). Icon buttons whose `aria-label` and tooltip are these labels. Pin has `aria-pressed`. Summarize states: section 4.6.7. Copy shows a check and the label "Copied!" for 2 s. |
+| DetailToolbar | `hasOriginal: boolean`, `isPinned: boolean`, `summarize: "idle" \| "running"`, `copied: boolean`, `canShare: boolean`, `claudeConfigured: boolean` | Actions in this order: View Original (a link, only with an original; section 4.6.8), Continue with Claude, Summarize (keeps code intact), Pin or Unpin, Copy Context Pack, Share Context Pack (only when sharing is possible), Download Context Pack (always in the overflow menu). Icon buttons whose `aria-label` and tooltip are these labels. Pin has `aria-pressed`. Summarize states: section 4.6.7. Copy shows a check and the label "Copied!" for 2 s. `claudeConfigured` is true when the signed-in user has an API key saved (4.15.5). |
 | SessionHeader | `session`, `projects: { id; name }[]` | The fields of section 1.4.2. Title has no visible label (`aria-label="Title"`, placeholder "Title"). Provider, Project, Model, Tags, Summary and Original date have a small visible label above the control (B13). Rules below. |
 | Transcript | `messages`, `pending?: { phase: "thinking" \| "streaming"; text: string }` | Bubbles in index order with `--space-3` between them (the Apple detail uses 16 points and the Apple chat 12; use 12 px in both so that they look the same). Empty: the "No Transcript" state. Rendering rules in section 4.7. |
 
 Rules for SessionHeader:
 
 1. Title, Model and Summary are saved 600 ms after the last keystroke and on blur. Provider, Project and Original date are saved on change. Tags are saved on Enter and on blur with `parseTags` of data-model.md 8.2 (trim, lower-case, drop a leading `#`, drop empties and repeats), then the field is rewritten as the tags joined by `, `.
-2. The screen changes at once (optimistic). If a save fails, an error banner at the top of the detail says "Couldn't save your changes." with "Try Again"; the typed values stay.
+2. The screen changes at once (optimistic). With the offline copy (the default) the change is written to the queue on the device in the same step and sent in the background: it is not lost when a request fails, and the cases in which the server refuses it are told in a notice (4.15.8). Without the copy, a failed save shows an error banner at the top of the detail, "Couldn't save your changes." with "Try Again", and the typed values stay. When the device cannot store the change, the text of 4.15.8, part (g), is shown instead.
 3. Pending saves are flushed when the route changes and on `pagehide`.
 4. An empty title is stored as typed and displayed as "Untitled" in lists.
 5. Original date is an `<input type="date">`. Build the new instant from the picked local year, month and day plus the time of day of the old value. Never pass the "YYYY-MM-DD" string to `new Date()`: that is midnight UTC and shows the previous day west of Greenwich.
 6. Summary has a reading state and an editing state, because Summarize writes long text with code blocks into it (B36):
    - empty: a text area two lines high with the placeholder; typing saves as in rule 1;
-   - not empty and not being edited: the text is drawn with the rules of section 4.7 (paragraphs, inline markup, code blocks) in a box clipped to six lines, with "Show More" and "Show Less" when it is longer, and an "Edit Summary" icon button beside the label;
+   - not empty and not being edited: the text is drawn with the rules of section 4.7 (paragraphs, inline markup, code blocks) in a box clipped to six lines, with "Show More" and "Show Less" when it is longer, and, beside the label, an "Edit Summary" icon button and a Copy button named "Copy summary" (4.15.7, rule 10);
    - editing (after "Edit Summary", or a click on the text): a text area that grows from two lines to 40dvh; leaving it saves and returns to the reading state.
 7. The source link is shown only when the stored value parses as a URL with the scheme http or https; it opens in a new tab with `rel="noopener noreferrer"`, on one line with an ellipsis.
 8. Provider is a native select with the four names; the provider icon in its colour sits before it. Project is a native select: "No Project", then the projects in library order.
@@ -1729,13 +1785,15 @@ Context pack actions (the text is `contextPackMarkdown` of data-model.md 8.3, bu
 | Share Context Pack | Shown only when `navigator.share` exists. Share a file named `context-pack.md` when `navigator.canShare({ files })` accepts it; if not, try the same text as `context-pack.txt`; if neither is accepted, share as `{ title, text }` only when the pack has at most 100,000 characters; otherwise hide the action. A cancelled share (`AbortError`) is not an error. (Chromium is believed to refuse `.md` files in shares, and Android share targets to fail on very long text; both unverified.) |
 | Download Context Pack | Always available: saves `safeFileName(title, ".md")` (appendix 5.4). |
 
+Without a connection the three actions need the whole transcript on the device; otherwise they are disabled with "Connect to load the whole transcript first." (4.15.8).
+
 #### 4.6.5 Messages
 
 | Component | Props | States and behaviour |
 |---|---|---|
-| MessageBubble | `role: Role`, `segments`, `streaming?: boolean`, `incomplete?: "truncated" \| "cancelled"` | Full width, padding `--space-3`, `--radius-md`. Label and background by role (section 1.10.1): User in `--color-accent` on `--color-bubble-user`; the others in `--color-text-secondary` on `--color-bubble-other`. Blocks inside are separated by `--space-2`. A reply that claude-api.md marks as incomplete has a last line in caption, secondary: "Stopped" for `cancelled`, "This reply was cut off by the length limit." for `truncated`. |
+| MessageBubble | `role: Role`, `text: string`, `segments`, `streaming?: boolean`, `incomplete?: "truncated" \| "cancelled"` | Full width, padding `--space-3`, `--radius-md`. Label and background by role (section 1.10.1): User in `--color-accent` on `--color-bubble-user`; the others in `--color-text-secondary` on `--color-bubble-other`. The label shares a header row with the Copy button of the message, which copies `text` whole (4.15.7). Blocks inside are separated by `--space-2`. A reply that claude-api.md marks as incomplete has a last line in caption, secondary: "Stopped" for `cancelled`, "This reply was cut off by the length limit." for `truncated`. |
 | ProseBlock | `paragraphs: { text: string; continues: boolean }[]` | Each paragraph is built from `parseInline(text)`. `white-space: pre-wrap; overflow-wrap: anywhere; dir="auto"`. Body role. Gap `--space-2` between paragraphs, no gap before a piece with `continues`. |
-| CodeBlock | `language: string \| null`, `code: string` | Header (padding 6 px top, 10 px sides): the language in caption2, secondary, and a "Copy" button (caption2, secondary, icon `copy`). Body: `<pre><code>` in `--font-mono` at `--text-code`, padding `--space-2-5`, no wrapping, horizontal scrolling, `tabindex="0"`. Background `--color-code-bg`, `--radius-sm`. After a press the button reads "Copied" with a check for 1.5 s. No syntax colouring. |
+| CodeBlock | `language: string \| null`, `code: string` | Header (padding 6 px top, 10 px sides): the language in caption2, secondary, and a "Copy" button (caption2, secondary, icon `copy`). Body: `<pre><code>` in `--font-mono` at `--text-code`, padding `--space-2-5`, no wrapping, horizontal scrolling, `tabindex="0"`. Background `--color-code-bg`, `--radius-sm`. After a press the button reads "Copied" with a check for 1.5 s. Its accessible name is "Copy code" (4.15.7). No syntax colouring. |
 | InlineCode | | `--font-mono`, 0.9em, `--color-code-bg`, `--radius-xs`, padding 0 by 4 px. |
 | AttachmentBlock | `attachment` | data-model.md allows segments of type `attachment`; the Apple app never creates them. Image types on its allow-list: an `<img>` with `max-width: 100%`, `loading="lazy"` and the file name as `alt`, loaded only from the app's own origin. Other types: one row with a file icon, the file name, the size and a download link. |
 | UnsupportedBlock | `type: string` | A segment of an unknown type: one muted line "Unsupported content (`<type>`)". |
@@ -1746,13 +1804,13 @@ The Import screen keeps the Apple structure (three sections, a status line, "Don
 
 | Component | Props | States and behaviour |
 |---|---|---|
-| ImportPanel | `pendingShares`, `serverCapture: boolean`, `onDone()` | Title "Import Sessions"; an optional first block for shared content (4.11.3); the three sections; one status line at the bottom that each new result replaces; "Done". Leaving the panel cancels a running capture. |
-| From Link section | | Link field: `type="url"`, `inputmode="url"`, `autocapitalize="off"`, `autocorrect="off"`, `spellcheck="false"`, placeholder "https://claude.ai/share/…". Name field. The field holds a link when `looksLikeLink` of capture.md 8.1 accepts it. Then: "Open Link" (an anchor to the link, new tab, `rel="noopener noreferrer"`) with the instruction "Or open the link, copy the whole conversation and paste it below. The link is saved with it."; the link becomes the source link of the next paste, and a "Source: `<host>`" note appears in the paste summary. The app itself never requests the link. Where server capture is on for the link's site: also a primary button "Capture Transcript" (states below). The tip of section 1.5 appears when the link belongs to a known provider but is not one of its public share links (data file of capture.md 7.1); for Claude it is the Apple sentence, for others "Tip: share the conversation in `<Provider>` and paste that share link instead — share links need no sign-in." |
-| Server capture (inside From Link) | `captureId`, `status`, `stage`, `turnsSoFar` | Press: the button is disabled at once (B25) and a progress line appears with "Cancel". Progress text by stage of capture.md 8.3: queued "Waiting to start…"; `loading` "Loading page…"; `waiting_for_content` "Waiting for the conversation…"; `extracting` "Capturing… `<n>` turns so far"; `processing` "Cleaning up…". "Cancel" deletes the capture; nothing is saved (B24). Done without warnings: saved at once, status "Captured `<n>` turns from `<host>`." (with " — original saved as PDF." when a snapshot was stored, and " — original saved as PDF (first screen only)." when capture.md reports that the snapshot is not the whole page), action "Open", both fields cleared. Done with warnings: the review block. Failed: the message of the table below, with "Try Again" for `busy`, `rate_limited`, `navigation_failed`, `timeout` and `internal_error`. |
-| From Files section | | The button opens `<input type="file" multiple accept=".md,.markdown,.txt,.json,text/plain,text/markdown,application/json">`. While files are read and saved: "Importing `<k>` of `<n>`…" with "Cancel". Size warnings as web-platform.md 6.2 proposes: a confirmation "This transcript is very large (`<size>`). Import it anyway?" before a session above its text limit. Result texts as in section 1.5. The drag hint is shown only with a fine pointer. A vault file in the interchange format is imported here too (data-model.md). |
+| ImportPanel | `pendingShares`, `capture: CaptureConfig`, `onDone()` | Title "Import Sessions"; an optional first block for shared content (4.11.3); the three sections; one status line at the bottom that each new result replaces; "Done". Leaving the panel cancels a running capture. |
+| From Link section | | Link field: `type="url"`, `inputmode="url"`, `autocapitalize="off"`, `autocorrect="off"`, `spellcheck="false"`, placeholder "https://claude.ai/share/…". Name field. The field holds a link when `looksLikeLink` of capture.md 8.1 accepts it. Then: "Open Link" (an anchor to the link, new tab, `rel="noopener noreferrer"`) with the instruction "Or open the link, copy the whole conversation and paste it below. The link is saved with it."; the link becomes the source link of the next paste, and a "Source: `<host>`" note appears in the paste summary. The app itself never requests the link. Where server capture is switched on for the link's provider: also a primary button "Capture Transcript" (states below and in 4.15.10, which adds the "not enabled" state and the wording for Claude Code session links). The tip of section 1.5 appears when the link belongs to a known provider but is not one of its public share links (data file of capture.md 7.1); for Claude it is the Apple sentence, for others "Tip: share the conversation in `<Provider>` and paste that share link instead — share links need no sign-in." |
+| Server capture (inside From Link) | `captureId`, `status`, `stage`, `turnsSoFar` | Press: the button is disabled at once (B25) and a progress line appears with "Cancel". Progress text by stage of capture.md 8.3: queued "Waiting to start…"; `loading` "Loading page…"; `waiting_for_content` "Waiting for the conversation…"; `extracting` "Capturing… `<n>` turns so far"; `processing` "Cleaning up…". "Cancel" deletes the capture; nothing is saved (B24). Done without warnings: saved at once, status "Captured `<n>` turns from `<host>`." (with " — original saved as PDF." when a snapshot was stored, and " — original saved as PDF (first screen only)." when capture.md reports that the snapshot is not the whole page), action "Open", both fields cleared. Done with warnings: the review block. Failed: the message of the table below, with "Try Again" for `busy`, `rate_limited`, `navigation_failed`, `timeout` and `internal_error`. First release: no snapshot is stored (`../HANDOFF.md` section 6), so the two endings about a PDF are not used. The states "not enabled", "needs sign-in" and "connection lost" are in 4.15.10. |
+| From Files section | | The button opens `<input type="file" multiple accept=".md,.markdown,.txt,.json,text/plain,text/markdown,application/json">`. While files are read and saved: "Importing `<k>` of `<n>`…" with "Cancel". Size warnings as web-platform.md 6.2 proposes: a confirmation "This transcript is very large (`<size>`). Import it anyway?" before a session above its text limit. Result texts as in section 1.5. The drag hint is shown only with a fine pointer. A vault file in the interchange format is imported here too (data-model.md). Without a connection the sessions are saved on the device and marked "Not sent yet"; a vault file needs a connection (4.15.8). |
 | From Clipboard section | | Provider select (default Claude). A paste box (a text area three lines high, label and placeholder "Paste a transcript here") is the main control; "Paste Transcript" calls `navigator.clipboard.readText()` and is an extra (web-platform.md 6.1). Both lead to the same state: the text is kept in memory, never put into the field, and the box is replaced by the summary "Pasted text: `<n>` characters, `<m>` lines." (plus "Source: `<host>`" when the link field holds a link), with "Clear" and the primary button "Import Pasted Text". A paste that is only a link is not imported: it is put into the link field, the From Link section gets focus, and the info status says so. If the clipboard cannot be read: focus the paste box and show "Your browser didn't allow clipboard access. Paste into the box instead." |
-| ReviewBlock | `warnings: string[]`, `preview: string`, `turnCount: number` | For a result that needs a decision (import-rules.md C8, capture.md 7.4): the warning sentences (tables below), a read-only preview of the first 12 lines (at most 600 characters), "`<n>` turn(s)", and the buttons "Discard" and "Save Anyway". Nothing is stored until "Save Anyway" (for `sign_in_suspected` it repeats the import with the override that import-rules.md defines). A result without warnings is saved at once, as in the Apple app. |
-| ImportReport | `files: { name; sessions?: number; reason?: string; notes?: string[] }[]` | After an import of several files (import-rules.md C9): the status line gives the total, and a "Details" disclosure lists each file with "`<n>` session(s)" or its reason, plus any note. For one file the status line alone is enough. |
+| ReviewBlock | `warnings: string[]`, `droppedTurns: DroppedTurn[]`, `preview: string`, `turnCount: number` | For a result that needs a decision (import-rules.md C8, capture.md 7.4): the warning sentences (tables below), a read-only preview of the first 12 lines (at most 600 characters), "`<n>` turn(s)", and the buttons "Discard" and "Save Anyway". Nothing is stored until "Save Anyway" (for `sign_in_suspected` it repeats the import with the override that import-rules.md defines). A result without warnings is saved at once, as in the Apple app. 4.15.9 extends the block: turns that the importer left out are listed and can be restored before the save. |
+| ImportReport | `files: { name; sessions?: number; reason?: string; notes?: string[] }[]` | After an import of several files (import-rules.md C9): the status line gives the total, and a "Details" disclosure lists each file with "`<n>` session(s)" or its reason, plus any note. For one file the status line alone is enough. Files that wait for a review: 4.15.9. |
 | StatusNotice | `status: Status` | Icon by kind: success `circle-check` in `--color-success`; warning `triangle-alert` in `--color-warning`; error `triangle-alert` in `--color-danger`; info `lightbulb` in `--color-warning`; progress a spinner. Text in callout, wrapping. `role="status"`, or `role="alert"` for errors. The action "Open" is offered when exactly one session was created. |
 
 Wording for the results of the import module (import-rules.md leaves wording to this document). `<file>` is the file name; for a paste the sentence starts without it.
@@ -1772,15 +1830,15 @@ Wording for the results of the import module (import-rules.md leaves wording to 
 |---|---|
 | `decoded_as_utf_16le`, `decoded_as_utf_16be` | "`<file>` was read as UTF-16." |
 | `decoded_as_windows_1252` | "`<file>` is not UTF-8 and was read as Windows-1252. Check accented letters." |
-| `dropped_turns` | "`<n>` turn(s) at the start or end looked like page furniture and were left out." with a "Show" disclosure that lists them |
-| a possible duplicate (import-rules.md C10) | "A session from this link with the same number of turns is already in the vault." (shown in the review block) |
+| `dropped_turns` | Superseded on 2026-11-20: no longer a note after saving ("`<n>` turn(s) at the start or end looked like page furniture and were left out." with a "Show" disclosure). A result with dropped turns is reviewed before it is saved, and each turn can be restored (4.15.9). |
+| a possible duplicate (import-rules.md C10) | Superseded on 2026-11-20: no longer shown in the review block ("A session from this link with the same number of turns is already in the vault."). Both sessions are kept, and the notice `duplicate_import` of 4.15.8 says so after the save, with a way to delete the new one (sync.md 7, case 10). |
 
 Wording for the codes of capture.md 7.5 (capture.md leaves the wording to this document):
 
 | Failure code | Message |
 |---|---|
 | `url_not_allowed` | "This link can't be captured from here. Open it and paste the conversation instead." |
-| `provider_disabled` | "Capture is switched off for this site. Open the link and paste the conversation instead." |
+| `provider_disabled` | "Capture isn't switched on for `<Provider>` links yet. Open the link and paste the conversation instead." (the "not enabled" state of 4.15.10) |
 | `busy` | "Another capture is still running. Wait for it to finish." |
 | `rate_limited` | "Too many captures. Try again later." |
 | `navigation_failed` | "The page couldn't be loaded." |
@@ -1802,16 +1860,17 @@ Wording for the codes of capture.md 7.5 (capture.md leaves the wording to this d
 | `several_indexed_lists` | "The page had several lists; the largest one was used." |
 | `turn_count_dropped_while_scrolling` | "The page unloads turns while scrolling; some may be missing." |
 | `scroller_did_not_move` | "The page did not scroll; later turns may be missing." |
+| `bottom_not_settled` (added on 2026-11-20; capture.md 7.5) | "The page was still changing when the capture ended; the last turns may be missing." |
 
 #### 4.6.7 Continue with Claude and Summarize
 
-claude-api.md defines the requests, the outcomes (its C7) and the error codes with their fixed messages (its C8). This section defines only how they look. Model names come from the server's Claude configuration; the wireframes use "Claude Opus 5.5" as an example.
+claude-api.md defines the requests, the outcomes (its C7) and the error codes with their fixed messages (its C8). This section defines only how they look. Every request runs with the signed-in user's own API key (4.15.5). The models offered are the server's list plus any model id the user has typed (4.15.6); the wireframes use "Claude Opus 5.5" as an example.
 
 | Component | Props | States and behaviour |
 |---|---|---|
 | ContinueChat | `session`, `config: { configured; models; defaultModel }` | Body: Transcript with the pending bubble, notices, the composer. Opens scrolled to the end. States in the table below. |
-| ModelSelect | `models: { id: string; name: string }[]`, `value`, `onChange` | Native select labelled "Model". The initial value is the model remembered on this device, else the server's default (claude-api.md C2). Changing it is remembered at once. |
-| Composer | `value`, `streaming: boolean`, `modelName: string` | Model line: `sparkle` and the model name, caption2, tertiary, centred. Text area growing from 1 to 5 lines, placeholder "Continue the conversation…", `--color-field-bg`, 1 px `--color-border-control`, `--radius-xl`, padding 9 px by 14 px. Send button: round, 34 px visible in a 44 px hit area, `--color-accent-fill` with a white `arrow-up` when there is text, `--color-text-disabled` otherwise. While a reply is in flight it is a Stop button (icon `square`, label "Stop") and the field stays editable but cannot send. |
+| ModelSelect | `models: { id: string; name: string }[]`, `value`, `onChange` | Superseded on 2026-11-20 by the ModelChooser of 4.15.6: the same native select labelled "Model", with a last option "Other Model…" that takes any model id. Its first value and what is remembered are defined there. |
+| Composer | `value`, `streaming: boolean`, `modelName: string` | Model line: `sparkle` and the model name, caption2, tertiary, centred. Text area growing from 1 to 5 lines, placeholder "Continue the conversation…", `--color-field-bg`, 1 px `--color-border-control`, `--radius-xl`, padding 9 px by 14 px. Send button: round, 34 px visible in a 44 px hit area, `--color-accent-fill` with a white `arrow-up` when there is text, `--color-text-disabled` otherwise. While a reply is in flight it is a Stop button (icon `square`, label "Stop") and the field stays editable but cannot send. The field is free-form: no preset questions, no suggestions, no templates (4.1, principle 7). |
 | ThinkingBubble | `text = "Claude is thinking…"` | Three dots (7 px, gap 5 px, opacity 0.3 to 1, 600 ms ease in and out, 200 ms stagger) and the text in callout, secondary, on `--color-bubble-other`. |
 | ErrorBanner | `text: string`, `details?: string`, `onDismiss()`, `action?` | `--color-danger-wash`, `--radius-md`, padding `--space-3`: a `triangle-alert` icon in `--color-danger`, the text in callout (wrapping), an optional "Details" disclosure with the upstream message and request id, an optional action, a dismiss button labelled "Dismiss". `role="alert"`. Enters with opacity and an 8 px rise over `--duration-base`. |
 
@@ -1819,41 +1878,49 @@ Chat states:
 
 | State | From claude-api.md | What is shown |
 |---|---|---|
-| not set up | `configured` is false | The transcript stays; the composer is replaced by a block with the title "Claude Isn't Set Up" and the `not_configured` message. |
-| first use on this device | its decision "Disclosure" | Once, before the first Continue or Summarize: a dialog "Send This Session to Claude?" with the text of section 4.13 and "Cancel" and "Continue". The acceptance is remembered in `localStorage`. |
+| not set up | `configured` is false: the signed-in user has no API key saved | The transcript stays. The "Connect to Claude" block of 4.15.5 takes the composer's place: the title "Connect to Claude", the `not_configured` message of claude-api.md C8 and the button "Add API Key", which opens the key screen. (Superseded on 2026-11-20: the block titled "Claude Isn't Set Up", which told of a server without a key.) |
+| key rejected | `keyStatus` is `rejected`, or a request fails with `auth_failed` | Before sending: a warning notice above the composer, "Anthropic rejected your API key the last time it was used.", with "Check Again" and "Replace Key"; the composer stays usable (claude-api.md C15.5). After a failed request: the error banner with the `auth_failed` message of claude-api.md C8 and the same two actions; the user's text returns to the composer. |
+| first use on this device | its decision "Disclosure" | Once, before the first Continue or Summarize: a dialog "Send This Session to Claude?" with the text of section 4.13 and "Cancel" and "Continue". The acceptance is remembered in `localStorage` for the signed-in user only: sign-out removes it, so it never carries over to another user of the same browser (claude-api.md C14). |
 | idle | | Composer enabled. |
 | large request | `confirmation_required` | Dialog "Send a Large Request?": "This sends about `<n>` tokens to `<model name>`", plus " (roughly $`<x>`)" when an estimate is given. "Cancel", "Send". Confirmed once per open chat. |
 | waiting | sent, no text yet | The user's bubble at once, then the thinking bubble. Stop is available. |
 | streaming | `delta` events | An Assistant bubble that grows, drawn with the rules of 4.7 (B6), re-rendered at most once per animation frame. |
 | another model answered | `fallback` event | An info notice above the composer until the next send: "`<to model>` answered instead of `<from model>`." |
 | saved | outcome `saved` | The stored messages replace the pending bubbles. |
-| cut off | outcome `truncated` | The stored bubble with the line "This reply was cut off by the length limit." and a button "Continue", which sends "Please continue from where you left off." |
+| cut off | outcome `truncated` | The stored bubble with the line "This reply was cut off by the length limit." The user writes the next message. (Superseded on 2026-11-20: a button "Continue" that sent "Please continue from where you left off." claude-api.md C17 allows no message that the user did not type.) |
 | stopped | outcome `cancelled` | With text: the stored bubble with the line "Stopped". Without text: nothing is stored and the user's text returns to the composer. |
 | refused or empty | outcomes `refused`, `empty` | The error banner with the text claude-api.md gives for the outcome; the user's bubble is removed and its text returns to the composer. |
 | failed | `error` event or an error response | The error banner with the fixed message for the code, "Details", and "Try Again" when the error is retryable. The user's bubble is removed and its text returns to the composer; "Try Again" sends it again unchanged (the same turn id). Text that had arrived stays on screen under the label "Interrupted" until "Try Again" or "Dismiss"; it is not stored. A send that is refused because a turn is already running shows the `turn_in_progress` message and switches to "still working". |
 | still working | the turn route reports `running` when the chat opens, or the stream was lost | The pending user bubble and a thinking bubble with "Claude is still working…"; the app polls as claude-api.md describes. |
 | unfinished earlier | the turn route reports `failed` or `interrupted` | A banner "The last reply didn't finish." with "Retry" and "Discard". |
 | offline | | The composer is disabled with "You're offline." |
+| not sent yet | the session's create still waits in the queue, or the session is a kept record (sync.md 11, rule 4) | The composer is disabled with "Available once this session has been sent." |
 
 Other chat rules:
 
 1. Follow the output only while the user is within 80 px of the end. If the user scrolls up, stop following until they come back to the end.
 2. Leaving the chat does not stop the reply (claude-api.md C5); the detail behind the chat shows the new turns when they are stored.
 3. Stop calls the stop route and keeps reading until the final event.
+4. The chat is free-form. There are no preset questions, no prompt templates, no suggestion chips, no follow-up buttons that send text, and no output format imposed by the interface. The app never sends a message that the user did not type (claude-api.md C17).
+5. Every stored message of the chat has the Copy button of 4.15.7, the reply included as soon as it is stored.
 
 Summarize states (toolbar button and detail pane):
 
 | State | From claude-api.md | What is shown |
 |---|---|---|
-| not set up | `configured` is false | The button is disabled; its tooltip and accessible description are the `not_configured` message. |
+| not set up | `configured` is false: the signed-in user has no API key saved | The button stays enabled. A press opens a dialog titled "Summarize" with the `not_configured` message of claude-api.md C8, "Cancel" and "Add API Key", which opens the key screen (4.15.5). (Superseded on 2026-11-20: a disabled button.) |
+| key rejected | a request fails with `auth_failed` | The error banner at the top of the detail with the `auth_failed` message of claude-api.md C8, "Check Again" and "Replace Key" (4.15.5). The action stays available while the key's status is `rejected`. |
 | replace? | `summary_exists` | Dialog titled "Summarize" with "Replace the existing summary?", "Cancel" and "Replace" (B20). |
 | large request | `confirmation_required` | The same dialog as in the chat. |
 | running | | A spinner replaces the icon, `aria-busy="true"`, the label becomes "Cancel Summarize" and a press stops it. The state survives leaving the session: on return the turn route says whether it is still running. |
-| saved | outcome `saved` | The Summary field shows the new text; a toast "Summary updated." with "Undo", which restores the previous text. |
-| cut off | outcome `truncated` | Dialog titled "Summarize": "The summary was cut off by the length limit. Keep the partial summary?" with "Discard" and "Keep". |
+| saved | outcome `saved` | The Summary field shows the new text; a toast "Summary updated." with "Undo", which restores the previous text. If the answer carries a previous summary that the user was not asked about (another device changed the summary while Claude worked; claude-api.md C5), the toast reads "Summary updated. An earlier summary was replaced.", with the same "Undo". |
+| cut off | outcome `truncated` | Dialog titled "Summarize": "The summary was cut off by the length limit. Keep the partial summary?" with "Discard" and "Keep", and the plain button "Copy Draft" (4.15.7, rule 10). |
 | refused, empty, failed | | An error banner at the top of the detail with the text claude-api.md gives ("This session has no messages to summarize." and "Claude returned no summary." are among them). |
+| offline, or not sent yet | no connection; or the session is not on the server yet (sync.md 11, rule 4) | The button is disabled; tooltip and accessible description "You're offline." or "Available once this session has been sent." |
 
 #### 4.6.8 Original
+
+First release: attachment bytes are not stored and there are no byte routes (`../HANDOFF.md` section 6; data-model.md 7.2), so no session has an original yet and "View Original" does not appear. What follows is the design for when they are.
 
 - "View Original" is an anchor with `target="_blank"` to the authenticated file address of web-platform.md 6.5, which serves the PDF inline. The browser's own viewer shows it. There is no in-app viewer: the Content-Security-Policy of web-platform.md 11.4 allows no frames, and phones do not reliably show PDFs in frames.
 - If testing shows that the new tab is not signed in (an app installed to an iPhone home screen has its own cookies), fetch the file inside the app and hand it to `navigator.share({ files })` or to a download link instead.
@@ -1964,6 +2031,7 @@ The Apple app has no long-message handling (section 1.10.5). A capture that fall
 - The growing text goes through the same `renderBlocks` and `parseInline` once per animation frame. An unterminated fence is already a code block (rule 4 of 4.7.1), so code does not flicker between prose and code while it arrives.
 - Only the last block changes between frames; keep the earlier blocks' elements.
 - Announce to assistive technology only "Claude is thinking…" at the start and "Claude replied." at the end (section 4.9).
+- The Copy button of the growing reply is disabled until the final event (4.15.7, rules 7 and 8).
 
 ### 4.8 Interaction notes
 
@@ -1981,6 +2049,9 @@ The Apple app has no long-message handling (section 1.10.5). A capture that fall
 | Enter | New Project, Rename Project | Confirms. |
 | Enter and Shift+Enter | chat field, hardware keyboard | Send and new line. |
 | Enter | chat field, on-screen keyboard | New line; the send button sends. |
+| Tab, then Enter or Space | the Copy button of a message | Copies the whole message (4.15.7). The button is the first Tab stop inside each message. |
+| Enter | sign-in, invitation, recovery, API key and "Model ID" fields | Submits the form. |
+| Escape | "Model ID" row of the model chooser | Closes the row and restores the previous model. |
 
 - Never send or confirm on Enter while an input method is composing (`event.isComposing`).
 - There are no single-key shortcuts. Ctrl+F stays the browser's find.
@@ -1996,7 +2067,7 @@ Expanded layout:
 4. Session list (one stop). From a focused row, Tab reaches its "more" button.
 5. Detail toolbar, left to right.
 6. Title, Provider, Project, Model, Tags, Summary, source link, Original date.
-7. Transcript in document order: links, Copy buttons, scrollable code blocks.
+7. Transcript in document order. Inside each message: its Copy button first, then links, the Copy buttons of code blocks and scrollable code blocks, then the repeated Copy button of a long message (4.15.7).
 
 Compact layout: the top bar's leading control, the top bar's actions, then the content in the same order.
 
@@ -2006,7 +2077,7 @@ After an action: deleting a row moves focus to the next row (or the previous one
 
 #### 4.8.3 Touch
 
-- With `(pointer: coarse)`, and always in the compact and medium layouts, every control has a hit area of at least 44 by 44 px: rows, library items, icon buttons, menu items, selects, the Copy button of a code block (pad its hit area), the send button. Chips are not interactive. Links inside running text are exempt.
+- With `(pointer: coarse)`, and always in the compact and medium layouts, every control has a hit area of at least 44 by 44 px: rows, library items, icon buttons, menu items, selects, the Copy buttons of messages and of code blocks (pad their hit areas), the send button. Chips are not interactive. Links inside running text are exempt.
 - Keep at least 8 px between neighbouring targets.
 - Nothing is available only on hover: tooltips repeat `aria-label`s, and row "more" buttons are always visible.
 - No swipe actions and no long-press-only actions.
@@ -2038,10 +2109,10 @@ After an action: deleting a row moves focus to the next row (or the previous one
 
 Target: WCAG 2.2 level AA.
 
-1. Structure. One `<main>` per screen. The library is `<nav aria-label="Library">`. The list pane is a `<section aria-label="Sessions">` with the search field in a `<search>` element or `role="search"`. Every screen has one `<h1>`: "SessionVault" (library), the filter title (list), the session title (detail; visually hidden, because the visible title is an input), "Import Sessions", "Continue with Claude", "Settings". Timeline months are `<h2>`. The transcript is a `<section aria-label="Transcript">`; each message is an `<article>` whose role label is an `<h2>` styled as the small label, so that screen-reader users can jump from turn to turn.
-2. Names. Every icon-only control has an `aria-label` equal to its label: "Import", "View Original", "Continue with Claude", "Summarize (keeps code intact)", "Pin" or "Unpin", "Copy Context Pack", "Share Context Pack", "Edit Summary", "Copy", "Stop", "Dismiss", "Close"; row menus "More actions for `<title>`". The pinned icon in a row has the text alternative "Pinned". A badge is read as "`<n>` sessions". Decorative icons are `aria-hidden`.
+1. Structure. One `<main>` per screen. The library is `<nav aria-label="Library">`. The list pane is a `<section aria-label="Sessions">` with the search field in a `<search>` element or `role="search"`. Every screen has one `<h1>`: "SessionVault" (library), the filter title (list), the session title (detail; visually hidden, because the visible title is an input), "Import Sessions", "Continue with Claude", "Settings", "Anthropic API Key", "Notices", and "SessionVault" on the sign-in, invitation and recovery screens. Timeline months are `<h2>`. The transcript is a `<section aria-label="Transcript">`; each message is an `<article>` whose role label is an `<h2>` styled as the small label, so that screen-reader users can jump from turn to turn.
+2. Names. Every icon-only control has an `aria-label` equal to its label: "Import", "View Original", "Continue with Claude", "Summarize (keeps code intact)", "Pin" or "Unpin", "Copy Context Pack", "Share Context Pack", "Edit Summary", "Copy message", "Copy code" and "Copy summary" (the visible label of each is "Copy"; 4.15.7), "Stop", "Dismiss", "Close"; row menus "More actions for `<title>`". The pinned icon in a row has the text alternative "Pinned". A badge is read as "`<n>` sessions". Decorative icons are `aria-hidden`.
 3. States. `aria-current="page"` on the active library item and the selected row; `aria-pressed` on Pin; `aria-busy` on running buttons; `aria-expanded` and `aria-haspopup` on menu buttons; `aria-invalid` and `aria-describedby` on invalid fields.
-4. Announcements. One polite live region for "Copied", "Summary updated.", import results and "Claude replied."; `role="alert"` for errors. The growing reply is not a live region.
+4. Announcements. One polite live region for "Copied", "Summary updated.", import results and "Claude replied."; `role="alert"` for errors. The growing reply is not a live region. Section 4.15 adds "API key saved.", "API key removed." and "Model set to `<name or id>`." to the polite region; the status bar of 4.15.8 is a polite region of its own.
 5. Focus. A visible ring on `:focus-visible` from the tokens; outlines are never removed; the order of section 4.8.2; dialogs trap focus and restore it.
 6. Contrast. Use the tokens as paired in section 4.2. Do not dim text with opacity, except in disabled controls.
 7. Not colour alone. Chips carry the provider name; status icons differ in shape and come with text; destructive items say "Delete".
@@ -2056,6 +2127,7 @@ Target: WCAG 2.2 level AA.
 16. Loading. Skeletons are `aria-hidden`; the pane has `aria-busy="true"` and a visually hidden "Loading".
 17. High contrast. The transparent borders of section 4.2 keep shapes visible under `forced-colors`.
 18. Page titles. `document.title` names the screen: "`<session title>` - SessionVault", "All Sessions - SessionVault" and so on.
+19. The screens of section 4.15 carry their own accessibility notes. They add to this list and relax none of it.
 
 ### 4.10 Empty, first-run, loading and error states
 
@@ -2072,7 +2144,7 @@ List pane:
 | More rows loading | a spinner row at the end | | | |
 | Loading failed | `triangle-alert` | "Couldn't Load Sessions" | "Check your connection and try again." | "Try Again" |
 
-If capture.md's server capture is not built, the first description reads "Save AI conversations two ways: share or paste a conversation, or import .md / .json / .txt transcript files."
+Before phase 3, or while no provider is switched on for server capture (4.15.10), the first description reads "Save AI conversations two ways: share or paste a conversation, or import .md / .json / .txt transcript files."
 
 Detail pane:
 
@@ -2084,18 +2156,21 @@ Detail pane:
 | The session does not exist | `triangle-alert` | "Session Not Found" | "It may have been deleted on another device." | "All Sessions" |
 | Loading failed | `triangle-alert` | "Couldn't Load This Session" | "Check your connection and try again." | "Try Again" |
 | A save failed | error banner | | "Couldn't save your changes." | "Try Again" |
+| The transcript is not on this device and there is no connection (4.15.8) | `cloud-off` | "Transcript Not on This Device" | "Connect to the internet to load it." | none |
 
-First run (first sign-in, empty vault): the list shows "Your Vault Is Empty" with "Import"; the library shows its three fixed rows without badges, "New Project…", the four providers and no Tags section; the detail pane shows "No Session Selected". There is no tour and no sample data. The install row is not shown yet (4.11.2).
+First run (first sign-in, empty vault): the list shows "Your Vault Is Empty" with "Import"; the library shows its three fixed rows without badges, "New Project…", the four providers and no Tags section; the detail pane shows "No Session Selected". There is no tour and no sample data. The install row is not shown yet (4.11.2). No screen asks for an API key at first run: the key is asked for when Claude is first used (4.15.5).
 
 Other rules:
 
-- Signed out in the middle of work: any request answered as "not signed in" leads to the sign-in screen with the note of 4.11.1; afterwards the user returns to the same URL and unsaved field text is retried.
-- Stale data: refresh the list, the counts and the open session when the window becomes visible again, when the connection returns and after every change (web-platform.md 7.3). Do not move the scroll position or the focus. If the open session was deleted elsewhere, show "Session Not Found".
+- Signed out in the middle of work: any request answered as "not signed in" leads to the sign-in screen in its "session ended" state (4.15.2), which also says how many changes wait on the device; afterwards the user returns to the same URL and the waiting changes are sent. If another user signs in on the device, everything of the first user is deleted from it first (sync.md 2.6).
+- Stale data: with the offline copy a sync run starts when the app starts, when the connection returns, when the window becomes visible, after every change and every 60 seconds (sync.md 2.5); the list, the counts and the open session follow its result. Without the copy, refresh them at the same moments (web-platform.md 7.3). Do not move the scroll position or the focus. If the open session was deleted elsewhere, show "Session Not Found".
 - Deleting the selected session shows "No Session Selected" (expanded) or goes back to the list (compact).
 
 ### 4.11 Web-only additions
 
 #### 4.11.1 Sign-in screen
+
+> **Superseded (2026-11-20)** by section 4.15.2 (sign-in and sign-out for many users) and 4.15.3 (invitation entry). The first paragraph and the table below describe the sign-in for one owner that this document first assumed: one passphrase and no registration. Do not build from them. Two things stand: the strings "That didn't work. Check your details and try again.", "Too many attempts. Wait a few minutes and try again.", "Can't reach the server. Check your connection." and "Your session ended. Sign in again to continue.", which 4.15.2 reuses; and the paragraph on the icon placeholder.
 
 Wireframe 4.5.1. web-platform.md 11.1 recommends a sign-in built into the app: one passphrase, optionally a one-time code, no registration and no set-up page. Content: the app icon, "SessionVault", "Your AI sessions, in one vault.", the field "Passphrase" (`type="password"`, `autocomplete="current-password"`), the field "Code" only when the server requires it (`inputmode="numeric"`, `autocomplete="one-time-code"`), a large full-width primary button "Sign In", and one line for a message.
 
@@ -2113,7 +2188,7 @@ After success go to the URL the user came from, else to the session list.
 
 The repository has no icon artwork (section 1.12). Until the owner supplies one, use a placeholder: a rounded square in `--color-accent-fill` with the `inbox` glyph in white, at the sizes the manifest of web-platform.md 4.3 names. Manifest colours: `background_color` `#FFFFFF`; `theme_color` `#FFFFFF`, with the dark value `#121214` in a second `<meta name="theme-color">` tag.
 
-If instead the vault is stored only in the browser, this screen does not exist.
+Not chosen: if the vault were stored only in the browser, this screen would not exist.
 
 #### 4.11.2 Install prompt
 
@@ -2126,7 +2201,7 @@ Only Chromium browsers (Chrome, Edge, Samsung Internet) fire `beforeinstallpromp
 
 #### 4.11.3 Share-target landing
 
-An installed app can receive links, text and files from the system share sheet: Chrome for Android 76, desktop Chrome and Edge 89 on Windows and ChromeOS, Samsung Internet 12; not Safari, not Firefox (web-platform.md 5.1). The Apple README names an iOS share extension as an idea for later (apple/README.md:33); this is the web counterpart. The service worker stores the share and redirects to the Import screen; web-platform.md 5.3 and capture.md 8.2 define that mechanism and the rule that decides whether a share is files, a link or text.
+An installed app can receive links, text and files from the system share sheet: Chrome for Android 76, desktop Chrome and Edge 89 on Windows and ChromeOS, Samsung Internet 12; not Safari, not Firefox (web-platform.md 5.1). The Apple README names an iOS share extension as an idea for later (apple/README.md:35); this is the web counterpart. The service worker stores the share and redirects to the Import screen; web-platform.md 5.3 and capture.md 8.2 define that mechanism and the rule that decides whether a share is files, a link or text.
 
 The landing is the Import screen with a first block "Shared to SessionVault" (wireframes 4.5.11):
 
@@ -2138,22 +2213,26 @@ The landing is the Import screen with a first block "Shared to SessionVault" (wi
 | nothing usable | Status "The share did not contain a link, text or files." |
 
 - Several shares waiting: show the oldest first with "1 of `<n>`" beside the block title; after "Import" or "Discard" show the next.
-- Not signed in: the share waits in the browser (the other documents keep it in IndexedDB) and the block appears after sign-in.
-- Offline: the block stays, its buttons are disabled with "You're offline.", and the share is kept until it can be imported.
+- Not signed in: the share waits in the browser, in the database `sessionvault-inbox` (sync.md 8), and the block appears after sign-in. Signing out deletes waiting shares together with the offline copy (sync.md 2.6).
+- Offline: shared text and shared files can be imported at once; the session is saved on the device and marked "Not sent yet" (4.15.8). For a shared link, "Open Link" stays and "Capture Transcript" is disabled with "You're offline." (Superseded on 2026-11-20: "its buttons are disabled" for every kind of share.)
 - Errors the redirect can carry: too large "The shared files are too large to import this way."; not ready "Open SessionVault once so that it can receive shares, then share again."; other "The shared content could not be read. Try sharing again."
 - After success the status line offers "Open"; "Done" goes to the session list.
 
 #### 4.11.4 Offline indicator and update notice
 
+> **Superseded (2026-11-20)** by section 4.15.8, except for the paragraph on the update notice, which stands. The first two paragraphs below describe a first version that was read-only without a connection. The decided product keeps an offline copy on each device and queues the changes made offline (sync.md), so edits, imports and deletions work offline. The bar keeps its place and look; its text and the list of what is disabled are in 4.15.8.
+
 A bar under the top bar (compact) or across the top of the window (wireframe 4.5.12): icon `cloud-off`, text "You're offline. Showing what was loaded before; changes can't be saved until you're back online.", caption role on `--color-fill-neutral`, `role="status"`, not dismissible. It is shown while `navigator.onLine` is false or the last request failed for lack of a connection, and it disappears when a request succeeds again; then data is refreshed.
 
 The first version is read-only while offline (web-platform.md 7.3). What can be read is what is in memory, plus the optional offline copy of section 4.11.5. Controls that need the server are disabled and explain why in their tooltip and accessible description ("You're offline."): capture, saving an import, Continue with Claude, Summarize, every edit, delete, New Project, Export. Copy Context Pack, Download Context Pack and the Copy buttons of code blocks keep working for a loaded session.
 
-Update notice: when a new version of the app is ready, a toast "A new version is available." with "Reload" (web-platform.md 7.3). It is not shown while a reply is streaming or a capture is running, and it never reloads by itself.
+Update notice: when a new version of the app is ready, a toast "A new version is available." with "Reload" (web-platform.md 7.3). It is not shown while a reply is streaming or a capture is running, and it never reloads by itself. The reload also waits for a push of queued changes that is in flight (sync.md 9, rule 6).
 
-If instead the vault is stored only in the browser: only capture, Continue and Summarize are disabled while offline.
+Not chosen: if the vault were stored only in the browser, only capture, Continue and Summarize would be disabled while offline.
 
 #### 4.11.5 Settings
+
+> **Superseded (2026-11-20)** by sections 4.15.4 (settings, account, export, account deletion), 4.15.5 (the user's API key), 4.15.6 (models) and 4.15.8 (the offline copy). The table below describes the first design: a key held by the server and only reported on, a model choice kept on the device, an offline copy that is off by default, an export behind a passphrase check, and no account deletion. Do not build from it. Its Install row still points to 4.11.2.
 
 Wireframe 4.5.10. Reached from the "Settings" item at the bottom of the library. Sections:
 
@@ -2166,7 +2245,7 @@ Wireframe 4.5.10. Reached from the "Settings" item at the bottom of the library.
 | About | "SessionVault for the web", the version and commit, a "Source code" link to the repository, and one sentence on privacy to be confirmed against web-platform.md and claude-api.md: "Your sessions are stored in this app's own database. Their text is sent to Anthropic only when you use Continue with Claude or Summarize." |
 | Account | The signed-in browsers as web-platform.md 11.2 proposes: one line each with the device label and "active now" or the relative time last seen, the current one marked "This device"; "Sign Out Everywhere"; "Sign Out". Both sign out at once and show the sign-in screen. |
 
-If instead the key is kept in the browser: the Claude section has the key field of section 1.7.1 with "Save Key", "Replace" and "Remove". If instead the vault is stored only in the browser: the Offline and Account sections do not exist, and Export also shows the date of the last export and the sentence "This browser holds the only copy of your vault. Clearing site data deletes it."
+Not chosen (`../HANDOFF.md` section 2). If instead the key is kept in the browser: the Claude section has the key field of section 1.7.1 with "Save Key", "Replace" and "Remove". If instead the vault is stored only in the browser: the Offline and Account sections do not exist, and Export also shows the date of the last export and the sentence "This browser holds the only copy of your vault. Clearing site data deletes it."
 
 ### 4.12 Icon mapping
 
@@ -2193,8 +2272,8 @@ Sizes: 12 px in chips, 16 px in rows and buttons with text, 20 px in toolbars, 4
 | `text.bubble` | No Transcript (SessionDetailView.swift:37) | `message-square-text` |
 | `doc.richtext` | View Original (SessionDetailView.swift:56) | `file-text` |
 | `text.badge.checkmark` | Summarize (SessionDetailView.swift:70) | `list-check` |
-| `doc.on.doc` | Copy Context Pack, Copy (SessionDetailView.swift:85; MessageView.swift:141) | `copy` |
-| `checkmark` | Copied (SessionDetailView.swift:85; MessageView.swift:141) | `check` |
+| `doc.on.doc` | Copy Context Pack, Copy (SessionDetailView.swift:85; MessageView.swift:34, :174) | `copy` |
+| `checkmark` | Copied (SessionDetailView.swift:85; MessageView.swift:34, :174) | `check` |
 | `square.and.arrow.up` | Share Context Pack, Share PDF (SessionDetailView.swift:88; PDFViewer.swift:62) | `share` |
 | `link` | source link (SessionDetailView.swift:201) | `link` |
 | `safari` | From Link, Open and Capture (ImportSheet.swift:48, :64) | `compass` |
@@ -2204,7 +2283,7 @@ Sizes: 12 px in chips, 16 px in rows and buttons with text, 20 px in toolbars, 4
 | `checkmark.circle.fill` | success status (ImportSheet.swift:105; LinkCaptureView.swift:82) | `circle-check` (`check-circle-2`) |
 | `exclamationmark.triangle.fill` | failure status, error banner (ImportSheet.swift:106; ContinueChatView.swift:181) | `triangle-alert` (`alert-triangle`) |
 | `globe` | capture status while browsing (LinkCaptureView.swift:85); not needed on the web | `globe` |
-| `lock.shield.fill` | Connect to Claude (ContinueChatView.swift:67); only if the key is kept in the browser | `key-round` |
+| `lock.shield.fill` | Connect to Claude (ContinueChatView.swift:67); on the web the "Connect to Claude" block and the key screen (4.15.5) | `key-round` |
 | `xmark.circle.fill` | dismiss the error banner (ContinueChatView.swift:189) | `x` |
 | `arrow.up.circle.fill` | send (ContinueChatView.swift:229) | `arrow-up` in white on a round `--color-accent-fill` button |
 
@@ -2232,6 +2311,8 @@ Symbols the system adds on Apple platforms, and icons for the web-only parts:
 | file row | `file` |
 | spinner | `loader-circle` (`loader-2`) with a rotation, or a CSS spinner |
 
+Icons for the parts added on 2026-11-20 are listed in 4.15.11.
+
 ### 4.13 Strings changed or added for the web
 
 Every string of part 1 is used unchanged unless it appears here. Strings that another handoff document fixes (the outcome and error messages of claude-api.md C7 and C8) are not repeated.
@@ -2245,17 +2326,17 @@ Changed:
 | New Project message | "Group sessions by what you're working on." | B3 |
 | "https://claude.ai/code/session_…" | "https://claude.ai/share/…" | B4 |
 | "Open & Capture Transcript…" | "Capture Transcript" (only where server capture exists), and always "Open Link" with "Or open the link, copy the whole conversation and paste it below. The link is saved with it." | C1 |
-| "Public share links (claude.ai/share/…) capture with no login — that's the recommended flow. Press Capture Transcript once the conversation is visible, and it's saved as a formatted User/Assistant transcript." | With server capture: "Public share links (claude.ai/share/…) capture with no login — that's the recommended flow." Without it: "A web page can't open another site for you. Open the link yourself, copy the conversation and paste it below." | C1 |
+| "Public share links (claude.ai/share/…) capture with no login — that's the recommended flow. Press Capture Transcript once the conversation is visible, and it's saved as a formatted User/Assistant transcript." | With at least one provider switched on for server capture: "Public share links from `<the providers that are switched on>` capture with no login. For anything else, open the link, copy the conversation and paste it below." (4.15.10; it supersedes the sentence that named claude.ai/share only). With none: "A web page can't open another site for you. Open the link yourself, copy the conversation and paste it below." | C1 |
 | "That looks like a sign-in or landing page — log in below (or wait for the conversation to appear), then press Capture again." | the `sign_in_required` and `sign_in_suspected` texts of section 4.6.6 | C1 |
 | "Tip: you can also drag transcript files onto the main window." | "Tip: you can also drag transcript files onto the window." (fine pointer only) | C10 |
 | "No need to pick first — the provider is detected automatically from links and transcript content. This picker only labels pastes that can't be identified." | "The provider is detected from the transcript when possible. This picker only labels pastes that can't be identified." | B5 |
 | "That's a link — opening it in the capture browser." | "That's a link — it's now in the From Link field." | C1 |
-| "Add your Anthropic API key first — open Continue with Claude to set it up." | the `not_configured` message of claude-api.md C8 | C2 |
+| "Add your Anthropic API key first — open Continue with Claude to set it up." | the `not_configured` message of claude-api.md C8, in a dialog with the button "Add API Key" (4.6.7, 4.15.5) | C2 |
 | "Claude declined this request (safety classifiers)." and "Claude returned no summary — it may have declined the request." | the outcome texts of claude-api.md C7 | claude-api.md |
 | live reply label "Claude" | "Assistant" | B6 |
 | "Share PDF" | not used; the browser's PDF viewer shares | C9 |
 | "Model (e.g. claude-fable-5-1)", "Tags (comma separated)", "Summary — what makes this session important?" | labels "Model", "Tags", "Summary" with the placeholders "e.g. claude-fable-5-1", "comma separated", "What makes this session important?" | B13 |
-| "Connect to Claude" screen (section 1.7.1) | not used | C2 |
+| "Connect to Claude" screen (section 1.7.1) | The title "Connect to Claude" is kept for the block in the chat. The key itself is entered on the key screen (4.15.5), which keeps "Save Key" and the placeholder "sk-ant-…". "The key is stored in your Keychain and sent only to api.anthropic.com." becomes "The key is stored encrypted on this app's server, used only for your own requests and never shown again. The operator of this service can technically access what is stored." "Create a key at console.anthropic.com." becomes the advice of 4.15.5. | C2 |
 | capture browser status texts (section 1.6) | the stage texts of section 4.6.6 | C1 |
 
 Added. Most new strings are quoted where they are used (sections 4.6.3 to 4.6.9, 4.8.4, 4.10 and 4.11). The ones that appear nowhere else:
@@ -2267,10 +2348,12 @@ Added. Most new strings are quoted where they are used (sections 4.6.3 to 4.6.9,
 | drop overlay | "Drop Files to Import", ".md, .json or .txt transcripts" |
 | delete session | "Delete Session?", "“`<title>`” and its transcript will be removed from the vault. This can't be undone.", "Cancel", "Delete" |
 | delete project | "Delete Project?", "“`<name>`” will be removed. Its `<n>` session(s) stay in the vault with no project.", "Cancel", "Delete" |
-| Claude, first use | title "Send This Session to Claude?"; text "Continue with Claude and Summarize send the whole stored transcript of the session, including sessions that came from other providers, to Anthropic through your server."; "Cancel", "Continue" |
-| export | "Confirm Your Passphrase", "Enter your passphrase to export the vault.", "Cancel", "Continue" |
+| Claude, first use | title "Send This Session to Claude?"; text "Continue with Claude and Summarize send the whole stored transcript of the session, including sessions that came from other providers, to Anthropic through this app's server, with your own API key."; "Cancel", "Continue" |
+| export, account deletion | "Confirm It's You", "Sign in again to continue.", "Cancel" (4.15.4). Superseded on 2026-11-20: "Confirm Your Passphrase", "Enter your passphrase to export the vault." |
 
 The curly quotes around `<title>` and `<name>` in the two delete messages are U+201C and U+201D.
+
+The strings added on 2026-11-20 are quoted in section 4.15, each in the table of its screen, and are not repeated here.
 
 ### 4.14 Acceptance checklist
 
@@ -2287,8 +2370,1251 @@ The curly quotes around `<title>` and `<name>` in the two delete messages are U+
 11. A double press on Capture, Import, Save Anyway or Send starts one request.
 12. Dropping a file anywhere never navigates away from the app.
 13. Typing tags and leaving the field saves them; typing a title and closing the tab at once does not lose it.
-14. Offline: the bar appears, loaded sessions stay readable, server actions are disabled with an explanation.
+14. Offline: the bar appears; lists, transcripts that are on the device, copying, imports and edits work; what was done offline is marked as waiting and arrives on a second device after reconnecting; Claude, link capture, export and the key screen are disabled with an explanation (4.15.8).
 15. On a phone the chat composer stays visible above the on-screen keyboard, and focusing a field does not zoom the page.
+16. Two users on one server: nothing of one is ever visible to the other, in any list, count, search, notice or error text; a session id of the other user opens "Session Not Found"; signing in as a second user on the same device shows nothing of the first at any moment.
+17. Sign-up needs an invitation. A refused invitation code and a failed sign-in each have one text, which does not tell whether a code or an address exists.
+18. Every stored message has a Copy button at 320 px, 768 px and 1280 px. It puts exactly the stored text on the clipboard, also for a message of 1,000,000 characters and without a connection, and it can be reached and used with the keyboard alone. The button of a code block copies only its code.
+19. A saved API key is never shown: no response, element of the page, storage area, address or log line of a test run contains the test key. The key screen shows whether a key is saved, its last four characters and its status; Check Again, Replace Key and Remove Key work; a key cannot be entered or changed without a connection.
+20. The model chooser offers the registry models and the user's own, and accepts any other model id. An id that the user's key cannot use is refused when it is added, with the `model_unavailable` message; a request that fails with that code leaves the typed text in the composer.
+21. The chat offers no preset question, suggestion or template, and no button sends text that the user did not type. Summarize runs only when it is pressed.
+22. A change made offline raises the count of waiting changes; a session created offline shows "Not sent yet"; a create that the server refused shows "Not saved" with "Try Again".
+23. Each case of sync.md section 7 that tells the user something produces its notice of 4.15.8, and none is raised for a deletion the device asked for itself.
+24. A capture with dropped turns is not saved before the review. A restored turn is in the saved session; a turn that was left out is not.
+25. A provider that is switched off for server capture shows the "not enabled" line and no capture button. A running capture shows its stage and can be cancelled.
+26. Deleting the account asks for the typed word, removes the copy on the device and ends on the sign-in screen. Signing out with unsent changes asks first.
+27. A code in `/invite#code=...` or `/recover#code=...` never appears in a request URL, and the fragment is gone from the address after the page has loaded.
+
+### 4.15 Screens and rules added for the decided product
+
+Added on 2026-11-20 for `../HANDOFF.md` sections 1 to 3: accounts with a private vault each, sign-up by invitation, each user's own Anthropic API key kept on the server, an offline copy on each device, free-form questions to a model of the user's choosing, and a copy action on every message. Every screen below has its states, its exact strings, a phone and a desktop wireframe, and its accessibility notes. Legend, tokens, components and layout rules are those of 4.2 to 4.6; nothing is restyled. Where this section and an earlier one differ, this section wins.
+
+The routes, codes and fixed messages quoted here are those of data-model.md, sync.md, claude-api.md, web-platform.md and capture.md as revised on 2026-11-20. Where one of them words a message, its wording wins; this section quotes such a message only to show what the user sees.
+
+#### 4.15.1 Rules that hold on every screen
+
+What this section replaces:
+
+| Earlier text | Now |
+|---|---|
+| 4.5.1 and 4.11.1: sign-in for one owner with a passphrase | 4.15.2, 4.15.3 |
+| 4.5.10 and 4.11.5: settings; the key as a server secret; "Confirm Your Passphrase" | 4.15.4, 4.15.5, 4.15.6 |
+| 4.6.7: ModelSelect; the "Claude Isn't Set Up" block; the "Continue" button after a cut-off reply | 4.15.6; the "Connect to Claude" block (4.6.7, 4.15.5); no such button |
+| 4.5.12 and 4.11.4: offline bar, "read-only while offline" | 4.15.8 |
+| 4.6.6: dropped turns as a note after saving | 4.15.9 |
+| 4.6.6: server capture, in part | 4.15.10 adds states; the rest of 4.6.6 stands |
+
+Rules:
+
+1. One user at a time in one browser profile. Every screen shows the signed-in user's vault and nothing else. The server answers a record of another user exactly like one that does not exist (data-model.md 7.12, rule I4), so the interface has one state for both, "Session Not Found" (4.10). No list, count, search result, suggestion or message depends on, names or hints at another user.
+2. A page that finds that the signed-in user is no longer the one it was loaded for (the `user_id` that `GET /api/auth/session` returns has changed; sync.md 2.6, rule 4) clears the screen at once and starts again. Nothing of one user is ever drawn under another user's session.
+3. Secrets are write-only. An API key or a password is typed and sent once. It is never displayed again, never stored in the browser, never queued and never logged (4.15.5).
+4. Nothing private goes into a path or a query string: an invitation or recovery code travels in the fragment or in a request body, an API key and a password only in a request body, and paths carry opaque ids (4.4; web-platform.md 13.4, convention 6).
+5. A control that cannot work in the present state is disabled, stays focusable (`aria-disabled="true"`), and gives the reason in its tooltip and accessible description. Without a connection the reason is "You're offline." unless a longer sentence is given.
+6. Sign-in is built into the app with a maintained library; while no mail provider is configured, with an e-mail address and a password (web-platform.md 11.9). If the owner later chooses another method (its section 17, decision 1), only the method block of 4.15.2 and step 2 of 4.15.3 change.
+7. Strings follow principle 4 of 4.1: the Apple strings where the feature is the same, Title Case for titles and buttons. The ellipsis in a string is U+2026 and the quotation marks around a title are U+201C and U+201D, as in 4.13.
+
+Answers that can arrive on any screen (web-platform.md 13.4; data-model.md 7.7 and 7.10; sync.md 4.2 and 6.6):
+
+| Code | Text or effect |
+|---|---|
+| `not_signed_in` (401) | No message. The sign-in screen in its "session ended" state (4.15.2); what the user typed and the queue of changes are kept. |
+| `account_suspended` (403) | The status bar of 4.15.8: "Your account is suspended. You can read and export your sessions, but not add or change anything." Controls that add or change are disabled with "Your account is suspended." |
+| `reauth_required` (403) | The dialog "Confirm It's You" of 4.15.4; then the request is sent again. |
+| `quota_exceeded` (413, or the code of one pushed change) | By the limit the answer names (data-model.md 7.10): "Your vault has reached its storage limit.", "Your vault has reached its limit of `<n>` sessions." or "You've reached the limit of `<n>` projects."; when it names none, "Your vault is full." Each is followed by "Delete or export what you no longer need, then try again." |
+| `read_only` (503) | The status bar of 4.15.8: "The vault is read-only for maintenance. Changes are kept on this device and sent later." |
+| `rate_limited` (429) | "Too many requests. Wait a moment and try again." On the sign-in screens the text of their "throttled" state. |
+| `resync_required` (409) | No message. The copy is filled again (sync.md 4.8) and the sync row shows "Setting up the offline copy…". |
+| `not_found` (404) | "Session Not Found" (4.10). |
+| `internal` (500) | "Something went wrong on the server. Try again.", with the request id in a "Details" line. |
+
+#### 4.15.2 Sign-in and sign-out
+
+Route `/sign-in`. Replaces 4.11.1 and wireframe 4.5.1; the card, its width and the icon rule of 4.11.1 stand. web-platform.md 11.9 to 11.11 define accounts, invitations and mail; its 11.2 defines the session.
+
+Frame, top to bottom: the app icon; "SessionVault" as the `<h1>`; "Your AI sessions, in one vault."; a note line (only in the states that have one); the method block; a message line; the links. The links "Terms" and "Privacy" appear at the foot of the sign-in and sign-up screens and in Settings once the owner has supplied those texts, and not before: never placeholder legal text (`../HANDOFF.md` phase 6; web-platform.md 11.14, G14).
+
+Method block. web-platform.md 11.9 cites the blocks by these names:
+
+| Method | Step 1 | Step 2 |
+|---|---|---|
+| Password or passkey through a maintained library. The default to build for as long as no mail provider is configured (web-platform.md 11.9, option 1). | Fields "Email" (`type="email"`, `autocomplete="username"`, `inputmode="email"`, `autocapitalize="off"`, `spellcheck="false"`) and "Password" (`type="password"`, `autocomplete="current-password"`); primary button "Sign In" (`POST /api/auth/login`). Under it, while no mail is configured, the line "Forgot your password? Ask the person who invited you for a recovery code."; with mail configured, the link "Forgot Password?" in its place (the reset screens of web-platform.md 11.11 use this frame and are not specified yet). Where passkeys are offered, a secondary button "Sign In with a Passkey". | Only for an account with a second factor (web-platform.md 11.14, G6): field "Code" (`inputmode="numeric"`, `autocomplete="one-time-code"`), button "Sign In". |
+| E-mail with a typed code. The owner's choice once mail exists (web-platform.md 11.9, option 3). | Field "Email", primary button "Continue". | Heading "Check Your Email"; text "If `<address>` can sign in, a code is on its way."; field "Code"; primary button "Sign In"; plain buttons "Send a New Code" and "Use a Different Email". The code is typed, not followed as a link: an app installed on an iPhone or iPad does not receive links (web-platform.md 4.1). |
+| Hosted provider. The owner's alternative (web-platform.md section 17, decision 1). | One primary button "Sign In" that goes to the provider's own page. The app draws no credential field. | On return: "Signing you in…" with a spinner. |
+
+Under the block, in every form: the link "Have an Invitation Code?" to `/invite` (4.15.3).
+
+States:
+
+| State | What is shown |
+|---|---|
+| idle | The method block. The first field has focus. |
+| submitting | The primary button is busy and cannot be pressed again (B25). |
+| failed (`invalid_credentials`) | "That didn't work. Check your details and try again." in `--color-danger`, `role="alert"`. The same text for an unknown address and for a wrong password. |
+| code refused (a typed code, a second factor) | "That code didn't work. Check it, or send a new one." |
+| new code sent (a typed code) | "A new code is on its way." "Send a New Code" is disabled for 30 seconds after each send. |
+| throttled (`rate_limited`) | "Too many attempts. Wait a few minutes and try again." |
+| unreachable | "Can't reach the server. Check your connection." |
+| offline | The form is disabled: "You're offline. Connect to sign in." |
+| session ended | Note line: "Your session ended. Sign in again to continue." When changes wait on the device (sync.md 2.6, rule 3), a second line: "`<n>` change made on this device is waiting to be sent." or "`<n>` changes made on this device are waiting to be sent.", and the plain button "Discard Them", which asks first (below). |
+| password changed | Note line, after a recovery or a reset: "Your password was changed. Sign in with the new one." |
+| account deleted | Note line, once, on the device that asked for the deletion: "Your account and its data were deleted." |
+
+After a successful sign-in:
+
+1. Ask the server who is signed in: `GET /api/auth/session` returns `user_id` (web-platform.md 11.2; sync.md 2.6, rule 4).
+2. The same user as the copy on this device: go to the address the user came from, else to the session list. The waiting changes are sent.
+3. Another user: show only a spinner and "Preparing your vault…" until everything of the previous user, the waiting changes included, is deleted from the device.
+4. A first sign-in on a device starts the first sync (4.15.8). There is no tour and no sample data (4.10), and no screen asks for an API key before Claude is used.
+
+Sign-out, from the Account section of 4.15.4:
+
+| Step | What happens (sync.md 2.6, rule 2) | What is shown |
+|---|---|---|
+| 1 | "Sign Out" is pressed. With a connection the waiting changes are sent first. | The button is busy: "Signing Out…" |
+| 2 | Changes remain that could not be sent. | Dialog "Sign Out and Lose Changes?": "`<n>` change(s) made on this device have not been sent. Signing out deletes them.", "Cancel", "Sign Out Anyway" (destructive). Focus starts on "Cancel". |
+| 3 | The sign-in session is ended on the server. The offline copy, the share inbox, the model remembered on this device (4.15.6) and the first-use acceptance of 4.6.7 are deleted. | The sign-in screen, idle, without a note. |
+| 4 | Without a connection: the local data is deleted now, and the session is ended with the first request that gets through. | The same. |
+
+"Sign Out Everywhere" ends the user's other sign-in sessions (`DELETE /api/auth/sessions`) and then signs this browser out as above; each other device shows "session ended" the next time it reaches the server.
+
+"Discard Them" opens the dialog "Discard Unsent Changes?": "`<n>` change(s) made on this device were never sent. Discarding deletes them for good.", "Cancel", "Discard" (destructive).
+
+Recovery, only while no mail is configured (web-platform.md 11.10, rule 8). Route `/recover`; the owner gives the person a link `/recover#code=<code>`. The frame, with the fields "Recovery Code" (filled from the fragment, which is then removed from the address), "Email" and "New Password" (`autocomplete="new-password"`, help "At least 12 characters."), and the button "Set New Password" (`POST /api/auth/recover`):
+
+| Answer | What is shown |
+|---|---|
+| accepted | Every session of that user is ended. The sign-in screen in its "password changed" state. |
+| refused | "That recovery code isn't valid for this address or has already been used." One text for every reason. |
+| `validation` | Under the field: "Use at least 12 characters." |
+| throttled, unreachable, offline | As on the sign-in screen. |
+
+Phone: sign-in with the default block, in the "session ended" state after a failed attempt; and the recovery screen:
+
+```
++----------------------------------------+   +----------------------------------------+
+|                                        |   |                                        |
+|               [app icon]               |   |               [app icon]               |
+|              SessionVault              |   |              SessionVault              |
+|    Your AI sessions, in one vault.     |   |    Your AI sessions, in one vault.     |
+|                                        |   |                                        |
+|  Your session ended. Sign in again to  |   |  Recovery Code                         |
+|  continue.                             |   |  [EXAMPLE-0000-0000                 ]  |
+|  3 changes made on this device are     |   |  Email                                 |
+|  waiting to be sent.  [Discard Them]   |   |  [sam@example.com                   ]  |
+|                                        |   |  New Password                          |
+|  Email                                 |   |  [..............                    ]  |
+|  [sam@example.com                   ]  |   |  At least 12 characters.               |
+|  Password                              |   |  [         Set New Password         ]  |
+|  [..............                    ]  |   |                                        |
+|  [              Sign In             ]  |   |  (!) That recovery code isn't valid    |
+|                                        |   |      for this address or has already   |
+|  (!) That didn't work. Check your      |   |      been used.                        |
+|      details and try again.            |   |                                        |
+|                                        |   |                                        |
+|  Forgot your password? Ask the person  |   |                                        |
+|  who invited you for a recovery code.  |   |                                        |
+|        Have an Invitation Code?        |   |                                        |
+|            Terms . Privacy             |   |            Terms . Privacy             |
++----------------------------------------+   +----------------------------------------+
+```
+
+Desktop: the same block as a card 360 px wide, centred on `--color-bg-sidebar` (as 4.5.1):
+
+```
++--------------------------------------------------------------------------------------------+
+|                                                                                            |
+|                          +--------------------------------------+                          |
+|                          |              [app icon]              |                          |
+|                          |             SessionVault             |                          |
+|                          |   Your AI sessions, in one vault.    |                          |
+|                          |                                      |                          |
+|                          |  Email                               |                          |
+|                          |  [sam@example.com                 ]  |                          |
+|                          |  Password                            |                          |
+|                          |  [..............                  ]  |                          |
+|                          |  [            Sign In             ]  |                          |
+|                          |                                      |                          |
+|                          |  (!) message line, when there is one |                          |
+|                          |                                      |                          |
+|                          |  Forgot your password? Ask the       |                          |
+|                          |  person who invited you for a        |                          |
+|                          |  recovery code.                      |                          |
+|                          |       Have an Invitation Code?       |                          |
+|                          |           Terms . Privacy            |                          |
+|                          +--------------------------------------+                          |
+|                                                                                            |
++--------------------------------------------------------------------------------------------+
+```
+
+The two dialogs (both widths):
+
+```
++------------------------------------+   +------------------------------------+
+| Sign Out and Lose Changes?         |   | Discard Unsent Changes?            |
+| 3 changes made on this device have |   | 3 changes made on this device were |
+| not been sent. Signing out deletes |   | never sent. Discarding deletes     |
+| them.                              |   | them for good.                     |
+|     [ Cancel ] [ Sign Out Anyway ] |   |             [ Cancel ] [ Discard ] |
++------------------------------------+   +------------------------------------+
+```
+
+Accessibility:
+
+- One `<main>`; `document.title` is "Sign In - SessionVault" ("Reset Password - SessionVault" on `/recover`). Every field has a visible label. The message line is `role="alert"`; the note line is ordinary text above the form, read in order.
+- Password managers must work: real `<form>` elements, the `autocomplete` values given above, no blocking of paste.
+- Step 2 of a method moves focus to its "Code" field. A code field is one field that accepts paste and autofill, never one box per digit. "Send a New Code" stays focusable while it is disabled.
+- The busy state sets `aria-busy`; nothing is announced twice.
+- The card works at 320 px and at 200 % zoom; nothing is fixed in height.
+
+#### 4.15.3 Invitation entry
+
+Route `/invite` (web-platform.md 11.10): creating an account takes an invitation code while `SIGNUP_MODE` is `invite`. `closed` refuses every sign-up. The owner sets `open` only when the list of web-platform.md 11.14 holds; then step 1 is skipped.
+
+Step 1, the code. The frame of 4.15.2; the text "SessionVault is invitation-only for now. Enter your invitation code to create an account."; the field "Invitation Code" (`autocomplete="off"`, `autocapitalize="off"`, `autocorrect="off"`, `spellcheck="false"`); the primary button "Continue" (`POST /api/auth/invitation/check`, which only says whether the code is valid and uses nothing up); the link "Already Have an Account? Sign In".
+
+Step 2, the account. The note "Invitation accepted. Create your account."; then, for the default method of 4.15.2, the fields "Email" (as there) and "Password" (`type="password"`, `autocomplete="new-password"`, help "At least 12 characters.") and the primary button "Create Account" (`POST /api/auth/signup` with the address, the password and the code). While no mail is configured, one more line in caption, secondary: "There is no password reset by mail yet. If you forget your password, the person who invited you can give you a recovery code." With another method of 4.15.2, its first step takes the place of the two fields.
+
+A code that arrives in a link is in the fragment: `/invite#code=<code>`. The page reads it, fills the field and removes the fragment from the address with `history.replaceState`. Between the two steps the page keeps the code in memory and nowhere else, so a reload in step 2 leads back to step 1. A code is never put into a path or a query string, because the hosting platform records those, and it is never stored in the browser (web-platform.md 11.10, rules 5 and 6).
+
+| State | What is shown |
+|---|---|
+| idle | Step 1. The field has focus; it is filled from the fragment when there is one. |
+| checking, submitting | The button is busy. |
+| accepted | Step 2. |
+| `invitation_invalid`, in either step | "That invitation code isn't valid or has already been used.", `role="alert"`. One text for an unknown, a used and an expired code; it says nothing about any address. From step 2 it leads back to step 1. |
+| `email_taken` | "That address already has an account. Sign in instead.", with the link to `/sign-in`. The code stays unused. |
+| `signup_closed` | "Sign-up is closed at the moment." |
+| `validation` | Under the field concerned: "Enter an e-mail address." or "Use at least 12 characters." |
+| throttled (`rate_limited`) | "Too many attempts. Wait a few minutes and try again." |
+| unreachable | "Can't reach the server. Check your connection." |
+| offline | The form is disabled: "You're offline. Connect to continue." |
+| created | The person is signed in and sees the first-run state of 4.10. |
+
+Phone: step 1 in its "refused" state; and step 2:
+
+```
++----------------------------------------+   +----------------------------------------+
+|                                        |   |                                        |
+|               [app icon]               |   |               [app icon]               |
+|              SessionVault              |   |              SessionVault              |
+|    Your AI sessions, in one vault.     |   |    Your AI sessions, in one vault.     |
+|                                        |   |                                        |
+|  SessionVault is invitation-only for   |   |  Invitation accepted. Create your      |
+|  now. Enter your invitation code to    |   |  account.                              |
+|  create an account.                    |   |                                        |
+|                                        |   |  Email                                 |
+|  Invitation Code                       |   |  [sam@example.com                   ]  |
+|  [EXAMPLE-0000-0000                 ]  |   |  Password                              |
+|  [             Continue             ]  |   |  [..............                    ]  |
+|                                        |   |  At least 12 characters.               |
+|  (!) That invitation code isn't valid  |   |  [          Create Account          ]  |
+|      or has already been used.         |   |                                        |
+|                                        |   |  There is no password reset by mail    |
+|                                        |   |  yet. If you forget your password,     |
+|                                        |   |  the person who invited you can give   |
+|                                        |   |  you a recovery code.                  |
+|                                        |   |                                        |
+|                                        |   |                                        |
+|    Already Have an Account? Sign In    |   |    Already Have an Account? Sign In    |
+|            Terms . Privacy             |   |            Terms . Privacy             |
++----------------------------------------+   +----------------------------------------+
+```
+
+Desktop, step 1:
+
+```
++--------------------------------------------------------------------------------------------+
+|                                                                                            |
+|                          +--------------------------------------+                          |
+|                          |              [app icon]              |                          |
+|                          |             SessionVault             |                          |
+|                          |   Your AI sessions, in one vault.    |                          |
+|                          |                                      |                          |
+|                          |  SessionVault is invitation-only for |                          |
+|                          |  now. Enter your invitation code to  |                          |
+|                          |  create an account.                  |                          |
+|                          |                                      |                          |
+|                          |  Invitation Code                     |                          |
+|                          |  [EXAMPLE-0000-0000               ]  |                          |
+|                          |  [            Continue            ]  |                          |
+|                          |                                      |                          |
+|                          |   Already Have an Account? Sign In   |                          |
+|                          |           Terms . Privacy            |                          |
+|                          +--------------------------------------+                          |
+|                                                                                            |
++--------------------------------------------------------------------------------------------+
+```
+
+Accessibility: as 4.15.2. `document.title` is "Invitation - SessionVault" in step 1 and "Create Account - SessionVault" in step 2; step 2 moves focus to its first field. A refusal is tied to its field with `aria-describedby`, and the field gets `aria-invalid`. The password help is tied to the password field in the same way.
+
+#### 4.15.4 Settings, account, export and account deletion
+
+Route `/settings`. Replaces 4.11.5 and wireframe 4.5.10. It is reached from "Settings" at the foot of the library. Sections, in this order:
+
+| Section | Content |
+|---|---|
+| Claude | The key line of 4.15.5 with its buttons. Under it the model rows of 4.15.6. |
+| Offline Copy | 4.15.8, part (g). |
+| Export | Button "Export Vault": the server builds the whole vault in the interchange format of data-model.md and the browser downloads it, so it needs a connection and the fresh sign-in check below. Help: "Downloads every session as one file. Your API key is never part of it." While changes wait: "`<n>` change(s) not sent yet are not in the file." Busy text "Preparing export…"; then the toast "Export saved."; on failure an error banner "Couldn't export the vault. Try again." A suspended account can still export (data-model.md 7.7). A vault file is imported through Import, From Files. |
+| Install | 4.11.2. |
+| About | "SessionVault for the web"; version and commit; a "Source code" link, only when the owner has configured an address for it (`ABOUT_SOURCE_URL`, web-platform.md 13.5); the links "Terms" and "Privacy" once they exist; one privacy sentence, to be confirmed by the owner together with the privacy policy: "Your sessions are stored in your private vault on this app's server and in the offline copy on your devices. Their text is sent to Anthropic only when you use Continue with Claude or Summarize, with your own API key. The operator of this service can technically access what is stored." |
+| Account | From `GET /api/account` (web-platform.md 13.4), read with a connection and not written to the device: "Signed in as `<address>`", followed by " · not verified" while the address is unverified; "Account ID `<user id>`" with a "Copy" button, because the owner needs that id to issue a recovery code (web-platform.md 11.10, rule 8); "`<n>` session(s) · `<used>` of `<limit>` used". Then the signed-in browsers (`GET /api/auth/sessions`): one line each with the device label and "active now" or the relative time last seen, the current one marked "This device", the others with a "Sign Out" button. Then "Sign Out Everywhere" and "Sign Out" (4.15.2). Last, set apart: "Delete Account…". Changing the password or the address belongs here once web-platform.md has routes for it, behind the same fresh check. |
+
+Fresh sign-in check (web-platform.md 11.2): export, account deletion and any change of password or address need the password again unless it was given within the last 10 minutes. A request that lacks it answers `reauth_required`; then the dialog "Confirm It's You" opens: "Enter your password to continue.", the field "Password" (`autocomplete="current-password"`), "Cancel" and "Continue" (`POST /api/auth/reauth`). A wrong password: "That didn't work. Try again." After "Continue" the first request is sent again.
+
+Account deletion (`DELETE /api/account`, web-platform.md 11.12; data-model.md 7.11 and its decision 11: at once and for good, after the fresh check and a typed confirmation):
+
+| Step | What is shown |
+|---|---|
+| 1. Start | "Delete Account…" is a plain button in `--color-danger`, the last control of the screen. Without a connection it is disabled. A suspended account can still delete itself. |
+| 2. Fresh check | "Confirm It's You", when the server asks for it. |
+| 3. Confirm | Dialog "Delete Your Account?" (`role="alertdialog"`, `--width-dialog-md`). Text: "This deletes your account, every session and project in your vault, and your stored API key. It can't be undone." In caption, secondary: "Not deleted: files you exported or downloaded, sessions in the SessionVault app on your Apple devices, and your key at Anthropic (revoke it in the Claude Console). Backup copies kept by the hosting service expire on their own schedule. Your other devices remove their offline copy the next time they connect. Changes that were never sent from them stay there until you discard them." While changes wait: "`<n>` change(s) not sent yet will be lost." A plain button "Export Vault First". The field "Type DELETE to confirm". Buttons "Cancel" and "Delete Account" (destructive); the second is disabled until the field holds exactly `DELETE` after trimming. Focus starts on "Cancel". |
+| 4. Deleting | Field and buttons are disabled; a spinner with "Deleting your account…". It cannot be cancelled. |
+| 5. Done | The offline copy, the waiting changes and the share inbox are deleted from the device without a further question (sync.md 2.6, rule 5). The sign-in screen shows "Your account and its data were deleted." |
+| 6. Failed | The dialog stays, with "Couldn't delete your account. Try again." If the answer was lost, the next request tells: `not_signed_in` means the deletion went through. |
+
+Phone:
+
+```
++----------------------------------------+
+| [<] SessionVault      Settings         |
++----------------------------------------+
+| Claude                                 |
+| (ok) API key ending in 1111 is         |
+|      working.                          |
+| [ Replace Key ]  [ Remove Key ]        |
+| Default Model      [Claude Opus 5.5 v] |
+| Summarize uses Claude Opus 5.5.        |
+| Your Models                            |
+| Example Model 1 . price not known  [x] |
+|   example-model-1                      |
+| [ Add Model ]                          |
+| Prompt Cache                [1 Hour v] |
+| Let Another Model Answer After    (o ) |
+| a Refusal                              |
+|                                        |
+| Offline Copy                           |
+| Keep an Offline Copy            (o )   |
+| Download Transcripts  [Up to 256 MB v] |
+| Using 12 MB on this device.            |
+| Everything is sent.         [Sync Now] |
+|                                        |
+| Export                                 |
+| [           Export Vault            ]  |
+| Downloads every session as one file.   |
+| Your API key is never part of it.      |
+|                                        |
+| Install                                |
+| [       Install SessionVault        ]  |
+|                                        |
+| About                                  |
+| SessionVault for the web               |
+| Version 0.1.0 (abc1234)                |
+| Terms . Privacy                        |
+|                                        |
+| Account                                |
+| Signed in as sam@example.com           |
+| . not verified                         |
+| Account ID 00000000-0000-40...  [Copy] |
+| 128 sessions . 42 MB of 1 GB used      |
+| This device . active now               |
+| Android phone . 2 days ago  [Sign Out] |
+| [        Sign Out Everywhere        ]  |
+| [             Sign Out              ]  |
+|                                        |
+| Delete Account...                      |
++----------------------------------------+
+```
+
+Desktop (the library stays; settings replace the list and detail panes, content 40rem wide; the row above "Settings" is the sync row of 4.15.8):
+
+```
++--------------------------+-----------------------------------------------------------------------------------------+
+| SessionVault             | Settings                                                                                |
+|                          |                                                                                         |
+| Library                  | Claude                                                                                  |
+| [tray] All Sessions  128 | (ok) API key ending in 1111 is working.       [ Replace Key ]  [ Remove Key ]           |
+| [pin]  Pinned          4 | Default Model        [Claude Opus 5.5    v]   Summarize uses Claude Opus 5.5.           |
+| [cal]  Timeline          | Your Models          Example Model 1 . example-model-1 . price not known    [x]         |
+|                          |                      [ Add Model ]                                                      |
+| Projects                 | Prompt Cache         [1 Hour             v]                                             |
+| [dir]  Bicycle repair  3 | Let Another Model Answer After a Refusal   (o )                                         |
+| [dir]  Garden plann.. 12 |                                                                                         |
+| [dir+] New Project...    | Offline Copy                                                                            |
+|                          | Keep an Offline Copy on This Device   (o )    Using 12 MB on this device.               |
+| Providers                | Download Transcripts [Up to 256 MB      v]   Everything is sent.  [ Sync Now ]          |
+| [spk]  Claude            |                                                                                         |
+| [msg]  ChatGPT           | Export                                                                                  |
+| [dia]  Gemini            | [ Export Vault ]  Downloads every session as one file. Your API key is never part of it.|
+| [ ? ]  Other             |                                                                                         |
+|                          | Install                                                                                 |
+| Tags                     | [ Install SessionVault ]                                                                |
+| [ # ]  compost           |                                                                                         |
+| [ # ]  gears             | About                                                                                   |
+|                          | SessionVault for the web . Version 0.1.0 (abc1234) . Terms . Privacy                    |
+|                          |                                                                                         |
+|                          | Account                                                                                 |
+|                          | Signed in as sam@example.com . not verified                                             |
+|                          | Account ID 00000000-0000-4000-8000-0000000000aa [Copy]   128 sessions . 42 MB of 1 GB   |
+|--------------------------| This device . active now          Android phone . 2 days ago [Sign Out]                 |
+| [up] 2 changes waiting   | [ Sign Out Everywhere ]   [ Sign Out ]                                                  |
+|      to be sent          |                                                                                         |
+|--------------------------| Delete Account...                                                                       |
+| [gear] Settings          |                                                                                         |
++--------------------------+-----------------------------------------------------------------------------------------+
+```
+
+The deletion dialog, phone and desktop (`...` stands for the rest of the text):
+
+```
++--------------------------------------+   +------------------------------------------------------------+
+| Delete Your Account?                 |   | Delete Your Account?                                       |
+| This deletes your account, every     |   | This deletes your account, every session and project in    |
+| session and project in your vault,   |   | your vault, and your stored API key. It can't be undone.   |
+| and your stored API key. It can't be |   |                                                            |
+| undone.                              |   | Not deleted: files you exported or downloaded, sessions in |
+|                                      |   | the SessionVault app on your Apple devices, and your key   |
+| Not deleted: files you exported or   |   | at Anthropic (revoke it in the Claude Console). ...        |
+| downloaded, sessions in the          |   |                                                            |
+| SessionVault app on your Apple       |   | [Export Vault First]                                       |
+| devices, and your key at Anthropic   |   |                                                            |
+| (revoke it in the Claude Console).   |   | Type DELETE to confirm                                     |
+| ...                                  |   | [DELETE                                                  ] |
+| 2 changes not sent yet will be lost. |   |                              [ Cancel ] [ Delete Account ] |
+| [Export Vault First]                 |   +------------------------------------------------------------+
+|                                      |
+| Type DELETE to confirm               |
+| [                                  ] |
+|        [ Cancel ] [ Delete Account ] |
++--------------------------------------+
+```
+
+The fresh-check dialog (both widths):
+
+```
++------------------------------------+
+| Confirm It's You                   |
+| Enter your password to continue.   |
+| Password                           |
+| [..............                  ] |
+|            [ Cancel ] [ Continue ] |
++------------------------------------+
+```
+
+Accessibility:
+
+- `<h1>` "Settings"; each section title is an `<h2>`; the sections are in the reading and focus order of the table.
+- "Delete Account…" comes last and is not next to "Sign Out": at least `--space-6` apart.
+- The deletion dialog is labelled by its title and described by its first paragraph. The typed field has a visible label, `autocomplete="off"` and `autocapitalize="characters"`. The disabled confirm button names the field as its reason (`aria-describedby`).
+- Destructive actions are told by their words, not by colour alone.
+- The account id is selectable text in `--font-mono`; its "Copy" button is named "Copy account ID".
+- After an export the toast is announced politely; a failed export is `role="alert"`.
+
+#### 4.15.5 Claude key screen
+
+Each user brings their own Anthropic API key (`../HANDOFF.md` sections 2 and 3). The server checks it, stores it encrypted, uses it only for that user's requests and never sends it back. data-model.md 7.8 defines the stored form; claude-api.md C15 defines the routes, the checks and what is shown; its C8 words the messages. This screen takes the place of the Apple key entry of section 1.7.1 and adds what the Apple app lacks: checking, replacing and removing (B28).
+
+What the page knows about the signed-in user's key comes from `GET /api/claude/config` (claude-api.md C6), and that is all there is: `configured`; `keyStatus` (`ok`, `unknown`, `rejected`); `key.last4`, the last four characters; and the times `savedAt`, `checkedAt` and `lastUsedAt`.
+
+Key line, shown in Settings and on the key screen (a StatusNotice, 4.6.6):
+
+| Key | Icon | Line | Buttons beside it |
+|---|---|---|---|
+| none saved | `key-round`, `--color-text-secondary` | "No API key saved." | "Add API Key" |
+| `ok` | `circle-check`, `--color-success` | "API key ending in `<last4>` is working." | "Replace Key", "Remove Key" |
+| `unknown` | `triangle-alert`, `--color-warning` | "API key ending in `<last4>` is saved but has not been checked yet." | "Check Again", "Replace Key", "Remove Key" |
+| `rejected` | `triangle-alert`, `--color-danger` | "API key ending in `<last4>` was rejected by Anthropic. It may be wrong, disabled or expired." | "Check Again", "Replace Key", "Remove Key" |
+
+Second line, in caption, secondary: "Saved `<date>`", then " · checked `<relative time>`" and " · last used `<relative time>`" for the times that exist. If the owner prefers not to show the last four characters (data-model.md, decision 13), the lines read "An API key is saved and working." and so on.
+
+The key screen: route `/settings/claude-key`; a page in the compact layout, a dialog `--width-dialog-md` over Settings otherwise. It is opened from Settings, from the "Connect to Claude" block of the chat and from the Summarize dialog (4.6.7). Closing it returns to where it was opened. Content, top to bottom:
+
+1. Title "Anthropic API Key".
+2. Text: "Continue with Claude and Summarize use your own Anthropic API key, and Anthropic bills the account it belongs to. The key is stored encrypted on this app's server, used only for your own requests and never shown again. The operator of this service can technically access what is stored." What users are told about their key is the owner's text in the end; claude-api.md C15.1 lists the facts it has to match.
+3. Advice, in caption, secondary, which claude-api.md C15.2 asks this screen to give: "Create a key for this app alone, in a workspace of its own, and set a spend limit for that workspace in the Claude Console. You can remove the key here at any time; deleting it in the Console is what makes it useless everywhere." "Claude Console" is a link to the address claude-api.md gives for keys (`platform.claude.com/settings/keys`), opened in a new tab with `rel="noopener noreferrer"`.
+4. The key line.
+5. The form, only while entering or replacing: field "API Key" ("New API Key" when replacing), placeholder "sk-ant-…" (the Apple placeholder), `type="password"`, `autocomplete="off"`, `autocapitalize="off"`, `autocorrect="off"`, `spellcheck="false"`; primary button "Save Key" (the Apple label), disabled while the field is empty after trimming; "Cancel" when replacing.
+
+States:
+
+| State | What is shown |
+|---|---|
+| no key | Text, advice, the key line "No API key saved.", the form. |
+| checking | After "Save Key" (`PUT /api/claude/key`): the button is busy and reads "Checking…"; the field is read-only. It is one request: the server tests the value, checks it with Anthropic and stores it only then. |
+| saved | The answer holds the status and the last four characters, nothing else. The form closes and the field is emptied; the key line shows the status; toast "API key saved." With `unknown`, one more line: "Anthropic could not be reached to check it. It is checked the first time you use Claude." |
+| refused by a test of the value | `validation` with a reason (claude-api.md C15.2), shown under the field. `too_long`, `bad_characters`: "That doesn't look like an API key. Paste the key alone, without spaces or line breaks." `not_an_api_key`: "That doesn't look like an Anthropic API key." `admin_key`: the message of claude-api.md C8 ("This is an Admin API key. Create an ordinary API key for one workspace instead."). The browser itself tests only that the field is not empty; the other rules live in one place, on the server. The field is emptied. |
+| not accepted by Anthropic | `key_rejected` or `key_unusable`: the message of claude-api.md C8 under the field ("Anthropic did not accept this key. Nothing was saved."; "This key cannot be used here.", with what Anthropic said in a "Details" line). Nothing was saved, and a key that was saved before stays as it was. The field is emptied, as after every answer (claude-api.md C15.2); the user pastes the key again. |
+| failed | `key_service_unavailable`, `app_rate_limited`, `server_busy`: the message of claude-api.md C8 under the field. No answer at all: "Couldn't save the key. Try again."; only in that case does the field keep its text, so that a second try needs no second paste. |
+| key saved | Text, advice, the key line and its buttons. No field. |
+| checking again | "Check Again" (`POST /api/claude/key/check`): the button is busy; then the key line shows the status. If Anthropic could not be asked: "Anthropic could not be reached. Try again later." |
+| replacing | "Replace Key" opens the form with the label "New API Key". The saved key keeps working until the new one is accepted; a replacement that is refused changes nothing. |
+| removing | "Remove Key" opens the dialog "Remove Your API Key?": "Continue with Claude and Summarize stop working until you add a key again. Replies that Claude is still writing are stopped; what has arrived is kept. Removing the key here does not switch it off at Anthropic: delete it in the Claude Console if it should stop working everywhere.", "Cancel", "Remove Key" (destructive). Then (`DELETE /api/claude/key`) the toast "API key removed." and the "no key" state. |
+| offline | Field and buttons are disabled: "You're offline. Connect to change your API key." The request is never queued (sync.md 10, rule 2). |
+| account suspended | Removing stays possible; adding, replacing and checking are disabled with "Your account is suspended." (claude-api.md C6). |
+
+What the interface never does:
+
+1. It never shows a saved key or any part of it except the last four characters: no reveal control, no copy control, no prefilled field.
+2. The typed key lives only in the field until the answer has arrived. It is not written to `localStorage`, `sessionStorage`, IndexedDB, the outbox, a URL, a log or an error report. The field is emptied when the answer arrives, when the screen closes and on `pagehide`.
+3. The key is sent once, in the body of one same-origin request. No answer carries it back.
+4. No other screen takes a key. The chat, Summarize and Settings lead here.
+
+In the chat and for Summarize (4.6.7):
+
+| Key | Chat | Summarize |
+|---|---|---|
+| none saved | The "Connect to Claude" block takes the composer's place: icon `key-round`, the title "Connect to Claude" (the Apple heading), the `not_configured` message of claude-api.md C8 ("Add your Anthropic API key in Settings to use Claude.") and the button "Add API Key", which opens the key screen. | A press opens a dialog titled "Summarize" with the same message, "Cancel" and "Add API Key". |
+| `rejected` | A warning notice above the composer: "Anthropic rejected your API key the last time it was used.", with "Check Again" and "Replace Key". The composer stays usable: a key that works again is found out by using it (claude-api.md C15.5). A request that fails shows the error banner with the `auth_failed` message and the same two actions. | The action stays available. A failure shows the same banner at the top of the detail. |
+| `key_unreadable` on a request | The error banner with the message of claude-api.md C8 and the action "Replace Key". | The same banner at the top of the detail. |
+
+Phone: no key, after Anthropic did not accept a value; and a saved key:
+
+```
++----------------------------------------+   +----------------------------------------+
+| [<] Settings   Anthropic API Key       |   | [<] Settings   Anthropic API Key       |
++----------------------------------------+   +----------------------------------------+
+| Continue with Claude and Summarize     |   | Continue with Claude and Summarize     |
+| use your own Anthropic API key, and    |   | use your own Anthropic API key, and    |
+| Anthropic bills the account it         |   | Anthropic bills the account it         |
+| belongs to. The key is stored          |   | belongs to. The key is stored          |
+| encrypted on this app's server, used   |   | encrypted on this app's server, used   |
+| only for your own requests and never   |   | only for your own requests and never   |
+| shown again.                           |   | shown again.                           |
+| Create a key for this app alone, in a  |   | Create a key for this app alone, in a  |
+| workspace of its own, and set a spend  |   | workspace of its own, and set a spend  |
+| limit ... (the advice)                 |   | limit ... (the advice)                 |
+|                                        |   |                                        |
+| (key) No API key saved.                |   | (!) API key ending in 1111 is saved    |
+|                                        |   |     but has not been checked yet.      |
+| API Key                                |   |     Saved Nov 12, 2026                 |
+| [sk-ant-...                          ] |   |                                        |
+| [              Save Key              ] |   | [ Check Again ]                        |
+|                                        |   | [ Replace Key ]         [ Remove Key ] |
+| (!) Anthropic did not accept this      |   |                                        |
+|     key. Nothing was saved.            |   |                                        |
+|                                        |   |                                        |
++----------------------------------------+   +----------------------------------------+
+```
+
+Desktop: replacing a rejected key, and the removal dialog (`...` stands for the rest of a text):
+
+```
++------------------------------------------------------------+   +-------------------------------+
+| Anthropic API Key                                      [x] |   | Remove Your API Key?          |
++------------------------------------------------------------+   | Continue with Claude and      |
+| Continue with Claude and Summarize use your own Anthropic  |   | Summarize stop working until  |
+| API key, and Anthropic bills the account it belongs to.    |   | you add a key again. ...      |
+| The key is stored encrypted on this app's server, used     |   |     [ Cancel ] [ Remove Key ] |
+| only for your own requests and never shown again.          |   +-------------------------------+
+| Create a key for this app alone, in a workspace of its     |
+| own, and set a spend limit ... (the advice)                |
+|                                                            |
+| (!) API key ending in 1111 was rejected by Anthropic. It   |
+|     may be wrong, disabled or expired.                     |
+|     Saved Nov 12, 2026 . checked 5 minutes ago             |
+|                                                            |
+| New API Key                                                |
+| [....................................................    ] |
+|                                    [ Cancel ] [ Save Key ] |
++------------------------------------------------------------+
+```
+
+The "Connect to Claude" block (both widths):
+
+```
++----------------------------------------+
+|                 [key]                  |
+|           Connect to Claude            |
+|     Add your Anthropic API key in      |
+|        Settings to use Claude.         |
+|            [ Add API Key ]             |
++----------------------------------------+
+```
+
+Accessibility:
+
+- The title is the `<h1>` of the page or labels the dialog; `document.title` is "Anthropic API Key - SessionVault".
+- The field has a visible label. Its message is tied to it with `aria-describedby`, sets `aria-invalid` and is `role="alert"`.
+- The key line is `role="status"`. After saving or removing, focus moves to the title and the polite region says "API key saved." or "API key removed."
+- `<last4>` is marked up so that a screen reader reads it character by character.
+- Unverified: whether browsers offer to save a `type="password"` value as a site password here. If they do in testing, use a text field instead.
+
+#### 4.15.6 Model chooser
+
+The user asks a model of their own choosing (`../HANDOFF.md` section 1): the list is the user's, not a fixed menu. claude-api.md C16 defines the registry, what a key can use and the user's own model ids; this section defines the controls.
+
+| What | Route (claude-api.md C6) | Used for |
+|---|---|---|
+| The effective list, `models`: the registry models, then the model ids the user added; each with `id`, `name`, `inRegistry` and `priceClass`. Also `defaultModel`, `summarizeModel` and what the user chose, `preferences`. | `GET /api/claude/config` | the picker, Settings |
+| Every registry model and every model that Anthropic lists for the user's key, as last read, each with `inList`, `available` and `lifecycle` | `GET /api/claude/models` | suggestions when a model is added |
+| A change of the user's own ids, of the default or of the two switches | `PUT /api/claude/preferences`; the answer is the new configuration | |
+
+Client code holds no model id of its own (claude-api.md C2).
+
+ModelChooser, in the chat header. It replaces ModelSelect of 4.6.7:
+
+1. A native `<select>` labelled "Model". Options: the effective list in its order, by `name`; last, "Other Model…".
+2. First value: the model remembered on this device if it is still in the list, else `defaultModel` (claude-api.md C16). The remembered model is one model id in `localStorage`; sign-out removes it.
+3. "Other Model…" shows a row directly under the select: field "Model ID" (`autocapitalize="off"`, `autocorrect="off"`, `spellcheck="false"`), help "Any model ID your API key can use.", buttons "Use Model" and "Cancel". The field offers as suggestions (a `<datalist>`) the models of `GET /api/claude/models` that are not in the list. Its placeholder is "e.g. " followed by `defaultModel`.
+4. "Use Model" first tests the shape that claude-api.md C16 requires of a model id (at most 200 characters, no spaces); otherwise: "Enter a model ID without spaces." Then it adds the id to the user's own ids (`PUT /api/claude/preferences`). The button is busy and reads "Checking…" while the server asks Anthropic whether the key can use the model.
+5. Accepted: the model is in the list from now on, on every device, and is selected. The key cannot use it (`validation` with the reason `model_unavailable`): the `model_unavailable` message of claude-api.md C8 under the field, and nothing is added. "Cancel" and Escape restore the previous selection and return focus to the select.
+6. A request can still fail with `model_unavailable` later: the list decides what is offered, and the first real request decides in the end (claude-api.md C16). The error banner then has the action "Choose Another Model", which moves focus to the select. The id stays in the list until the user removes it in Settings.
+7. A model outside the registry has no price in the app. The "Send a Large Request?" dialog then reads "This sends about `<n>` tokens to `<model name>`. The app does not know this model's price." The model line of the composer shows the model's `name` and its price class in words.
+8. An empty list (`defaultModel` is null): the composer cannot send; a notice above it says "Choose a model in Settings first.", with the button "Open Settings".
+
+Settings, Claude section, under the key line:
+
+| Row | Content |
+|---|---|
+| "Default Model" | The chooser: a registry model or one of the user's own. Help: "Continue with Claude starts with this model." |
+| Summarize | One line, "Summarize uses `<model name>`.": `summarizeModel` of the configuration. |
+| "Your Models" | Only when the user has added ids: one row per id with its `name`, its id in caption, "price not known", and an icon button "Remove" (`aria-label` "Remove `<name>`"). Removing the default falls back to the server's default. Registry models are always offered and are not listed here. Under the rows, or alone when there are none, the button "Add Model", which opens the "Model ID" row of the chooser. |
+| "Prompt Cache" | Select "1 Hour", "5 Minutes", "Off" (`cacheTtl`). Help: "With caching, the first message of a chat costs more and later ones much less. For single questions, Off is cheapest." |
+| "Fallback Model" | Switch "Let Another Model Answer After a Refusal" (`fallbacks`). Help: "Off: only the model you chose ever answers." |
+
+A registry model's price class follows its name in words ("lowest price", "low price", "medium price", "high price") on the model line of the composer, under the "Default Model" select and in the suggestions; a model outside the registry gets "price not known". In the suggestions a model that Anthropic lists as deprecated is marked "deprecated". "Check Again" on the key line (4.15.5) also reads the key's models again. claude-api.md C6 allows a release without the last two rows; the server defaults then apply. This document includes them, because the cache setting decides what a single question costs (claude-api.md C14).
+
+| State | What is shown |
+|---|---|
+| loading | The select is disabled and shows a skeleton. |
+| failed | "Couldn't load the model list." with "Try Again". |
+| offline | Changing the default, the list or the switches is disabled: "You're offline." |
+| no key saved | The registry models are shown and the default can be chosen. A model cannot be added: "Add your API key first." |
+
+Phone: the row for another model id, and the opened select:
+
+```
++----------------------------------------+   +----------------------------------------+
+| [x]  Continue with Claude    [model v] |   | [model v] opened:                      |
++----------------------------------------+   |                                        |
+| Model ID                               |   |   Claude Opus 5.5              (v)     |
+| [e.g. claude-opus-5-5                ] |   |   Claude Fable 5.2                     |
+| Any model ID your API key can use.     |   |   Claude Sonnet 5.5                    |
+|               [ Cancel ] [ Use Model ] |   |   Claude Haiku 5.5                     |
++----------------------------------------+   |   Example Model 1                      |
+| +------------------------------------+ |   |   Other Model...                       |
+| | User                        [Copy] | |   +----------------------------------------+
+| | How big should each bay be?        | |
+| +------------------------------------+ |
+| ...                                    |
++----------------------------------------+
+|         [spk] Example Model 1          |
+| [Continue the conversation...   ]  (^) |
++----------------------------------------+
+```
+
+Desktop:
+
+```
+    +----------------------------------------------------------------------+
+    | Continue with Claude                Model [Other Model...  v]    [x] |
+    +----------------------------------------------------------------------+
+    | Model ID [e.g. claude-opus-5-5           ]  [ Cancel ] [ Use Model ] |
+    | Any model ID your API key can use.                                   |
+    +----------------------------------------------------------------------+
+    | +------------------------------------------------------------------+ |
+    | | User                                                      [Copy] | |
+    | | How big should each bay be?                                      | |
+    | +------------------------------------------------------------------+ |
+    | ...                                                                  |
+    +----------------------------------------------------------------------+
+    |                        [spk] Claude Opus 5.5                         |
+    | [Continue the conversation...                                ]  (^)  |
+    +----------------------------------------------------------------------+
+```
+
+Accessibility:
+
+- The selects are native, so keyboard and screen-reader behaviour come with them.
+- The "Model ID" row follows the select in the DOM and gets focus when it appears. Its help and its error are tied to the field with `aria-describedby`.
+- A change is announced in the polite region: "Model set to `<name>`."
+- Remove buttons are named with their model. Nothing is told by colour.
+
+#### 4.15.7 Copying a whole message
+
+`../HANDOFF.md` section 1: every message and every reply can be copied whole with one action, not only code blocks. The Apple app has this button since commit `e81828a` (section 1.10.1). data-model.md 7.14 defines what is copied; claude-api.md C18 adds the rules for replies.
+
+| # | Rule |
+|---|---|
+| 1 | Every stored message has a Copy button: every role, in the session detail and in the chat, in every layout and at every width down to 320 px. The thinking bubble has none. |
+| 2 | Place: the trailing end of the bubble's header row, on the line of the role label, as in the Apple app. A message whose text is longer than 1,500 characters repeats the button at the end of the bubble, at the trailing edge, so that it is at hand after reading. Both do the same. |
+| 3 | Look: icon `copy` and the visible label "Copy", caption2, `--color-text-secondary`, plain. The label is never reduced to the icon. After a press: `check` and "Copied" for 1.5 s (the Apple strings and time); a second press copies again and starts the 1.5 s anew. Tooltip with a fine pointer: "Copy this whole message" (the Apple tooltip). |
+| 4 | What is copied: `messages.text` of that message, unchanged (data-model.md 7.14). No role label, no model name, no trimming, no rendering; code fences as stored; the whole text whatever its length. It is the string held in memory, never the text of the page: the display rules of 4.7 consume markup, and a line over 50,000 characters is drawn in pieces. A message with segments that are not text copies its text segments, joined as `flattenText` joins them. |
+| 5 | How: `navigator.clipboard.writeText(text)` inside the click handler, with no request in between (web-platform.md 6.1, rule 5). If the browser refuses: the toast "Couldn't copy. Your browser blocked clipboard access." and the label does not change. |
+| 6 | Code blocks keep their own button (4.6.5). It copies the code of that block only. |
+| 7 | A reply that is still arriving cannot be copied whole yet: its text is not final, and a refusal can still discard all of it (claude-api.md C18). Its button is there but disabled, with the description "Available when the reply is complete." Selecting by hand stays possible. |
+| 8 | From the `done` event on, the user's message and the reply are stored messages and the button works. It copies the texts of the event (`userMessage.text`, `assistantMessage.text`), never the text put together from `delta` events. A reply that was cut off or stopped copies its stored text; the lines "This reply was cut off by the length limit." and "Stopped" are not part of the copy. |
+| 9 | Text left on screen under "Interrupted" (4.6.7) is not stored. Its button copies the text exactly as it was received, so that a long reply is not lost with the connection (claude-api.md C18). |
+| 10 | The summary can be copied whole (claude-api.md C18): in its reading state (4.6.4) an icon button beside "Edit Summary", named "Copy summary", copies the summary as stored; the dialog for a summary that was cut off (4.6.7) has the plain button "Copy Draft". |
+| 11 | Without a connection it works for every message whose text is on the device (sync.md 5.3), with the same result. |
+| 12 | Selecting text, find-in-page and printing are unaffected. |
+
+Keyboard path:
+
+1. Tab and Shift+Tab move through the transcript in document order. Inside each message the first stop is its Copy button.
+2. Enter or Space copies. Focus stays on the button.
+3. With a screen reader: go to the turn by heading (each role label is an `<h2>`, 4.9), then press Tab once.
+4. There is no single-key shortcut (4.8.1). Ctrl+C and Command-C keep their meaning: they copy the selection.
+
+Phone: a message with a code block and a message just copied; a long message with the repeated button, a reply that is still arriving (`(Copy)` is the disabled button) and text left after an interruption:
+
+```
++----------------------------------------+   +----------------------------------------+
+| +------------------------------------+ |   | +------------------------------------+ |
+| | Assistant                   [Copy] | |   | | Assistant                   [Copy] | |
+| | About one cubic metre each works   | |   | | Turn the pile when the middle is   | |
+| | well.                              | |   | | hot and the edges are not ...      | |
+| | +------------------------------+   | |   | | (a long reply, many screens)       | |
+| | | text                  [Copy] |   | |   | | ... and cover it before rain.      | |
+| | | bay = 1.0 x 1.0 x 1.0        |   | |   | |                             [Copy] | |
+| | +------------------------------+   | |   | +------------------------------------+ |
+| +------------------------------------+ |   | +------------------------------------+ |
+| +------------------------------------+ |   | | Assistant                   (Copy) | |
+| | User                      [Copied] | |   | | Still arriving ...                 | |
+| | And how often should I turn it?    | |   | +------------------------------------+ |
+| +------------------------------------+ |   | +------------------------------------+ |
++----------------------------------------+   | | Interrupted                 [Copy] | |
+                                             | | Text that arrived before the       | |
+                                             | | connection was lost ...            | |
+                                             | +------------------------------------+ |
+                                             +----------------------------------------+
+```
+
+Desktop:
+
+```
+    +------------------------------------------------------+
+    | +--------------------------------------------------+ |
+    | | Assistant                                 [Copy] | |
+    | | About one cubic metre each works well.           | |
+    | | +--------------------------------------------+   | |
+    | | | text                                [Copy] |   | |
+    | | | bay = 1.0 x 1.0 x 1.0                      |   | |
+    | | +--------------------------------------------+   | |
+    | | ... (a long reply) ...                           | |
+    | |                                           [Copy] | |
+    | +--------------------------------------------------+ |
+    +------------------------------------------------------+
+```
+
+Accessibility:
+
+- Accessible names: "Copy message" for the buttons of a bubble, "Copy code" for the button of a code block, "Copy summary" for the summary. Each contains the visible word "Copy". Each "Copy message" button is described by the role heading of its message (`aria-describedby`).
+- The name stays the same while the label shows "Copied"; the polite region of 4.9 says "Copied" once.
+- The disabled button stays focusable, so that its reason can be read.
+- Touch: a hit area of at least 44 by 44 px by padding (4.8.3); the drawn size stays small.
+- Colour pairs: `--color-text-secondary` on both bubble colours, checked in appendix 5.2.
+
+Tests: a browser test copies a message of 1,000,000 characters and one with a fenced block, and compares the clipboard with the stored string by length and hash; no request leaves the page during a copy.
+
+#### 4.15.8 Offline state: the copy, waiting changes and notices
+
+sync.md defines what a device stores and how it stays in step with the server. This section defines what the user sees. It replaces 4.11.4, the wording of the bar in wireframe 4.5.12, and the Offline row of 4.11.5. The offline copy is on by default on every device (sync.md 15, decision 1).
+
+(a) What works without a connection:
+
+| Feature | Without a connection |
+|---|---|
+| Opening the app | Yes, once the app has been opened on this device before. |
+| Lists, filters, timeline, the detail header, search in titles, summaries and tags | Yes, from the copy. Before the first sync has finished: what has arrived, under the line "Still loading your vault. This list is not complete yet." |
+| A transcript | Yes when it is complete on the device: opened here before, or fetched in the background within the budget of part (g). Otherwise the states of part (f). |
+| Copying a message or a code block | Yes, for what is on the device. |
+| Context pack: copy, share, download | Only with the complete transcript on the device. Otherwise the three actions are disabled: "Connect to load the whole transcript first." A partial pack is never produced (sync.md 5.3). |
+| Import by paste, by file, by drop, and of shared text or files | Yes. The session is saved on the device, marked "Not sent yet", and sent later. |
+| Editing fields, pinning, tags, moving to a project, new, renamed and deleted projects, deleting sessions | Yes. Each change waits in the queue. |
+| Continue with Claude, Summarize | No: "You're offline." Also not for a session that the server does not have yet: "Available once this session has been sent." (sync.md 11, rule 4) |
+| Link capture, importing a vault file, Export Vault | No. They run on the server (sync.md 14, item 5). A vault file picked offline answers "Vault files can be imported only with a connection." |
+| API key, model list, account, sign-in | No. |
+
+(b) Status bar. It is the bar of 4.11.4: same place, same look, `role="status"`, not dismissible. It shows the first row that applies:
+
+| Condition | Icon | Text | Action |
+|---|---|---|---|
+| No connection, copy on | `cloud-off` | "You're offline. Changes are saved on this device and sent when you're back online." While changes wait, it goes on: "`<n>` waiting." | none |
+| No connection, copy off | `cloud-off` | "You're offline. Connect to load your sessions." | none |
+| The server is in read-only mode (`read_only`; web-platform.md 11.13) | `triangle-alert`, `--color-warning` | "The vault is read-only for maintenance. Changes are kept on this device and sent later." | none |
+| Connected, but sending has failed for more than a minute (no answer, a 5xx or a 429 answer; sync.md 6.8) | `triangle-alert`, `--color-warning` | "Changes can't be sent right now. They are kept on this device and sent automatically." | "Try Now" |
+| The account is suspended | `triangle-alert`, `--color-warning` | "Your account is suspended. You can read and export your sessions, but not add or change anything." | none |
+| Notices wait to be read | `bell` | "`<n>` notice to review." or "`<n>` notices to review." | "Review" |
+
+"No connection" means, as before: `navigator.onLine` is false, or the last request failed for lack of a connection. The row goes away when a request succeeds again.
+
+(c) Sync row, at the foot of the library above the install row (in the compact layout at the foot of the library screen). It is drawn only when it has something to say:
+
+| State | Icon | Text |
+|---|---|---|
+| The first sync is running | spinner | "Setting up the offline copy…" with a `<progress>` from `next` and `latest` of the feed (sync.md 4.2). Remove it when the feed says there is no more, whatever the value: `next` need not reach `latest`. |
+| Changes wait | `cloud-upload` | "`<n>` change waiting to be sent" or "`<n>` changes waiting to be sent" |
+
+`<n>` is the number of entries in the outbox (sync.md 6). When nothing waits there is no row; Settings says "Everything is sent."
+
+(d) Markers on records:
+
+| Record | Marker | Where |
+|---|---|---|
+| A session or project made on this device whose create has not been answered | Icon `cloud-upload` and the text "Not sent yet", caption, `--color-text-secondary` | Session: at the end of the row's meta line after a middle dot, and under the counts in the detail header. Project: the icon in place of the badge, the text as its tooltip and in its accessible name. |
+| A kept record: the server refused its create (sync.md 6.7) | Icon `triangle-alert` in `--color-danger` and the text "Not saved" in `--color-text`, weight 600 | The same places. The text is not in the danger colour: on a selected row that pair is below 4.5:1 (appendix 5.6). |
+
+A record with waiting edits only has no marker; the count is enough.
+
+The detail of a kept session shows an error banner under the toolbar: "This session is only on this device.", then the reason, then "Try Again", "Download Context Pack" and "Delete". Reasons: for `quota_exceeded` the sentence of 4.15.1; for `validation` "The server didn't accept it."; for `unsupported` "This version of the app is too old to send it. Reload to update." "Try Again" queues a new create for the same record (sync.md 6.7). A kept project has "Try Again" and "Delete" in its row menu.
+
+(e) Notices. sync.md 6.7 and 7 say when a device raises one. The store keeps `{ code, entity, id, at }` until the user has seen it, so the text is built when it is shown: the title or name is looked up by `id`. When the record no longer exists, the quoted title is replaced by "A session" or "A project".
+
+| Code | sync.md | Text | Actions |
+|---|---|---|---|
+| `deleted_elsewhere`, a session | 7, cases 4 and 14 | "A session you changed on this device was deleted on another device. Your changes to it were not saved." | none |
+| `deleted_elsewhere`, a project | 7, case 7 | "A project you changed on this device was deleted on another device. Its sessions have no project now." | none |
+| `unseen_messages` | 7, case 5 | "“`<title>`” has new messages from another device, so it was not deleted." | "Open" |
+| `turn_in_progress` | 7, case 6 | "Claude is still answering in “`<title>`”, so it was not deleted." | "Open" |
+| `project_merged` | 7, case 9 | "“`<name>`” already existed on another device. Your sessions are in that project now." | none |
+| `name_taken`, on a rename | 7, case 11 | "That project name is already used. “`<name>`” keeps its name." | none |
+| `duplicate_import` | 7, case 10 | "“`<title>`” looks the same as a session you already have." | "Open", "Delete the New One" |
+| `quota_exceeded`, `validation` or `unsupported`, on a create | 6.7 | "“`<title>`” was not saved to your vault. It is kept on this device." | "Open" |
+| `validation`, on an edit | 6.7 | "A change to “`<title>`” was not accepted and has been undone." | "Open" |
+
+How notices are shown:
+
+1. Raised while the app is open: a toast with the text and its first action; it stays until dismissed. Several raised by one sync run are one toast: "`<n>` notices to review." with "Review".
+2. Until read, they are counted in the status bar.
+3. "Review" opens "Notices": a dialog `--width-dialog-md`, a page in the compact layout. Newest first; each notice has its text, the relative time of `at`, its actions and "Dismiss"; at the foot "Dismiss All". Dismissing a notice or using its action removes it from the store.
+4. "Delete the New One" runs the ordinary delete with its confirmation (4.13).
+5. A device never shows "deleted on another device" for a deletion it asked for itself (sync.md 7).
+6. There is no screen for settling a conflict by hand: every case has one outcome (sync.md 14, item 8).
+
+(f) States of the transcript in the detail pane, in addition to 4.10:
+
+| Situation | What is shown |
+|---|---|
+| The transcript is not on the device and there is no connection | Icon `cloud-off`, title "Transcript Not on This Device", description "Connect to the internet to load it." |
+| Part of it is on the device and there is no connection | The messages that are there, then one line in caption, secondary: "`<k>` more message(s) are not on this device yet." |
+| With a connection | The skeleton of 4.10, then the messages as they arrive. |
+
+(g) Settings, section "Offline Copy":
+
+| Element | Content |
+|---|---|
+| Switch | "Keep an Offline Copy on This Device", on by default. |
+| Help | "Keeps your sessions on this device so that you can read, import and edit without a connection. Changes made offline are sent when you're back online. Anyone who can use this browser profile can read the copy. Signing out deletes it." |
+| Select "Download Transcripts" | "Only What I Open", "Up to 256 MB" (the default), "Everything" (sync.md 2.3, rule 1). Help: "Sessions you open are always kept." |
+| Storage line | "Using `<size>` on this device.", from `navigator.storage.estimate()`. |
+| Sync line | "Everything is sent. Last synced `<relative time>`." or the text of the sync row, with the button "Sync Now". |
+
+Switching the copy off sends the waiting changes and then deletes the copy (sync.md 2.6, rule 6). If changes remain: dialog "Turn Off and Lose Changes?": "`<n>` change(s) made on this device have not been sent. Turning the offline copy off deletes them.", "Cancel", "Turn Off Anyway" (destructive). Switching it on asks for persistent storage (sync.md 2.3, rule 5) and starts the first sync.
+
+| Situation | What is shown |
+|---|---|
+| The browser has no IndexedDB or refuses storage (sync.md 2.4) | The switch is off and disabled: "This browser doesn't allow an offline copy here." The app reads from the server. |
+| Storage ran out while the copy was being filled (sync.md 2.3, rule 4) | A toast and the same line in Settings: "This device is out of storage, so the offline copy is paused. Your sessions are safe in your online vault." |
+| Storage ran out while saving a change (sync.md 2.3, rule 4) | At the action: "Couldn't save on this device: storage is full." An import keeps its content on the import screen. |
+| The open of the database is blocked by another tab (sync.md 8, rule 5) | A bar in the place of the status bar: "Close the other SessionVault tabs to finish updating." |
+| The browser asks to save data (sync.md 2.3, rule 6) | In Settings: "Data saver is on: transcripts are downloaded only when you open them." |
+
+Phone: the list without a connection with one session not sent and one not saved; and a detail whose transcript is not on the device, with the banner of a kept session below it:
+
+```
++----------------------------------------+   +----------------------------------------+
+| [<] SessionVault  All Sessions   [imp] |   | [<] All Sessions   [spk][sum][pin][...]|
++----------------------------------------+   +----------------------------------------+
+| (off) You're offline. Changes are      |   | (off) You're offline. ...              |
+|       saved on this device and sent    |   +----------------------------------------+
+|       when you're back online.         |   | Rear derailleur indexing               |
+|       3 waiting.                       |   | ...                                    |
++----------------------------------------+   | imported Nov 12, 2026 . 8 turns        |
+| [(Q) Search titles, summaries, tags  ] |   +----------------------------------------+
++----------------------------------------+   |                                        |
+| (spk Claude)                           |   |                 [off]                  |
+| Seed order comparison            [...] |   |     Transcript Not on This Device      |
+| now . 6 turns . [up] Not sent yet      |   |  Connect to the internet to load it.   |
++----------------------------------------+   |                                        |
+| (msg ChatGPT)                          |   +----------------------------------------+
+| Tool shed inventory              [...] |   | In the detail of a kept session:       |
+| 2 hours ago . 18 turns . (!) Not saved |   | (!) This session is only on this       |
++----------------------------------------+   |     device. Your vault has reached     |
+| (dia Gemini)                [pin]      |   |     its storage limit.                 |
+| Rear derailleur indexing         [...] |   |     [Try Again] [Delete]               |
+| yesterday . 8 turns                    |   |     [Download Context Pack]            |
++----------------------------------------+   +----------------------------------------+
+```
+
+Phone: "Notices" as a page:
+
+```
++----------------------------------------+
+| [<] All Sessions       Notices         |
++----------------------------------------+
+| "Compost bin layout" has new messages  |
+| from another device, so it was not     |
+| deleted.                               |
+| 5 minutes ago         [Open] [Dismiss] |
++----------------------------------------+
+| "Garden planning" already existed on   |
+| another device. Your sessions are in   |
+| that project now.                      |
+| 5 minutes ago                [Dismiss] |
++----------------------------------------+
+| A session you changed on this device   |
+| was deleted on another device. Your    |
+| changes to it were not saved.          |
+| yesterday                    [Dismiss] |
++----------------------------------------+
+|                        [ Dismiss All ] |
++----------------------------------------+
+```
+
+Desktop: the status bar with waiting notices; the sync row above "Settings"; the markers; the "Notices" dialog:
+
+```
++--------------------------------------------------------------------------------------------------------------------+
+| [bell] 2 notices to review.                                                                             [ Review ] |
++--------------------------------------------------------------------------------------------------------------------+
+
++--------------------------+--------------------------------+--------------------------------------------------------+
+| SessionVault             | All Sessions             [imp] |                                                        |
+|                          | [(Q) Search titles, summar..]  |        +--------------------------------------+        |
+| Library                  |--------------------------------|        | Notices                          [x] |        |
+| [tray] All Sessions  128 | (spk Claude)                   |        +--------------------------------------+        |
+| [pin]  Pinned          4 | Seed order comparison    [...] |        | "Compost bin layout" has new         |        |
+| [cal]  Timeline          | now . 6 turns . [up] Not sent  |        | messages from another device, so it  |        |
+|                          |--------------------------------|        | was not deleted.                     |        |
+| Projects                 | (msg ChatGPT)                  |        | 5 minutes ago       [Open] [Dismiss] |        |
+| [dir]  Bicycle repair  3 | Tool shed inventory      [...] |        +--------------------------------------+        |
+| [dir]  Seedlings    [up] | 2 hours ago . (!) Not saved    |        | "Seed order comparison" looks the    |        |
+| [dir+] New Project...    |--------------------------------|        | same as a session you already have.  |        |
+|                          |                                |        | now      [Open] [Delete the New One] |        |
+| ...                      |                                |        |                            [Dismiss] |        |
+|--------------------------|                                |        +--------------------------------------+        |
+| [up] 2 changes waiting   |                                |        |                      [ Dismiss All ] |        |
+|      to be sent          |                                |        +--------------------------------------+        |
+|--------------------------|                                |                                                        |
+| [gear] Settings          |                                |                                                        |
++--------------------------+--------------------------------+--------------------------------------------------------+
+```
+
+Accessibility:
+
+- The status bar is one `role="status"` region. A change of row is announced once; the count inside a row changes without an announcement.
+- Markers are words, not only icons. "Not sent yet" and "Not saved" are part of the accessible name of the row.
+- "Notices" is labelled by its title; the notices are a list; each action is named with the title it concerns, for example "Open “`<title>`”".
+- The toast of a notice is `role="status"`: it reports, it does not interrupt.
+- The `<progress>` of the first sync is labelled "Setting up the offline copy".
+- Relative times are `<time datetime>` elements with the full date in `title` (4.9).
+- New colour pairs are in appendix 5.6.
+
+#### 4.15.9 Import review: warnings, left-out turns and the report per file
+
+import-rules.md section 4 (C8, C9, C10) says what a person has to see before or with a save. `fixtures/import/README.md` says of the turns that the importer removed as page chrome: the interface must show them and let the user restore them. This section extends ReviewBlock and ImportReport of 4.6.6.
+
+A result is reviewed before anything is stored when one of these holds:
+
+| Trigger | Comes from | Sentence |
+|---|---|---|
+| `sign_in_suspected` | paste, share, capture | "This looks like a sign-in or landing page, not a conversation." |
+| A warning of capture.md 7.5 | capture | The sentences of 4.6.6. |
+| A capture that could not be split: one message of role `unknown` | import-rules.md C8 | "No turn structure was found; the page text will be saved as one block." |
+| `dropped_turns` is not empty | capture | The "left out" list below. |
+
+A result with none of these is saved at once, as in the Apple app. An assumed encoding stays a note on the saved result, and `unrecognised_json` stays a result line with the action "Keep as a Note" (both 4.6.6). A possible duplicate is no reason to hold a result back: both sessions are kept, and the notice `duplicate_import` of 4.15.8 says so after the save, with a way to delete the new one (sync.md 7, case 10; import-rules.md C10).
+
+Review block, top to bottom:
+
+1. Heading "Review Before Saving" and the source: the host, the file name, or "Pasted text".
+2. The warnings, one sentence each, with the warning icon.
+3. Only with dropped turns, the list: heading "`<n>` turn left out" or "`<n>` turns left out"; text "These turns at the start or end looked like page furniture, not conversation. Restore any that belong to it. Turns you leave out are not kept."; then one item per dropped turn in input order: its place ("Start" for `leading`, "End" for `trailing`), the first three lines of its text (at most 300 characters, with "Show All" for more), and a toggle button "Restore", which reads "Restored" while it is on. With two or more items, a plain button "Restore All".
+4. What will be saved: "Will be saved: `<n>` turn(s)" and a read-only preview of the first 12 lines (at most 600 characters). Both follow the toggles at once.
+5. Buttons "Discard" and "Save". The second reads "Save Anyway" when a warning is shown.
+
+Rules:
+
+1. Restoring happens before the save, because a stored transcript is never changed message by message (sync.md 6.1). After the save the turns that were left out are gone.
+2. A restored turn goes back to its place in the input (`index`) and is then treated like a turn that was kept: the steps of import-rules.md W10 that follow the chrome test. The import module needs an input for this, a list of input indexes that the chrome test must keep; import-rules.md owns its name and its rule, and capture.md 8.3c passes it on from `POST /api/captures/:id/save`.
+3. "Save Anyway" for `sign_in_suspected` repeats the import with the override that import-rules.md defines (`allow_wall`).
+4. Leaving the Import screen with a review open asks first: dialog "Discard This Import?": "It has not been saved.", "Keep Reviewing", "Discard" (destructive).
+5. Several results to review: one at a time, with "`<k>` of `<n>`" beside the heading. "Discard" and "Save" go on to the next.
+6. Without a connection "Save" stores the session on the device, marked "Not sent yet" (4.15.8).
+7. The words stay modest. The tests behind `sign_in_suspected` and behind the dropped turns match substrings and were never checked against a live provider page (import-rules.md 3.3). The interface says "looks like" and leaves the decision to the user.
+
+Report per file (import-rules.md C9), after an import of more than one file:
+
+| Part | Content |
+|---|---|
+| Status line | The Apple total, "Imported `<n>` session." or "Imported `<n>` sessions."; then, when files failed or wait for review, "`<k>` file needs a look." or "`<k>` files need a look.", and the "Details" list opens by itself. |
+| One line per file | The file name; then "`<n>` session(s)", or the reason sentence of 4.6.6, or "Waiting for review" with the button "Review"; then its notes (an assumed encoding). |
+
+Phone: a capture with a warning and two dropped turns, the second restored:
+
+```
++----------------------------------------+
+| Review Before Saving            1 of 2 |
+| share.example.invalid                  |
+|                                        |
+| (!) The capture may be incomplete.     |
+|                                        |
+| 2 turns left out                       |
+| These turns at the start or end        |
+| looked like page furniture, not        |
+| conversation. Restore any that belong  |
+| to it. Turns you leave out are not     |
+| kept.                                  |
+| +------------------------------------+ |
+| | Start                    [Restore] | |
+| | Garden notes                       | |
+| | Sign in to save this chat          | |
+| +------------------------------------+ |
+| +------------------------------------+ |
+| | End                     [Restored] | |
+| | The new design integrates a third  | |
+| | bay for finished compost.          | |
+| +------------------------------------+ |
+| [Restore All]                          |
+|                                        |
+| Will be saved: 9 turns                 |
+| +------------------------------------+ |
+| | User: How big should each bay be?  | |
+| | Assistant: About one cubic metre.. | |
+| | ...                                | |
+| +------------------------------------+ |
+| [ Discard ]            [ Save Anyway ] |
++----------------------------------------+
+```
+
+Desktop, inside the Import dialog:
+
+```
+        +------------------------------------------------------------+
+        | Import Sessions                                        [x] |
+        +------------------------------------------------------------+
+        | [compass] From Link                                        |
+        | ...                                                        |
+        +------------------------------------------------------------+
+        | Review Before Saving . share.example.invalid        1 of 2 |
+        | (!) The capture may be incomplete.                         |
+        |                                                            |
+        | 2 turns left out                                           |
+        | These turns at the start or end looked like page furniture,|
+        | not conversation. Restore any that belong to it. Turns you |
+        | leave out are not kept.                                    |
+        | +--------------------------------------------------------+ |
+        | | Start  Garden notes / Sign in to save this.. [Restore] | |
+        | | End    The new design integrates a third..  [Restored] | |
+        | +--------------------------------------------------------+ |
+        | [Restore All]                       Will be saved: 9 turns |
+        | +--------------------------------------------------------+ |
+        | | User: How big should each bay be?                      | |
+        | | Assistant: About one cubic metre each works well.      | |
+        | +--------------------------------------------------------+ |
+        |                               [ Discard ]  [ Save Anyway ] |
+        +------------------------------------------------------------+
+        |                                                   [ Done ] |
+        +------------------------------------------------------------+
+```
+
+The report per file (both widths; on a phone each file takes two lines):
+
+```
+        +--------------------------------------------------------------+
+        | (ok) Imported 12 sessions. 2 files need a look.  [Details ^] |
+        +--------------------------------------------------------------+
+        | compost-notes.md       1 session                             |
+        | conversations.json     11 sessions                           |
+        | gear-ratios.txt        Waiting for review           [Review] |
+        | notes-old.txt          1 session . read as Windows-1252      |
+        | export.json            not a known chat export               |
+        |                                             [Keep as a Note] |
+        +--------------------------------------------------------------+
+```
+
+Accessibility:
+
+- The review block is a `<section>` labelled by its heading. Focus moves to the heading when the block appears, and to the status line after "Save" or "Discard".
+- Warnings and dropped turns are lists. Each toggle is a button with `aria-pressed`, named with its place and number, for example "Restore turn 1 of 2, start".
+- The turn count is in the polite region, so that a toggle is confirmed by "9 turns".
+- The preview is text, never HTML (4.7.3), with `dir="auto"`.
+- The report is a list; "Review" and "Keep as a Note" name their file.
+
+#### 4.15.10 Link capture from the server
+
+capture.md 8.3 (tier T3): the server opens a public share link in a headless browser of its own and hands the result to the import path. Public share links only, allow-listed hosts only, never a sign-in. Every provider is switched off until its selectors were checked on one real public page and the owner has agreed to automated capture for it (`../HANDOFF.md` phase 3). This section adds states to the From Link section of 4.5.6 and 4.6.6, whose stage texts and failure messages stand.
+
+What the page knows: `GET /api/capture-config` (capture.md 8.3) says whether capture is on (`enabled`) and, for each provider, whether the server captures its links (`server_capture`). Labels and link patterns come from the selectors data file, which the page has (capture.md 7.1). The page uses this only to decide what to draw. The server decides again on every request. On the wire the fields are in `snake_case` (`capture_id`, `turns_so_far`); the component props of 4.6.6 keep their names.
+
+| State | Condition | What is shown |
+|---|---|---|
+| empty | The field is empty. | The help text only. |
+| not a link | `looksLikeLink` (capture.md 8.1) refuses the text. | "That doesn't look like a link." |
+| link, no capture for it | Server capture is not built yet (before phase 3) or is switched off, or the host belongs to no known provider. | "Open Link" and its instruction (4.6.6). |
+| not enabled | The link is a public share link of a known provider whose switch is off. | "Open Link" and its instruction, with the info line "Capture isn't switched on for `<Provider>` links yet. Open the link and paste the conversation instead." There is no "Capture Transcript" button, neither enabled nor disabled. |
+| needs sign-in | The link belongs to a known provider but is not one of its public share links. | The tip of 4.6.6, "Open Link" and its instruction. For a link that matches `signedInLinks` of its provider (capture.md 7.1 and 13.5; today, Claude Code session links) the tip is: "Claude Code session links need your own sign-in, so they can't be captured from here. You can open the link, copy the conversation and paste it below, but the result will be incomplete: only what is on screen is copied, and what tools read and returned is missing. A complete import of these sessions is not available yet." |
+| ready | A public share link of a provider that is switched on. | The primary button "Capture Transcript", then "Open Link". |
+| running | queued, `loading`, `waiting_for_content`, `extracting`, `processing` (capture.md 8.3) | A progress line: spinner, the stage text of 4.6.6, "Cancel". Under it in caption: "This can take up to two minutes." The count in "Capturing… `<n>` turns so far" appears only if the server reports one; otherwise "Capturing…". |
+| connection lost | Polling fails. | "Lost the connection. The capture may still be running." with "Check Again". |
+| saved | Done, nothing to review. | "Captured `<n>` turns from `<host>`." ("1 turn" is singular) with "Open". Both fields are cleared (B22). |
+| review | Done, with a warning of capture.md 7.5 or with dropped turns. | The review block of 4.15.9, fed by `warnings`, `dropped_turns`, `preview` and `turn_count` of the answer. "Save" is `POST /api/captures/:id/save`, which names the turns to restore by their input index; "Discard" is `DELETE /api/captures/:id`. The server keeps a waiting result for 24 hours (capture.md 8.3). |
+| failed | A failure code of capture.md 7.5. | Its message in 4.6.6; "Try Again" for `busy`, `rate_limited`, `navigation_failed`, `timeout` and `internal_error`. |
+| cancelled | "Cancel" was pressed. | No message; back to "ready"; nothing is saved (B24). |
+| offline | No connection. | "Capture Transcript" is disabled: "You're offline." |
+
+Other answers: `provider_disabled` although the page offered the button (the switch has changed) gives the "not enabled" line. `quota_exceeded`, `account_suspended` and `not_signed_in` are in 4.15.1; the link stays in the field.
+
+Rules:
+
+1. One capture at a time per user (capture.md 8.3). While one runs, the button is disabled; a second request answers `busy`.
+2. Closing Import cancels a running capture (4.6.6). A reload or a lost connection does not: the page finds the capture again by its id, which it keeps in `sessionStorage`.
+3. The help text under the fields names what can be captured. With at least one provider switched on: "Public share links from `<the providers that are switched on>` capture with no login. For anything else, open the link, copy the conversation and paste it below." With none: "A web page can't open another site for you. Open the link yourself, copy the conversation and paste it below."
+4. A result is never called complete. The status says how many turns were captured; warnings say what may be missing.
+5. First release: no page snapshot is stored (`../HANDOFF.md` section 6), so the endings about a PDF in 4.6.6 are not used.
+6. The interface never asks for a provider's password, cookie or token and never offers to sign in to a provider (capture.md 8.3, rule 4, and section 10).
+7. The wording for Claude Code session links rests on one capture made by the owner with the Apple app on 2026-11-20 and reported as a pattern: tool activity appeared only as one-line summaries, and the link needed a signed-in viewer (capture.md 13). Nothing was verified for pasted text. The complete source for such a session is the structured transcript that the page loads as data; it cannot be imported yet (`../HANDOFF.md` section 5). When that import exists, the last sentence of the tip names it.
+8. Notes on a saved session, from its capture record (`x_capture`, capture.md 7.3), shown in caption with the info icon under the counts of the detail header. When `page_type` is set: "Captured as page text from a signed-in page. What tools read and returned is not included." When `images_seen` is above 0: "`<n>` image was not stored." or "`<n>` images were not stored."; the same sentence follows the status line after the capture.
+
+Phone: "not enabled" and "running":
+
+```
++----------------------------------------+   +----------------------------------------+
+| [compass] From Link                    |   | [compass] From Link                    |
+| [https://share.example.invalid/sh.. ]  |   | [https://claude.ai/share/EXAMPLE-0..]  |
+| [Name (optional - auto-detected fr..]  |   | [Name (optional - auto-detected fr..]  |
+| (i) Capture isn't switched on for      |   | [         Capture Transcript         ] |
+|     Gemini links yet. Open the link    |   | (o) Waiting for the conversation...    |
+|     and paste the conversation         |   |                               [Cancel] |
+|     instead.                           |   | This can take up to two minutes.       |
+| [Open Link]  Or open the link, copy    |   | [Open Link]  Or open the link, copy    |
+| the whole conversation and paste it    |   | the whole conversation and paste it    |
+| below. The link is saved with it.      |   | below. The link is saved with it.      |
++----------------------------------------+   +----------------------------------------+
+```
+
+Phone: "failed", and a Claude Code session link (`...` stands for the rest of the text):
+
+```
++----------------------------------------+   +----------------------------------------+
+| [compass] From Link                    |   | [compass] From Link                    |
+| [https://claude.ai/share/EXAMPLE-0..]  |   | [https://claude.ai/code/EXAMPLE-00..]  |
+| [Name (optional - auto-detected fr..]  |   | [Name (optional - auto-detected fr..]  |
+| [         Capture Transcript         ] |   | (i) Claude Code session links need     |
+| (!) The page couldn't be loaded.       |   |     your own sign-in, so they can't    |
+|                            [Try Again] |   |     be captured from here. Open the    |
+| [Open Link]  Or open the link, copy    |   |     link, copy the conversation and    |
+| the whole conversation and paste it    |   |     paste it below. ...                |
+| below. The link is saved with it.      |   | [Open Link]                            |
++----------------------------------------+   +----------------------------------------+
+```
+
+Desktop, inside the Import dialog, with the three other status lines listed below the running one:
+
+```
+        +--------------------------------------------------------------+
+        | Import Sessions                                          [x] |
+        +--------------------------------------------------------------+
+        | [compass] From Link                                          |
+        | [https://claude.ai/share/EXAMPLE-0000                      ] |
+        | [Name (optional - auto-detected from the page)             ] |
+        | [ Capture Transcript ]  [ Open Link ]                        |
+        | (o) Capturing... 18 turns so far                  [ Cancel ] |
+        | This can take up to two minutes.                             |
+        | Public share links from Claude capture with no login. For    |
+        | anything else, open the link, copy the conversation and      |
+        | paste it below.                                              |
+        |                                                              |
+        | not enabled:  (i) Capture isn't switched on for Gemini       |
+        |                   links yet. Open the link and paste the     |
+        |                   conversation instead.        [ Open Link ] |
+        | failed:       (!) The page couldn't be loaded. [ Try Again ] |
+        | saved:        (ok) Captured 42 turns from claude.ai.  [Open] |
+        +--------------------------------------------------------------+
+        | [folder] From Files                                          |
+        | ...                                                          |
+        +--------------------------------------------------------------+
+```
+
+Accessibility:
+
+- The progress line is `role="status"`. A change of stage is announced once; the turn count changes without an announcement. The spinner is `aria-hidden`.
+- "Cancel" follows the progress line in the focus order.
+- A failure is `role="alert"`. The info line of "not enabled" and the tips are tied to the link field with `aria-describedby`.
+- Icon shape and text carry the state, never colour alone.
+
+#### 4.15.11 Components, types and icons added
+
+Names are suggestions, as in 4.6.
+
+```ts
+// The key part of GET /api/claude/config (claude-api.md C6); null when no key is saved.
+type KeyState = null | {
+  status: "ok" | "unknown" | "rejected";
+  last4: string;
+  savedAt: string; checkedAt: string | null; lastUsedAt: string | null;
+};
+
+type RecordSync = "sent" | "unsent" | "kept";             // 4.15.8 (d)
+
+interface Notice { n: number; code: string; entity: "project" | "session"; id: string; at: string }   // sync.md 8
+
+interface SyncSummary {
+  online: boolean;
+  copy: "on" | "off" | "unavailable";
+  firstSync: { next: number; latest: number } | null;     // null when it has finished
+  waiting: number;                                         // entries in the outbox
+  failingSince: string | null;
+  readOnly: boolean;                                       // the server answered read_only
+  lastSyncedAt: string | null;
+}
+
+interface CaptureConfig { enabled: boolean; providers: { id: ProviderId; label: string; serverCapture: boolean }[] }
+
+interface DroppedTurn { position: "leading" | "trailing"; index: number; text: string }   // fixtures/import/README.md
+```
+
+`SessionListItem` of 4.6.1 gains `sync: RecordSync`; project items gain the same field.
+
+| Component | Props | Defined in |
+|---|---|---|
+| AuthFrame | `note?: string`, `message?: Status`, `children` | 4.15.2: icon, name, tagline, note line, message line, links |
+| SignInForm, RecoverForm | `method`, `onDone()` | 4.15.2 |
+| InviteForm | `initialCode?: string` | 4.15.3: both steps |
+| ReauthDialog | `onConfirmed()` | 4.15.4: "Confirm It's You" |
+| DeleteAccountDialog | `waiting: number` | 4.15.4 |
+| KeyLine | `state: KeyState` | 4.15.5 |
+| KeyForm | `replacing: boolean`, `onSaved(state: KeyState)` | 4.15.5 |
+| ConnectToClaude | `onAdd()` | 4.15.5, 4.6.7: the block in the chat |
+| ModelChooser | `models: { id; name; inRegistry; priceClass }[]`, `value`, `onChange(id)`, `onAdd(id)` | 4.15.6 |
+| CopyMessageButton | `getText(): string`, `disabledReason?: string`, `describedBy: string` | 4.15.7 |
+| StatusBar | `sync: SyncSummary`, `account: "active" \| "suspended"`, `noticeCount: number` | 4.15.8 (b); it takes the place of the offline bar |
+| SyncRow | `sync: SyncSummary` | 4.15.8 (c) |
+| SyncMarker | `state: RecordSync` | 4.15.8 (d) |
+| NoticeList | `notices: Notice[]`, `onDismiss(n)`, `onAction(n, action)` | 4.15.8 (e) |
+| DroppedTurnList | `turns: DroppedTurn[]`, `restored: number[]`, `onToggle(index)` | 4.15.9 |
+
+Icons added to 4.12 (Lucide names from memory, unverified like the others):
+
+| Purpose | Lucide icon |
+|---|---|
+| API key, the "Connect to Claude" block | `key-round` |
+| changes waiting, "Not sent yet" | `cloud-upload` (`upload-cloud`) |
+| notices | `bell` |
+| restore a turn that was left out | `undo-2` |
+| account | `circle-user` (`user-circle`) |
+| remove one of the user's models | `x` |
+
+### 4.16 Decisions for the owner
+
+Build the default until the owner answers. The first two need the owner before strangers can sign up (`../HANDOFF.md` section 9); the others can wait. Questions that another document already lists are named with their place and not asked twice.
+
+| # | Question | Default |
+|---|---|---|
+| 1 | Which sign-in method (web-platform.md section 17, decision 1)? Only the method block of 4.15.2 and step 2 of 4.15.3 depend on it. | Built into the app: e-mail address and password while no mail provider is configured; invitation codes. |
+| 2 | The terms and privacy texts (web-platform.md 11.14, G14). With them: the privacy sentence in Settings and the "not deleted" text of the account deletion dialog (4.15.4), and what the key screen says about how a key is kept (4.15.5; claude-api.md C14). | The links stay hidden until the texts exist; the sentences as written here. |
+| 3 | The app icon artwork (4.11.1). | The placeholder. |
+| 4 | Show the last four characters of a saved API key (data-model.md, decision 13)? | Yes. |
+| 5 | Account deletion at once after a typed confirmation, or with some days to change one's mind (data-model.md, decision 11)? | At once. |
+| 6 | Ask before deleting a session or a project (B17; data-model.md, decision 4)? | Ask. |
+| 7 | Always show an import before saving it, or save clean results at once (import-rules.md, decision 4)? | Save clean results at once; review what was flagged or had turns left out. |
+| 8 | Repeat the Copy button at the end of long messages (4.15.7, rule 2)? | Yes, above 1,500 characters. |
+| 9 | Offer the "Prompt Cache" and "Fallback Model" settings in the first release (4.15.6)? | Yes. The cache setting decides what a single question costs. |
+| 10 | After a reply was cut off: nothing ready-made, or a "Continue" button that sends one fixed sentence? The first version of this document had the button. | Nothing ready-made: the user writes the next message (claude-api.md C7 and C17). |
+| 11 | Draw block-level Markdown (headings, lists, tables) in transcripts (4.7.2)? | No, as in the Apple app. |
+| 12 | May the copy on a device be on by default (sync.md, decision 1)? | Yes, with the sentence in Settings that anyone using the browser profile can read it. |
 
 ---
 
@@ -2349,8 +3675,8 @@ Pairs checked in both themes: text on bg, sidebar, raised surface, hover, select
 
 Compiled with `xcrun swiftc` on macOS and run on synthetic input only.
 
-1. The body of `MessageSegment.parse` and the paragraph rule, copied verbatim from apple/SessionVault/Views/MessageView.swift:46-93 and :110-114: the table in section 1.10.2.
-2. `AttributedString(markdown:options:)` with `.inlineOnlyPreservingWhitespace`, the call at MessageView.swift:116-123: the tables in sections 1.10.3 and 4.7.2. Further results: `a*b*c` gives an italic b; `x**y**z` a bold y; `use **kwargs or **options here` and `*.md and *.txt files` stay literal; `~single~` is struck through; a link destination with one level of parentheses works; markup inside a link label is applied.
+1. The body of `MessageSegment.parse` and the paragraph rule, copied verbatim from apple/SessionVault/Views/MessageView.swift:79-126 and :143-147 (line numbers as of commit `e81828a`, which moved this code without changing it): the table in section 1.10.2.
+2. `AttributedString(markdown:options:)` with `.inlineOnlyPreservingWhitespace`, the call at MessageView.swift:149-156: the tables in sections 1.10.3 and 4.7.2. Further results: `a*b*c` gives an italic b; `x**y**z` a bold y; `use **kwargs or **options here` and `*.md and *.txt files` stay literal; `~single~` is struck through; a link destination with one level of parentheses works; markup inside a link label is applied.
 3. `URL(string:)` as used at apple/SessionVault/Views/ImportSheet.swift:51: nil for the empty string and for `ht!tp://x`; not nil for "hello", "hello world", "not a url at all", "http://", "%%%".
 4. The clipboard link rule of ImportSheet.swift:205-217: true for a share link with and without scheme, and also for "notes.md", "hello.", "v1.2", "3.14" and a `mailto:` address; false for "User: hi", "one-word" and text with a line break.
 5. `Date.RelativeFormatStyle(presentation: .named)` in an English locale for 0 s, 30 s, 90 s, 3 h, 26 h, 2 d, 8 d, 20 d, 45 d and 400 d: "now", "30 seconds ago", "2 minutes ago", "3 hours ago", "yesterday", "2 days ago", "last week", "3 weeks ago", "last month", "last year". `relativeParts` in appendix 5.4 gives the same ten strings through `Intl.RelativeTimeFormat`.
@@ -2687,3 +4013,24 @@ Speed, on a desktop JavaScript engine: a 1,037,500-character message gives 174 b
 - That the Apple app's PDF is a single tall page.
 - Whether dialogs, menus and windowing libraries run under the Content-Security-Policy of web-platform.md without changes.
 - The other handoff documents were written at the same time. This document was aligned with data-model.md, claude-api.md, web-platform.md, capture.md and import-rules.md as they stood shortly before it was finished. Where they differ from this document on their own subject, they win.
+- Added on 2026-11-20: nothing in sections 4.15 and 4.16 was built or run. Their strings, states and wireframes are a specification.
+- The Copy button of the Apple app (section 1.10.1) was read in the source at commit `e81828a`. According to the commit message it was built and not clicked in a running app.
+- No sign-in library is chosen yet (web-platform.md 11.9), so 4.15.2 to 4.15.4 were written without one to check them against.
+- For section 4.15, data-model.md and sync.md were read as revised on 2026-11-20. claude-api.md, web-platform.md and capture.md were read in their revisions of the same day, which appeared while this section was being written and may have moved afterwards. import-rules.md was read as published in commit `e81828a`; no revision of it was seen. Where one of them names a route, a code or a message differently, it wins on its own subject and the wording here follows.
+- Whether browsers offer to store the value of the API key field as a site password (4.15.5).
+- The wording for Claude Code session links (4.15.10) rests on one reported capture, not on a page that was looked at for this document.
+- The Lucide names added in 4.15.11.
+
+### 5.6 Contrast of the pairs added on 2026-11-20
+
+Section 4.15 adds no token. It uses the pairs below, which the check of 5.2 did not cover. They were computed with the same formula from the values of 4.2 (text needs 4.5:1, icons 3:1):
+
+| Pair | Used for | Light | Dark |
+|---|---|---|---|
+| `--color-accent` on `--color-fill-neutral` | the action of the status bar | 4.84:1 | 5.82:1 |
+| `--color-warning` on `--color-fill-neutral` | the warning icon of the status bar | 5.14:1 | 6.95:1 |
+| `--color-danger` on `--color-hover` | the "Not saved" icon in a row under the pointer | 4.90:1 | 5.82:1 |
+| `--color-danger` on `--color-selected` | the "Not saved" icon in a selected row | 4.45:1 | 4.79:1 |
+| `--color-danger` on `--color-bg-sidebar` | the "Not saved" icon on a project | 4.83:1 | 6.16:1 |
+
+`--color-danger` on `--color-selected` is 4.45:1 in the light theme: enough for an icon, not for text. That is why the words "Not saved" are drawn in `--color-text` (4.15.8). `--color-success` on `--color-selected` is 4.46:1 in the light theme and is not used. Every other pair of section 4.15 is in the list of 5.2.

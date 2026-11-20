@@ -32,8 +32,25 @@ const WHOLE_LINE_HEADERS: readonly Header[] = [
   { text: "Gemini said", role: "assistant", provider: "gemini" },
 ];
 
+const ELLIPSIS = String.fromCodePoint(0x2026);
+
 /** The two prefixes that make this parser apply, as in the Apple test. */
 const TRIGGER_PREFIXES: readonly string[] = ["You said:", "Claude responded:"];
+
+/**
+ * W6 (defect D19): the text after a speaker header is a preview exactly when the first non-blank
+ * line of the turn, after the cleaner has run, begins with it once one trailing U+2026 or "..."
+ * and the white space before it have been cut from it. Equality is the special case. What is
+ * dropped therefore always stands at the start of the next line: a dropped preview loses no text.
+ */
+function isPreviewOf(headerText: string, cleanedLines: readonly string[]): boolean {
+  let stem = headerText;
+  if (stem.endsWith(ELLIPSIS)) stem = stem.slice(0, -1);
+  else if (stem.endsWith("...")) stem = stem.slice(0, -3);
+  stem = trimInline(stem);
+  const first = cleanedLines.find((line) => trimInline(line) !== "");
+  return first !== undefined && trimInline(first).startsWith(stem);
+}
 
 /**
  * W6. null when this parser does not apply: no trigger line, or no turn with text.
@@ -55,7 +72,15 @@ export function parseSharePageText(lines: readonly string[], title: string): Par
   let headerText = "";
   let turnLines: string[] = [];
   const flush = (): void => {
-    let body = trimFull(cleanTranscriptLines(turnLines).join("\n"));
+    let kept = cleanTranscriptLines(turnLines);
+    // W6 (D19): the text on a speaker line is the first line of its turn, unless it is a preview
+    // of what follows. The Apple app drops it whenever more text follows, and loses words when a
+    // person wrote "You said: first sentence" and went on below. When it is kept, the cleaner
+    // runs over it followed by the lines of the turn.
+    if (headerText !== "" && !isPreviewOf(headerText, kept)) {
+      kept = cleanTranscriptLines([headerText, ...turnLines]);
+    }
+    let body = trimFull(kept.join("\n"));
     // W6: a turn whose only text sits on its header line keeps that text (D6).
     if (body === "") body = headerText;
     // corrections.md 3, point 8: "empty" is empty after the full trim. The header-line text is
@@ -74,7 +99,7 @@ export function parseSharePageText(lines: readonly string[], title: string): Par
     if (header !== undefined) {
       flush();
       role = header.role;
-      // The text after a prefix header on its own line: a preview of the lines that follow.
+      // The text after a prefix header on its line: the first line of the turn, or a preview of it.
       headerText = prefixHeader === undefined ? "" : trimInline(line.slice(prefixHeader.text.length));
       if (header.provider !== null) assistantProviders.push(header.provider);
     } else if (role !== null) {

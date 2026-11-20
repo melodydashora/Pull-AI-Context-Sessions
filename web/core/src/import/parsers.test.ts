@@ -195,7 +195,7 @@ describe("W6 share-page text", () => {
   });
 
   it("drops a turn that has no text at all, and does not apply when no turn is left", () => {
-    expect(turns(share("You said:\nClaude responded: x\ny"))).toEqual([["assistant", "y"]]);
+    expect(turns(share("You said:\nClaude responded: x\ny"))).toEqual([["assistant", "x\ny"]]);
     expect(share("You said:\n\nClaude responded:\nCopy")).toBeNull();
   });
 
@@ -221,8 +221,103 @@ describe("W6 share-page text", () => {
     );
     expect(turns(session)).toEqual([
       ["user", "q"],
-      ["assistant", "def f():\n    return 1\n    return 1\nend"],
+      ["assistant", "a\ndef f():\n    return 1\n    return 1\nend"],
     ]);
+  });
+
+  describe("the text on a speaker line (D19): the first line of the turn unless it is a preview", () => {
+    const E = String.fromCodePoint(0x2026);
+
+    it("is dropped when the first non-blank line after it begins with it (a share page's preview)", () => {
+      expect(
+        turns(
+          share(
+            `You said: How long${E}\nHow long should it prove?\nClaude responded: About four hours.\n\nAbout four hours.`,
+          ),
+        ),
+      ).toEqual([
+        ["user", "How long should it prove?"],
+        ["assistant", "About four hours."],
+      ]);
+      // Three full stops count as the ellipsis; the white space before either is cut.
+      expect(turns(share("You said: How long ...\nHow long should it prove?\nClaude responded: a"))).toEqual([
+        ["user", "How long should it prove?"],
+        ["assistant", "a"],
+      ]);
+      // The prefix test applies without an ellipsis too: what is dropped stands at the start of the next line.
+      expect(
+        turns(share("You said: Is it dead?\nIs it dead? It has been cold.\nClaude responded: a")),
+      ).toEqual([
+        ["user", "Is it dead? It has been cold."],
+        ["assistant", "a"],
+      ]);
+    });
+
+    it("is kept as the first line when the text after it does not begin with it (a person's own text)", () => {
+      expect(
+        turns(
+          share(
+            "You said: My starter smells odd.\n\nIt has been in the fridge.\nClaude responded: No.\nFeed it.",
+          ),
+        ),
+      ).toEqual([
+        ["user", "My starter smells odd.\n\nIt has been in the fridge."],
+        ["assistant", "No.\nFeed it."],
+      ]);
+    });
+
+    it("is kept, ellipsis included, when a preview is not repeated below", () => {
+      expect(
+        turns(share(`You said: My starter smells${E}\nIt has been in the fridge.\nClaude responded: a`)),
+      ).toEqual([
+        ["user", `My starter smells${E}\nIt has been in the fridge.`],
+        ["assistant", "a"],
+      ]);
+    });
+
+    it("is compared after the cleaner has run: furniture between the label and the repeated line does not hide a preview", () => {
+      expect(turns(share("You said: q\nCopy\n10:30\nq and more\nClaude responded: a"))).toEqual([
+        ["user", "q and more"],
+        ["assistant", "a"],
+      ]);
+    });
+
+    it("no typographic quotes are replaced for the comparison", () => {
+      const curly = String.fromCodePoint(0x2019);
+      expect(turns(share(`You said: it's\nit${curly}s here\nClaude responded: a`))).toEqual([
+        ["user", `it's\nit${curly}s here`],
+        ["assistant", "a"],
+      ]);
+    });
+
+    it("cuts the white space before the ellipsis, and compares with the inline-trimmed line", () => {
+      expect(turns(share(`You said: abc ${E}\nabcdef\nClaude responded: a`))).toEqual([
+        ["user", "abcdef"],
+        ["assistant", "a"],
+      ]);
+      expect(turns(share("You said: code\n    code here\nClaude responded: a"))).toEqual([
+        ["user", "code here"],
+        ["assistant", "a"],
+      ]);
+    });
+
+    it("cuts one ellipsis only, and one form of it only", () => {
+      expect(turns(share(`You said: a${E}${E}\nab\nClaude responded: a`))).toEqual([
+        ["user", `a${E}${E}\nab`],
+        ["assistant", "a"],
+      ]);
+      expect(turns(share(`You said: a...${E}\na more\nClaude responded: a`))).toEqual([
+        ["user", `a...${E}\na more`],
+        ["assistant", "a"],
+      ]);
+    });
+
+    it("is the message as written when the cleaner leaves nothing of the turn", () => {
+      expect(turns(share("You said: Copy\nClaude responded: 10:42"))).toEqual([
+        ["user", "Copy"],
+        ["assistant", "10:42"],
+      ]);
+    });
   });
 
   it("cleans the title as W8 does (D13: no empty or all-space titles)", () => {
@@ -673,17 +768,17 @@ describe("corrections.md 3, point 8: 'empty' means empty after the full trim", (
 
   it.each(BLANK_NOT_EMPTY)("W6: header-line text %j alone is no message", (blank) => {
     // The header-line text is only inline-trimmed, which keeps these characters.
-    expect(turns(share(`You said: ${blank}\nClaude responded: a\nb`))).toEqual([["assistant", "b"]]);
+    expect(turns(share(`You said: ${blank}\nClaude responded: a\nb`))).toEqual([["assistant", "a\nb"]]);
     expect(turns(share(`You said: q\nq\nClaude responded: ${blank}`))).toEqual([["user", "q"]]);
     // No turn is left: the parser does not apply, and the generic parser stores no blank message either.
     expect(share(`You said: ${blank}`)).toBeNull();
     expect(turns(only(parseText(`You said: ${blank}`, "x")))).toEqual([["unknown", "You said:"]]);
   });
 
-  it("W6: what is stored for a header-line text that is not empty does not change", () => {
+  it("W6: a header-line text that is not empty is stored like every other turn: cleaned and fully trimmed (D19)", () => {
     expect(turns(share(`You said: x${LS}\nClaude responded: ${NEL}y\nYou said: q${VT}r`))).toEqual([
-      ["user", `x${LS}`],
-      ["assistant", `${NEL}y`],
+      ["user", "x"],
+      ["assistant", "y"],
       ["user", `q${VT}r`],
     ]);
   });

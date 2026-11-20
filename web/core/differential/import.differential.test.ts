@@ -1891,10 +1891,10 @@ describe("documented divergences: decided after the port was written (correction
   it("point 8: a header-line text or a title that is blank without being empty counts as empty; the port stores it", () => {
     // U+2028 survives the inline trim of the header line. The turn has no other text.
     const share = `You said: ${LS}\nClaude responded: a\nb`;
-    expect(turnsOf({ sessions: importer.parseText(share, "t") })).toEqual([["assistant", "b"]]);
+    expect(turnsOf({ sessions: importer.parseText(share, "t") })).toEqual([["assistant", "a\nb"]]);
     expect(turnsOf({ sessions: reference.parseText(share, "t", "web") })).toEqual([
       ["user", LS],
-      ["assistant", "b"],
+      ["assistant", "a\nb"],
     ]);
     // The same for the title line of puller Markdown.
     const puller = `# ${LS}\nSource: https://claude.ai/code/EXAMPLE\n\nUser: q\n`;

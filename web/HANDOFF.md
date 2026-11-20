@@ -12,6 +12,8 @@ The Apple app does this for one person on Mac, iPhone and iPad. The web app does
 
 **What matters most.** The owner depends above all on the context pipeline: getting a conversation in (capture and import), and getting its context out again in a form another model can use (the context pack). Accounts, sync and the Claude features exist to serve that pipeline. When priorities conflict, the pipeline wins, and it is the part that must be tested most thoroughly.
 
+**How it is used.** The owner asks free-form questions about a saved session, of a model of her choosing, and takes the answer elsewhere. So: no preset questions and no forced output formats; the model list is the user's choice, not a fixed menu; and every message and every reply can be copied whole with one action, not only code blocks.
+
 ## 2. Decisions already made by the owner
 
 These are settled. Do not reopen them; build for them. Where a document under `docs/` disagrees with this section, this section wins (see section 5).
@@ -91,7 +93,7 @@ The owner captured a Claude Code session share link with the Apple app and built
 - Tool activity is collapsed on the page into one-line summaries (for example "Used a tool 5 times" or "Ran a command"). What the tools read and returned is not in the captured text, so the context pack lacks most of the substance of the session.
 - The first sentence of each message is captured twice: once as the page's preview line and once in the full text.
 - Housekeeping lines (session initialised, messages from subagents) are captured as separate notes, and the title is the link id.
-- This link form needs a signed-in viewer. The server-side capture of phase 3 is for public pages only, so it cannot fetch such a link.
+- This link form needs a signed-in viewer. The server-side capture of phase 3 is for public pages only, so it cannot fetch such a link. For Claude Code sessions the capture route stays the puller, which drives a signed-in browser on the user's own machine, until the product has a signed-in path of its own.
 
 What this means for the build:
 

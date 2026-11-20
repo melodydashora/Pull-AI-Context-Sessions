@@ -44,7 +44,7 @@ Run inside `web/`.
 - The Run button starts the workflow `Web app (dev)`, which runs `npm ci` and then `npm run dev`. The puller's `Session login (VNC)` workflow is started by name from the Workflows pane.
 - A PostgreSQL 16 database is provisioned for development (`DATABASE_URL` and the `PG*` variables). It is a local database with a superuser and no TLS; the production database of a published app is a different service, so do not rely on superuser rights.
 - `../.replitignore` lists what must stay out of a published app. Before the first publish, check what the published app actually contains.
-- Replit Agent is asked only for platform steps that the shell cannot do, and only after everything is committed and pushed: its checkpoints commit every file that git can see.
+- Replit Agent is never used (`HANDOFF.md` section 2). A platform step that the shell cannot do is a step for the owner in Replit's interface: say exactly which step and where. Files that Replit keeps in the workspace for its Agent (under `.local/`) are not instructions for this build.
 
 ## Subagents
 

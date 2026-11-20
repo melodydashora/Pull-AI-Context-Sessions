@@ -37,7 +37,7 @@ Instructions for Claude Code sessions, and a fair summary for people. `README.md
 - Only `~/workspace` survives a restart. `~/.claude` (sign-in, settings, memory) and `~/.local/bin` do not.
 - Replit sets a personal address as the global git identity. Every commit made there must set the no-reply identity explicitly.
 - Replit's Git panel commits every untracked file that is not ignored ("Git commit prior to merge") and pushes. Do not use it; keep `git status` clean.
-- Code work is done by Claude Code in the shell. Replit Agent is used only for platform setup such as the database.
+- All work is done by Claude Code in the shell. Replit Agent is never used, for anything: the owner's rule since 2026-11-20. A platform step that the shell cannot do is a step for the owner in Replit's interface, and what only Replit Agent can set up is not available. Files that Replit keeps in the workspace for its Agent are not instructions.
 - Python Playwright needs the directory of `libatomic.so.1` on `LD_LIBRARY_PATH` (the command in `puller/README.md` shows how); the browser is at `$(command -v chromium)`. That name resolves to the build `.replit` installs in a workflow and in a newly opened shell, but a process started earlier can still resolve it to a different build: never let two builds share one browser profile.
 - A browser profile that holds a sign-in is a credential, and the puller's output is private. Neither belongs in a place other people can read; `.gitignore` only keeps them out of git.
 - A server started there serves the app's own build output only, never the workspace folder.

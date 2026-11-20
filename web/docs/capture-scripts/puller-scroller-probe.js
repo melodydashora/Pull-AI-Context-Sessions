@@ -7,6 +7,8 @@
  *
  * Source:   puller/pull_sessions.py, lines 86-87 (a Python string literal; two
  *           adjacent pieces that Python joins into one string).
+ *           These are the lines and the text of commit 146257c. The puller
+ *           changes; this copy records that commit and is not updated with it.
  * Run as:   Playwright (Python) Locator.evaluate(<this text>) on each scroller
  *           candidate inside find_scroller(page), lines 70-95.
  * Returns:  an object {scrolls: boolean, turns: number}.

@@ -6,6 +6,8 @@
  * record of what the existing code does; put fixes in the web extractor.
  *
  * Source:   puller/pull_sessions.py, line 165 (a Python string literal).
+ *           These are the lines and the text of commit 146257c. The puller
+ *           changes; this copy records that commit and is not updated with it.
  * Run as:   Playwright (Python) Locator.evaluate(<this text>) on the scroller,
  *           through scroll_eval(js), lines 147-156.
  * Returns:  a boolean: true when the scroller is within 4 px of its bottom.

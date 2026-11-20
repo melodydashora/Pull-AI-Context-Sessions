@@ -25,7 +25,7 @@ python3 web/reference/import-port/compare.py . /tmp/out-web.json web
 - `run.ts <cases file> <apple|web>` needs a Node that runs TypeScript files directly (type stripping). It was run on Node 25. On an older Node, compile it first or run it through the project's TypeScript tooling.
 - `compare.py <repository> <results file> <apple|web>` maps the results to the fixture shape and compares them with the expected files.
 
-Checked on 2026-11-20, after fixtures 58 and 59 and the preview rule of W6 were added: `web` mode gives "equal 59 different 0", `apple` mode gives "equal 57 different 0 skipped 2" (fixtures 10 and 11 have no recorded Apple result).
+Checked on 2026-11-20, after fixtures 58 to 61 and the preview rule of W6 with its word boundary were added: `web` mode gives "equal 61 different 0", `apple` mode gives "equal 59 different 0 skipped 2" (fixtures 10 and 11 have no recorded Apple result).
 
 Added on 2026-11-20: the capture entry takes `keepDropped`, the list of dropped turns that a user restored (`import-rules.md` W10). No fixture covers it; the worked example in W10 was produced with this port. Without `keepDropped` the port behaves as before, and both checks above were run again after the change.
 

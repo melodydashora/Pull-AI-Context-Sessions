@@ -1,0 +1,4 @@
+You said: Version 1
+Version 10 is out.
+Claude responded: Cafe
+Café Central opens at nine.

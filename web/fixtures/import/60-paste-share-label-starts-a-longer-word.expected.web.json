@@ -1,0 +1,49 @@
+{
+  "fixture": "60-paste-share-label-starts-a-longer-word",
+  "source": "web-target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "notes": [
+    "Share-page text whose speaker lines hold one short word that the next line begins a longer word with: 'No' before 'Nothing', 'Yes' before 'Yesterday'.",
+    "Apple discards the text after the header whenever more text follows: 'No' and 'Yes' are lost. The web app takes such text for a preview only when the next line begins with it and, no ellipsis having been cut, the text ends where a word ends. 'Nothing' continues 'No' with a letter, so 'No' is kept as the first line of the turn."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "No\nNothing works after the update.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "No\nNothing works after the update."
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Yes\nYesterday's build is the last good one.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Yes\nYesterday's build is the last good one."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

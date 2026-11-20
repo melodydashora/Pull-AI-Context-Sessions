@@ -306,15 +306,21 @@ const SHARE_BARE_HEADERS: { line: string; role: Role; provider: Provider | null 
 
 // W6: the text after a speaker header is a preview exactly when the first non-blank line of the
 // turn begins with it, after one trailing U+2026 or "..." and the white space before it have been
-// cut from it. Equality is the special case. What is dropped therefore always stands at the start
-// of the next line: a dropped preview never loses text.
+// cut from it, and one of these holds: an ellipsis was cut; the line ends where the text ends; or
+// what follows in the line is not a letter, a digit or a combining mark (categories L, N and M).
+// Without an ellipsis the text must end where a word ends: "No" is no preview of "Nothing works.".
 function isPreviewOf(label: string, body: string[]): boolean {
   let stem = label;
+  let ellipsisCut = true;
   if (stem.endsWith("\u2026")) stem = stem.slice(0, -1);
   else if (stem.endsWith("...")) stem = stem.slice(0, -3);
+  else ellipsisCut = false;
   stem = trimInline(stem);
   const first = body.find((line) => trimInline(line) !== "");
-  return first !== undefined && trimInline(first).startsWith(stem);
+  if (first === undefined) return false;
+  const line = trimInline(first);
+  if (!line.startsWith(stem)) return false;
+  return ellipsisCut || !/^[\p{L}\p{N}\p{M}]/u.test(line.slice(stem.length));
 }
 
 function parseShareTextWeb(text: string, title: string): ImportedSession | null {

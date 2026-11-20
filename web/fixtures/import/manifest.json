@@ -1447,6 +1447,60 @@
         "W6"
       ],
       "difference": "Apple discards the text after the header as a preview. Here the next line does not begin with it, so the words exist nowhere else and are lost. The web app drops such text only when the first non-blank line after it begins with it, after one trailing ellipsis has been cut for the comparison; otherwise it keeps the text as the first line of the turn, ellipsis included."
+    },
+    {
+      "id": "60-paste-share-label-starts-a-longer-word",
+      "kind": "defect-fix",
+      "entry": "paste",
+      "input": "60-paste-share-label-starts-a-longer-word.input.txt",
+      "input_bytes": 107,
+      "input_sha256": "40c28266bda75fc30bf5f23b1b1405a6f76e21628d8fe0533e823114523e834e",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "apple": "60-paste-share-label-starts-a-longer-word.expected.apple.json",
+        "web": "60-paste-share-label-starts-a-longer-word.expected.web.json"
+      },
+      "summary": "Share-page text whose speaker lines hold one short word that the next line begins a longer word with: 'No' before 'Nothing', 'Yes' before 'Yesterday'.",
+      "covers": [
+        "without an ellipsis, text on a speaker line is a preview only if it ends where a word ends",
+        "a short first line that begins the next line's first word is kept"
+      ],
+      "rules": [
+        "D19",
+        "W6"
+      ],
+      "difference": "Apple discards the text after the header whenever more text follows: 'No' and 'Yes' are lost. The web app takes such text for a preview only when the next line begins with it and, no ellipsis having been cut, the text ends where a word ends. 'Nothing' continues 'No' with a letter, so 'No' is kept as the first line of the turn."
+    },
+    {
+      "id": "61-paste-share-label-before-digit-or-mark",
+      "kind": "defect-fix",
+      "entry": "paste",
+      "input": "61-paste-share-label-before-digit-or-mark.input.txt",
+      "input_bytes": 92,
+      "input_sha256": "d98086ed12e256689df1ec886f30a2c5cc163808abbc166ddb450d88f7dd73b3",
+      "call": {
+        "entry": "paste",
+        "title": "Pasted session",
+        "picker_provider": "claude"
+      },
+      "expected": {
+        "apple": "61-paste-share-label-before-digit-or-mark.expected.apple.json",
+        "web": "61-paste-share-label-before-digit-or-mark.expected.web.json"
+      },
+      "summary": "Share-page text whose speaker-line text is followed in the next line by a digit ('Version 1' before 'Version 10') and by a combining mark ('Cafe' before 'Cafe' with U+0301).",
+      "covers": [
+        "a digit after the repeated text means it is not a preview",
+        "a combining mark after the repeated text means it is not a preview"
+      ],
+      "rules": [
+        "D19",
+        "W6"
+      ],
+      "difference": "Apple discards the text after the header whenever more text follows. The web app keeps it here: the next line begins with it, but continues with a digit in one turn and with a combining mark in the other, so the text does not end where a word ends and is the first line of the turn."
     }
   ]
 }

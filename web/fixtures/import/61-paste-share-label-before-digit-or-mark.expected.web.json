@@ -1,0 +1,49 @@
+{
+  "fixture": "61-paste-share-label-before-digit-or-mark",
+  "source": "web-target",
+  "call": {
+    "entry": "paste",
+    "title": "Pasted session",
+    "picker_provider": "claude"
+  },
+  "notes": [
+    "Share-page text whose speaker-line text is followed in the next line by a digit ('Version 1' before 'Version 10') and by a combining mark ('Cafe' before 'Cafe' with U+0301).",
+    "Apple discards the text after the header whenever more text follows. The web app keeps it here: the next line begins with it, but continues with a digit in one turn and with a combining mark in the other, so the text does not end where a word ends and is the first line of the turn."
+  ],
+  "result": {
+    "outcome": "imported",
+    "reason": null,
+    "flags": [],
+    "sessions": [
+      {
+        "title": "Pasted session",
+        "provider": "claude",
+        "model": "",
+        "source_url": "",
+        "created_at": null,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Version 1\nVersion 10 is out.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Version 1\nVersion 10 is out."
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": "Cafe\nCafé Central opens at nine.",
+            "display_segments": [
+              {
+                "type": "prose",
+                "text": "Cafe\nCafé Central opens at nine."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

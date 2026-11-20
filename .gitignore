@@ -1,0 +1,126 @@
+# .gitignore - the single ignore file for this repository, used from macOS and Windows.
+# Layout: apple/ (Xcode app), puller/ (Python tool), reference/ (unbuilt donor code).
+# Comments must be on their own line. Ignore rules match without regard to case on
+# macOS and Windows disks, so folder rules that could collide with the name of a
+# source folder (sessions, build) are anchored to exact locations with a leading slash.
+
+# ---- macOS ------------------------------------------------------------------
+.DS_Store
+._*
+.AppleDouble/
+.LSOverride
+.Spotlight-V100/
+.Trashes/
+.fseventsd/
+.TemporaryItems/
+
+# ---- Windows ----------------------------------------------------------------
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+~$*
+*.stackdump
+
+# ---- editors, IDEs, merge leftovers -----------------------------------------
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.code-workspace
+.vs/
+.idea/
+*.swp
+*~
+*.orig
+*.rej
+*.bak
+*.tmp
+*.log
+node_modules/
+
+# ---- Xcode / Swift ----------------------------------------------------------
+# xcuserdata holds per-user Xcode state; its folder name contains the macOS account name.
+xcuserdata/
+*.xcuserstate
+DerivedData/
+.build/
+.swiftpm/
+*.xcarchive/
+*.xcresult/
+*.dSYM/
+*.dSYM.zip
+*.ipa
+*.hmap
+*.moved-aside
+*.xccheckout
+*.xcscmblueprint
+# In-tree build output (xcodebuild -target, setuptools). Anchored: an unanchored
+# "build/" would also hide a source folder named Build.
+/build/
+/apple/build/
+/puller/build/
+/reference/session-capture-ios/build/
+
+# ---- Python (virtual environments are ignored wherever they are created) ------
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# ---- Playwright -------------------------------------------------------------
+.local-browsers/
+ms-playwright/
+playwright-report/
+blob-report/
+test-results/
+playwright/.cache/
+playwright/.auth/
+storage_state*.json
+
+# ---- puller output, link lists, browser profiles (private transcripts, cookies) -
+# pull_sessions.py writes to a "sessions" folder inside the folder it is run from.
+# Anchored: an unanchored "sessions/" would also hide a source folder named Sessions.
+/sessions/
+/puller/sessions/
+all_sessions.md
+# Real link lists are private. Only the placeholder example is tracked.
+links*.txt
+!links.example.txt
+.claude_session_pull_profile/
+*browser-profile*/
+*chrome-profile*/
+
+# ---- app data (the vault holds personal transcripts; never in the repository) --
+*.store
+*.store-shm
+*.store-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+.default_SUPPORT/
+CapturedSessions/
+
+# ---- secrets and signing material -------------------------------------------
+.env
+.env.*
+!.env.example
+.netrc
+*.pem
+*.p8
+*.p12
+*.pfx
+*.cer
+*.certSigningRequest
+*.mobileprovision
+*.provisionprofile
+
+# ---- AI-assistant local state -----------------------------------------------
+.claude/settings.local.json
+CLAUDE.local.md

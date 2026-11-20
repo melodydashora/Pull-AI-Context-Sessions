@@ -1,0 +1,68 @@
+# .gitattributes - line-ending and binary rules for a repo used from macOS and Windows.
+# Goal: every checkout has byte-identical files, whatever core.autocrlf says on that machine.
+# (Lines starting with # are comments; attributes cannot carry trailing comments.)
+
+# ---- default ---------------------------------------------------------------
+* text=auto eol=lf
+
+# ---- repo plumbing ---------------------------------------------------------
+.gitattributes        text eol=lf
+.gitignore            text eol=lf
+.editorconfig         text eol=lf
+
+# ---- Apple / Xcode ---------------------------------------------------------
+*.swift               text eol=lf
+*.pbxproj             text eol=lf
+*.xcscheme            text eol=lf
+*.xcworkspacedata     text eol=lf
+*.xcconfig            text eol=lf
+*.xcprivacy           text eol=lf
+*.entitlements        text eol=lf
+*.xcstrings           text eol=lf
+Package.resolved      text eol=lf
+
+# ---- Python tool -----------------------------------------------------------
+*.py                  text eol=lf diff=python
+*.toml                text eol=lf
+*.cfg                 text eol=lf
+
+# ---- docs, web, data -------------------------------------------------------
+*.md                  text eol=lf diff=markdown
+*.txt                 text eol=lf
+*.json                text eol=lf
+*.html                text eol=lf diff=html
+*.css                 text eol=lf diff=css
+*.js                  text eol=lf
+*.yml                 text eol=lf
+*.yaml                text eol=lf
+*.svg                 text eol=lf
+
+# ---- scripts ---------------------------------------------------------------
+*.sh                  text eol=lf
+*.command             text eol=lf
+*.ps1                 text eol=lf
+*.bat                 text eol=crlf
+*.cmd                 text eol=crlf
+
+# ---- parser test fixtures: keep the exact bytes (CRLF, BOM, mixed) ---------
+**/Fixtures/**        -text
+**/fixtures/**        -text
+
+# ---- binary: never convert, never text-diff, never text-merge --------------
+*.png                 binary
+*.jpg                 binary
+*.jpeg                binary
+*.gif                 binary
+*.webp                binary
+*.heic                binary
+*.ico                 binary
+*.icns                binary
+*.pdf                 binary
+*.zip                 binary
+*.gz                  binary
+*.ttf                 binary
+*.otf                 binary
+*.mov                 binary
+*.mp4                 binary
+*.sqlite              binary
+*.store               binary

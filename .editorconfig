@@ -1,0 +1,32 @@
+# .editorconfig - optional. Read natively by Visual Studio and JetBrains IDEs, by VS Code with the
+# EditorConfig extension, and (indentation / line-ending keys) by recent Xcode versions.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+
+[*.{swift,py}]
+indent_style = space
+indent_size = 4
+trim_trailing_whitespace = true
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{bat,cmd}]
+end_of_line = crlf
+
+[*.pbxproj]
+indent_style = tab
+
+[**/{Fixtures,fixtures}/**]
+charset = unset
+end_of_line = unset
+insert_final_newline = unset
+
+# reference/ is kept exactly as it was written; editors should not reformat it on save.
+[reference/**]
+insert_final_newline = unset
+trim_trailing_whitespace = unset

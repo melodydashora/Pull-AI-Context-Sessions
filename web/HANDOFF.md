@@ -226,7 +226,7 @@ Done when: the automated checks pass (the manifest is valid and installable by t
 
 ### Phase 6: ready for strangers
 
-Before the invitation gate is opened: rate limits, per-user storage limits (the value is an owner decision), the conditions G1 to G15 of `docs/web-platform.md` 11.14 verified one by one, and a privacy policy and the final terms of use from the owner (`docs/terms-of-use.md` is the owner's draft of the terms; do not write or change legal text on your own; ask).
+Before the invitation gate is opened: rate limits, per-user storage limits (the value is an owner decision), the conditions G1 to G15 of `docs/web-platform.md` 11.14 verified one by one, and a privacy policy and the final terms of use from the owner (`docs/terms-of-use.md` is the owner's draft of the terms. On 2026-11-20 the owner asked the building session to improve its wording, which gave draft 0.2; the open legal choices in it are still hers. Beyond what she asks for, do not write or change legal text on your own; ask).
 
 Done when: each condition has a test or a recorded manual check; a restore from backup has been carried out by the owner in the platform's interface and the restored data verified; the owner has supplied the policy and terms and has said in writing that sign-up may open.
 

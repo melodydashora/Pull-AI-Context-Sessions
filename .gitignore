@@ -1,8 +1,12 @@
-# .gitignore - the single ignore file for this repository, used from macOS and Windows.
-# Layout: apple/ (Xcode app), puller/ (Python tool), reference/ (unbuilt donor code).
+# .gitignore - the single ignore file for this repository, used from macOS, Windows and Replit.
+# Layout: apple/ (Xcode app), puller/ (Python tool), reference/ (donor code, never run).
 # Comments must be on their own line. Ignore rules match without regard to case on
-# macOS and Windows disks, so folder rules that could collide with the name of a
-# source folder (sessions, build) are anchored to exact locations with a leading slash.
+# macOS and Windows disks, so rules that could collide with the name of a source
+# folder (sessions, build, profile) are anchored to exact locations with a leading
+# slash instead of matching everywhere.
+#
+# These rules are a safety net, not a guarantee: add files by name (git add <file>)
+# and read "git status" before every commit.
 
 # ---- macOS ------------------------------------------------------------------
 .DS_Store
@@ -38,7 +42,8 @@ $RECYCLE.BIN/
 *.bak
 *.tmp
 *.log
-node_modules/
+*.user
+*.suo
 
 # ---- Xcode / Swift ----------------------------------------------------------
 # xcuserdata holds per-user Xcode state; its folder name contains the macOS account name.
@@ -56,6 +61,11 @@ DerivedData/
 *.moved-aside
 *.xccheckout
 *.xcscmblueprint
+*.ips
+*.crash
+*.app/
+/apple/dd/
+/apple/.derived/
 # In-tree build output (xcodebuild -target, setuptools). Anchored: an unanchored
 # "build/" would also hide a source folder named Build.
 /build/
@@ -64,8 +74,11 @@ DerivedData/
 /reference/session-capture-ios/build/
 
 # ---- Python (virtual environments are ignored wherever they are created) ------
-.venv/
-venv/
+.venv*/
+venv*/
+.virtualenv/
+/env/
+/puller/env/
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -80,38 +93,102 @@ ms-playwright/
 playwright-report/
 blob-report/
 test-results/
-playwright/.cache/
-playwright/.auth/
+**/playwright/.cache/
+**/playwright/.auth/
 storage_state*.json
+storageState*.json
+*.har
+trace.zip
 
-# ---- puller output, link lists, browser profiles (private transcripts, cookies) -
-# pull_sessions.py writes to a "sessions" folder inside the folder it is run from.
+# ---- puller output (private transcripts) --------------------------------------
+# pull_sessions.py writes to a "sessions" folder inside the folder it is run from
+# and names its files session_<id>.md, session_<id>.json and raw/session_<id>/.
 # Anchored: an unanchored "sessions/" would also hide a source folder named Sessions.
-/sessions/
-/puller/sessions/
+/sessions*/
+/puller/sessions*/
+/apple/sessions/
+/sessions*.zip
+/puller/sessions*.zip
+/session_*.md
+/session_*.json
+/puller/session_*.md
+/puller/session_*.json
+**/raw/session_*/
 all_sessions.md
-# Real link lists are private. Only the placeholder example is tracked.
+
+# ---- link lists (real links are private; only the placeholder example is tracked)
 links*.txt
+/*links*.txt
+/puller/*links*.txt
+/urls*.txt
+/puller/urls*.txt
 !links.example.txt
+
+# ---- browser profiles and saved logins (cookies) ------------------------------
 .claude_session_pull_profile/
 *browser-profile*/
 *chrome-profile*/
+/*profile*/
+/puller/*profile*/
+/*user-data*/
+/puller/*user-data*/
+/auth.json
+/state.json
+/cookies.*
+/puller/auth.json
+/puller/state.json
+/puller/cookies.*
+*.binarycookies
 
-# ---- app data (the vault holds personal transcripts; never in the repository) --
+# ---- app data, and copies of it (the vault holds personal transcripts; the
+# ---- network cache can hold request headers) ----------------------------------
 *.store
 *.store-shm
 *.store-wal
+*.store.zip
+*.store.bak
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
 .default_SUPPORT/
+default_SUPPORT/
+_EXTERNAL_DATA/
+Cache.db*
+fsCachedData/
 CapturedSessions/
+*rescue*/
+*rescue*.zip
+*-backup-*/
+/*backup*/
+/*.zip
+/*.tar.gz
+/*.tgz
+/*.7z
 
 # ---- secrets and signing material -------------------------------------------
 .env
 .env.*
 !.env.example
+.envrc
+*.env
 .netrc
+secrets.json
+secrets.yaml
+secrets.yml
+secrets.toml
+Secrets.xcconfig
+credentials*.json
+client_secret*.json
+token*.txt
+.git-credentials
+*api[-_]key*.txt
+*apikey*.txt
+id_rsa*
+id_ed25519*
 *.pem
 *.p8
 *.p12
@@ -121,6 +198,69 @@ CapturedSessions/
 *.mobileprovision
 *.provisionprofile
 
+# ---- screenshots and recordings, under the names macOS and the Simulator give them
+Screenshot *.png
+Screenshot *.jpg
+Screenshot *.heic
+Screen Shot *.png
+Screen Recording *.mov
+Screen Recording *.mp4
+Simulator Screenshot*
+Simulator Screen Recording*
+
+# ---- working notes left at the top of a clone (a reviewed copy of these notes is
+# ---- tracked under reference/session-capture-ios/) ------------------------------
+/COWORK_NOTES.md
+
+# ---- Replit workspace state ---------------------------------------------------
+# .replit itself is tracked. These folders hold caches, installed packages and
+# tool configuration (which can include sign-in tokens).
+/.cache/
+/.config/
+/.local/
+/.pythonlibs/
+/.upm/
+/.npm/
+/attached_assets/
+.breakpoints
+replit_zip_error_log.txt
+
+# ---- JavaScript tooling (for the planned web/ component) -----------------------
+node_modules/
+/web/**/dist/
+/web/**/.vite/
+coverage/
+*.tsbuildinfo
+
+# ---- Windows / Visual Studio build output, for the day a windows/ tree exists --
+/windows/**/bin/
+/windows/**/obj/
+/windows/**/AppPackages/
+
 # ---- AI-assistant local state -----------------------------------------------
-.claude/settings.local.json
+**/.claude/settings.local.json
+**/.claude/worktrees/
 CLAUDE.local.md
+
+# ---- top-level allow-list (keep this block last) ------------------------------
+# A stray file at the top of the repository cannot be caught by name: one called
+# "your" was once committed and pushed by a workspace tool. So everything at the
+# top level is ignored unless it is listed here. To add a new top-level file or
+# folder, add a line "!/name" below. Inside the listed folders git works as usual
+# and all the rules above still apply.
+/*
+!/.gitignore
+!/.gitattributes
+!/.editorconfig
+!/.replit
+!/replit.nix
+!/README.md
+!/CLAUDE.md
+!/LICENSE*
+!/apple/
+!/puller/
+!/reference/
+!/web/
+!/.claude/
+!/.github/
+!/.vscode/

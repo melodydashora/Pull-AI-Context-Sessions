@@ -27,38 +27,56 @@ function isBoilerplate(line: string): boolean {
 }
 
 /**
+ * W7: whether the cleaner removes this line as boilerplate or as a bare time, when the line is
+ * not indented and stands outside a closed fenced block. `trimmed` is the inline trim of a line.
+ */
+export function isFurnitureLine(trimmed: string): boolean {
+  return isBoilerplate(trimmed) || TIME_LINE.test(trimmed);
+}
+
+/**
  * W7. Differences from the Apple cleaner (D5): a line keeps its indentation, an indented line
  * is never removed, and a closed fenced block is copied untouched. Kept on purpose (3.3 item 2):
  * outside fences an unindented line is still removed when it equals the kept line before it,
  * is one of the five furniture words, or is a bare time.
+ *
+ * `fenced` says for every line whether it is copied untouched as a line of a closed fenced
+ * block. Left out, the lines are read for their fences as they stand. The share-page parser
+ * reads a turn twice and passes the lines that either reading protects (W6). `first` is a line
+ * that comes before `lines`: the text of a speaker line, which the parser cleans with its turn
+ * without copying the turn into a new list.
  */
-export function cleanTranscriptLines(lines: readonly string[]): string[] {
-  const fenced = closedFenceLines(lines);
+export function cleanTranscriptLines(
+  lines: readonly string[],
+  fenced: readonly boolean[] = closedFenceLines(lines),
+  first?: { readonly line: string; readonly fenced: boolean },
+): string[] {
   const kept: string[] = [];
   let last = "";
-  for (let index = 0; index < lines.length; index++) {
-    const raw = lines[index] ?? "";
-    if (fenced[index] === true) {
+  const take = (raw: string, isFenced: boolean): void => {
+    if (isFenced) {
       // W7: copied untouched, blank lines too; the last copied line becomes "last".
       kept.push(raw);
       last = raw;
-      continue;
+      return;
     }
     const probe = trimInline(raw);
     if (probe === "") {
       // A run of blank lines collapses to one; none at the start.
       if (kept.length > 0 && kept[kept.length - 1] !== "") kept.push("");
-      continue;
+      return;
     }
     const line = trimInlineEnd(raw);
     if (line === probe) {
       // The line is not indented: the three removal rules apply.
-      if (isBoilerplate(probe) || TIME_LINE.test(probe)) continue;
-      if (line === last) continue;
+      if (isFurnitureLine(probe)) return;
+      if (line === last) return;
     }
     last = line;
     kept.push(line);
-  }
+  };
+  if (first !== undefined) take(first.line, first.fenced);
+  for (let index = 0; index < lines.length; index++) take(lines[index] ?? "", fenced[index] === true);
   while (kept.length > 0 && kept[kept.length - 1] === "") kept.pop();
   return kept;
 }

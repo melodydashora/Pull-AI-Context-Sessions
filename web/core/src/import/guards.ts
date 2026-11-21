@@ -22,7 +22,7 @@ const WALL_MARKERS: readonly string[] = [
 ];
 
 /** 2.6 HEADER: what page-header residue at the top of the first turn contains, in lower case. */
-const HEADER_MARKERS: readonly string[] = [
+export const HEADER_MARKERS: readonly string[] = [
   "sign in",
   "log in",
   "created with",

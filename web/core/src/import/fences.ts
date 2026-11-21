@@ -22,6 +22,23 @@ function countLeadingBackticks(line: string): number {
 }
 
 /**
+ * W13, the opening line: 3 or more backticks followed by text that has no backtick. `trimmed` is
+ * the inline trim of a line. The number of backticks that open a block there, 0 when none does.
+ */
+export function openingTicks(trimmed: string): number {
+  const ticks = countLeadingBackticks(trimmed);
+  return ticks < 3 || trimmed.indexOf("`", ticks) !== -1 ? 0 : ticks;
+}
+
+/**
+ * W13, the closing line of a block that `ticks` backticks opened: only backticks, that many or
+ * more. `trimmed` is the inline trim of a line.
+ */
+export function closesFence(trimmed: string, ticks: number): boolean {
+  return trimmed.length >= ticks && countLeadingBackticks(trimmed) === trimmed.length;
+}
+
+/**
  * W13:
  * - opening line: its inline trim is 3 or more backticks followed by text that has no backtick;
  * - closing line for an opening of n backticks: a later line whose inline trim is only
@@ -37,18 +54,14 @@ export function scanFences(lines: readonly string[]): Fence[] {
   // open block ends the scan.
   while (index < lines.length) {
     const opening = trimInline(lines[index] ?? "");
-    const ticks = countLeadingBackticks(opening);
-    if (ticks < 3 || opening.indexOf("`", ticks) !== -1) {
+    const ticks = openingTicks(opening);
+    if (ticks === 0) {
       index++;
       continue;
     }
     const info = trimInline(opening.slice(ticks));
     let close = index + 1;
-    while (close < lines.length) {
-      const candidate = trimInline(lines[close] ?? "");
-      if (candidate.length >= ticks && countLeadingBackticks(candidate) === candidate.length) break;
-      close++;
-    }
+    while (close < lines.length && !closesFence(trimInline(lines[close] ?? ""), ticks)) close++;
     if (close >= lines.length) {
       fences.push({ open: index, close: null, info });
       break;

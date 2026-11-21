@@ -504,6 +504,133 @@ function sharePageLines(random: Random): string[] {
   return out;
 }
 
+/** Lines that are a sign of the top of a share page (W6), in several spellings. */
+const PAGE_SIGNS = list(
+  "Report|Copy|Retry|Share|Claude|10:42|9:05 PM|Shared by Example Person|Ask Claude your own question|" +
+    "Please sign in|LOG IN|Created with Example|Conversation transcript|A shared conversation|AI Overview|" +
+    "Skip to content|Conversation with Gemini|skip to Content now|Signing in",
+);
+
+/** What stands above the first speaker line: nothing, a note, the top of a page, or nearly one. */
+function leadLines(random: Random): string[] {
+  const kind = random.weighted([
+    [3, "none"],
+    [3, "note"],
+    [3, "top"],
+    [2, "many"],
+    [2, "long"],
+    [2, "hidden"],
+    [1, "block"],
+  ]);
+  if (kind === "none") return [];
+  if (kind === "note") return random.repeat(1, 3, () => decorate(random, sentence(random)));
+  const sign = random.pick(PAGE_SIGNS);
+  if (kind === "top") {
+    const lines = random.repeat(0, 3, () => sentence(random));
+    lines.splice(random.int(lines.length + 1), 0, sign);
+    return random.chance(0.3) ? [...lines, ""] : lines;
+  }
+  if (kind === "many") {
+    // 11 to 13 lines that are not blank, one of them the sign, and blank lines between some.
+    const count = random.between(11, 13);
+    const at = random.int(count);
+    const lines: string[] = [];
+    for (let index = 0; index < count; index++) {
+      lines.push(index === at ? sign : words(random, 1, 3));
+      if (random.chance(0.2)) lines.push(random.chance(0.5) ? "" : "  ");
+    }
+    return lines;
+  }
+  if (kind === "long") {
+    // The sign, and a line that brings the two to a length at or next to 700 characters.
+    const filler = padTo(random, "x", nearThreshold(random, 700) - graphemes(sign) - 1);
+    return random.chance(0.5) ? [sign, filler] : [filler, "", sign];
+  }
+  if (kind === "hidden") {
+    // A sign where the cleaner could not remove it: indented, or inside a fenced block.
+    return random.weighted<string[]>([
+      [2, [sentence(random), `    ${sign}`]],
+      [2, [sentence(random), TICKS, sign, TICKS]],
+      [1, [sentence(random), TICKS, sign]],
+      [1, [`\t${sign}`, sentence(random)]],
+    ]);
+  }
+  // A quoted exchange above the first speaker line.
+  return [
+    sentence(random),
+    TICKS,
+    `You said: ${words(random, 1, 3)}`,
+    `Claude responded: ${words(random, 1, 3)}`,
+    TICKS,
+  ];
+}
+
+/**
+ * Share-page text that tries the rules of W6 against losing text: speaker lines quoted inside
+ * fenced blocks and fences that never close, one speaker alone, lines above the first speaker
+ * line, and blocks that open on a speaker line (the two readings of a turn). Fence lines come
+ * one by one, so that they pair up in every way.
+ */
+function quotedSpeakerLines(random: Random): string[] {
+  const speakers = random.weighted([
+    [7, "both"],
+    [2, "user"],
+    [2, "assistant"],
+    [1, "labels"],
+  ]);
+  const speakerLine = (): string => {
+    if (speakers === "labels") return random.pick(["You said", "Gemini said"]);
+    const user = random.weighted<string>([
+      [8, "You said:"],
+      [1, "You said"],
+      [1, "you said:"],
+    ]);
+    const assistant = random.weighted<string>([
+      [4, "Claude responded:"],
+      [2, "ChatGPT said:"],
+      [2, "Gemini said:"],
+      [1, "Claude said:"],
+      [1, "Gemini said"],
+    ]);
+    const header =
+      speakers === "user" ? user : speakers === "assistant" ? assistant : random.pick([user, assistant]);
+    if (!header.endsWith(":")) return header;
+    return (
+      header +
+      random.weighted<string>([
+        [4, ""],
+        [4, ` ${sentence(random)}`],
+        [3, ` ${TICKS}`],
+        [1, ` ${TICKS}js`],
+        [1, " ````"],
+        [1, TICKS],
+        [1, ` ${sentence(random)}${ELLIPSIS}`],
+      ])
+    );
+  };
+  const out = leadLines(random);
+  for (let turn = random.between(1, 6); turn > 0; turn--) {
+    out.push(speakerLine());
+    for (let line = random.between(0, 5); line > 0; line--) {
+      out.push(
+        random.weighted<string>([
+          [5, sentence(random)],
+          [3, TICKS],
+          [1, "````"],
+          [1, `${TICKS}js`],
+          [1, `  ${TICKS}`],
+          [2, random.pick(FURNITURE)],
+          [2, `${random.pick(SHARE_HEADER_PREFIXES)} ${words(random, 0, 3)}`],
+          [1, random.pick(["You said", "Gemini said"])],
+          [1, ""],
+          [1, `    ${words(random, 1, 3)}`],
+        ]),
+      );
+    }
+  }
+  return out;
+}
+
 /** A page with whole-line labels, as reported for Gemini (W6, fixture 49). */
 function wholeLineLabelLines(random: Random): string[] {
   const out = ["Gemini", "Conversation with Gemini"];
@@ -643,12 +770,23 @@ function headerResidue(random: Random): string[] {
   );
 }
 
-type TextKind = "dialogue" | "puller" | "share" | "labels" | "pack" | "wall" | "link" | "soup" | "blank";
+type TextKind =
+  | "dialogue"
+  | "puller"
+  | "share"
+  | "quoted"
+  | "labels"
+  | "pack"
+  | "wall"
+  | "link"
+  | "soup"
+  | "blank";
 
 const TEXT_KINDS: readonly (readonly [number, TextKind])[] = [
   [8, "dialogue"],
   [6, "puller"],
   [6, "share"],
+  [6, "quoted"],
   [2, "labels"],
   [6, "pack"],
   [2, "wall"],
@@ -665,6 +803,8 @@ function linesOf(random: Random, kind: TextKind): string[] {
       return pullerLines(random);
     case "share":
       return sharePageLines(random);
+    case "quoted":
+      return quotedSpeakerLines(random);
     case "labels":
       return wholeLineLabelLines(random);
     case "pack":
@@ -783,6 +923,17 @@ function hasBlankHeaderTextOrTitle(line: string): boolean {
 }
 
 /**
+ * A line that is tested as the opening line of a fenced block: one that starts with backticks,
+ * and since W6 reads the text of a speaker line the same way, a share header followed by them.
+ */
+function opensFence(line: string): boolean {
+  const trimmed = reference.trimInline(line);
+  if (trimmed.startsWith(TICKS)) return true;
+  const prefix = SHARE_HEADER_PREFIXES.find((candidate) => trimmed.startsWith(candidate));
+  return prefix !== undefined && reference.trimInline(trimmed.slice(prefix.length)).startsWith(TICKS);
+}
+
+/**
  * Keeps a text out of the documented divergences (see the last block of this file):
  * - point 4: at most one leading U+FEFF;
  * - point 13: the port tests a fence opening line and an "Origin:" line with patterns whose
@@ -800,7 +951,7 @@ function clearOfKnownDivergences(text: string): string {
     let changed = false;
     if (
       (out.includes(LS) || out.includes(PS)) &&
-      lines.some((line) => reference.trimInline(line).startsWith(TICKS) || line.startsWith("Origin: "))
+      lines.some((line) => opensFence(line) || line.startsWith("Origin: "))
     ) {
       out = out.replaceAll(LS, " ").replaceAll(PS, " ");
       changed = true;
@@ -1091,7 +1242,9 @@ function encode(random: Random, text: string): Uint8Array {
   ]);
   switch (encoding) {
     case "utf-8 with a mark": {
-      const second = random.chance(0.1) ? [0xef, 0xbb, 0xbf] : [];
+      // A second mark, but never a third: decoding removes the first, and a text of the corpus
+      // starts with at most one U+FEFF (corrections.md 3, point 4; see `oneLeadingMark`).
+      const second = random.chance(0.1) && !text.startsWith(BOM) ? [0xef, 0xbb, 0xbf] : [];
       return new Uint8Array([0xef, 0xbb, 0xbf, ...second, ...utf8(text)]);
     }
     case "utf-16le with a mark":
@@ -1274,6 +1427,15 @@ function allowWallChoice(random: Random): boolean | undefined {
   ]);
 }
 
+/**
+ * The same for a text of this kind. A short text with two phrases of a sign-in page is refused
+ * before any parser sees it; the texts that try the rules of W6 are mostly let through, so that
+ * what stands above their first speaker line reaches the test for the top of a page.
+ */
+function allowWallFor(random: Random, kind: TextKind): boolean | undefined {
+  return kind === "quoted" && random.chance(0.75) ? true : allowWallChoice(random);
+}
+
 function pasteCase(random: Random): Comparison {
   const kind = random.weighted(TEXT_KINDS);
   const asJson = random.chance(0.1);
@@ -1281,7 +1443,7 @@ function pasteCase(random: Random): Comparison {
   const title = random.pick(TITLES);
   const pickerProvider = random.pick<ProviderId>(["claude", "claude", "chatgpt", "gemini", "other"]);
   const sourceUrl = random.chance(0.3) ? random.pick([...SOURCE_URLS, "", " "]) : undefined;
-  const allowWall = allowWallChoice(random);
+  const allowWall = allowWallFor(random, kind);
   const options: importer.PasteOptions = {
     title,
     pickerProvider,
@@ -1345,6 +1507,7 @@ function capturedTurns(random: Random): string[] {
 
 const PAGE_KINDS: readonly (readonly [number, TextKind])[] = [
   [5, "share"],
+  [5, "quoted"],
   [2, "wall"],
   [2, "labels"],
   [3, "dialogue"],
@@ -1385,7 +1548,7 @@ function keepDroppedList(random: Random, turnCount: number): number[] | undefine
 function captureCase(random: Random, kind: "page-text" | "turns"): Comparison {
   const pageKind = random.weighted(PAGE_KINDS);
   const turns = kind === "page-text" ? pageText(random, pageKind) : capturedTurns(random);
-  const allowWall = allowWallChoice(random);
+  const allowWall = kind === "page-text" ? allowWallFor(random, pageKind) : allowWallChoice(random);
   const plain: importer.CaptureInput = {
     sourceUrl: random.pick(SOURCE_URLS),
     detectedTitle: random.chance(0.4) ? null : captureName(random),
@@ -1633,6 +1796,9 @@ const REQUIRED = list(
     "importCapture page-text of dialogue text: imported|importCapture page-text of puller text: imported|" +
     "importCapture page-text of pack text: imported|importCapture page-text of wall text: sign_in_suspected|" +
     "importCapture turns of turns text: imported|" +
+    // W6, the rules against losing text: quoted speaker lines, one speaker, lines above the first.
+    "importFile of quoted text: imported|importPaste of quoted text: imported|" +
+    "importCapture page-text of quoted text: imported|" +
     // W10 keep_dropped, on both functions that take it, and where it must change nothing.
     "keepDropped put a turn back|keepDropped named no dropped turn|keepDropped given with whole-page text|" +
     "stripChromeTurns put a turn back|" +
@@ -1965,6 +2131,19 @@ describe("documented divergences: the known defects of the port (corrections.md 
     expect(reference.splitDisplaySegments(text, "web")).toEqual([
       { type: "prose", text: `${TICKS}js${LS}x\ncode` },
       { type: "code", language: null, code: "" },
+    ]);
+  });
+
+  it("point 13: the same where the text of a speaker line opens a block (W6)", () => {
+    const share = `You said: ${TICKS}js${LS}x\nReport\n${TICKS}\nClaude responded: a`;
+    expect(turnsOf({ sessions: importer.parseText(share, "t") })).toEqual([
+      ["user", `${TICKS}js${LS}x\nReport\n${TICKS}`],
+      ["assistant", "a"],
+    ]);
+    // For the port that speaker line opens no block, so the line inside goes as page furniture.
+    expect(turnsOf({ sessions: reference.parseText(share, "t", "web") })).toEqual([
+      ["user", `${TICKS}js${LS}x\n${TICKS}`],
+      ["assistant", "a"],
     ]);
   });
 

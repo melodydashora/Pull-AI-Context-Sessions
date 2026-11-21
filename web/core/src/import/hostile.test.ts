@@ -306,6 +306,32 @@ describe(`${MANY} short lines return within a few seconds`, () => {
   });
 });
 
+describe("W6, fences and a long lead around speaker lines, return within a few seconds", () => {
+  const turns = "You said: q\nClaude responded: a\n";
+  const sixth = Math.floor(MANY / 6);
+  const texts: Record<string, string> = {
+    "speaker lines whose text opens a block":
+      "You said: ```\ncode\n```\nClaude responded: ```\ncode\n```\n".repeat(sixth),
+    "speaker lines quoted inside closed blocks":
+      "You said: q\n```\nYou said: x\nClaude responded: y\n```\nClaude responded: a\n".repeat(sixth),
+    "speaker lines after one fence that never closes": `\`\`\`\n${turns.repeat(MANY / 2)}`,
+    "speaker lines that open four-backtick blocks, which three backticks never close": `${"You said: ````\n```\n".repeat(MANY / 2)}Claude responded: a\n`,
+    [`${MANY} lines above the first speaker line`]: `${"a note\n".repeat(MANY)}${turns}`,
+    [`${MANY} blank lines and one sign of a page above the first speaker line`]: `Report\n${"\n".repeat(MANY)}${turns}`,
+    "a 5 MB line above the first speaker line": `${"a".repeat(FIVE_MB)}\n${turns}`,
+    "one character of 5 MB above the first speaker line": `a${chr(0x301).repeat(FIVE_MB)}\n${turns}`,
+    "twelve lines of 400 KB of phrases above the first speaker line": `${`${"sign in ".repeat(50_000)}\n`.repeat(12)}${turns}`,
+  };
+
+  for (const [name, text] of Object.entries(texts)) {
+    it(name, { timeout: TEST_TIMEOUT }, () => {
+      checkResult(quick("importPaste", () => importPaste(text, { ...PASTE, allowWall: true })));
+      checkResult(quick("importCapture page-text", () => importCapture(capture("page-text", [text]))));
+      quick("parseText", () => parseText(text, "t"));
+    });
+  }
+});
+
 describe("large and deeply nested JSON returns within a few seconds", () => {
   const message = (text: string, time: number): string =>
     `{"message":{"author":{"role":"user"},"create_time":${time},"content":{"parts":["${text}"]}}}`;

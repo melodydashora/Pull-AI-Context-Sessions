@@ -1,6 +1,7 @@
 // The text parsers, rule by rule: what docs/import-rules.md states in 2.5 and in W5 to W8,
 // W12 and W14 beyond what the golden fixtures already pin down. All content is invented.
 
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { parseChatGPTExport } from "./chatgpt-export.ts";
 import { cleanTranscriptLines } from "./cleaner.ts";
@@ -131,7 +132,7 @@ describe("W7 furniture cleaner", () => {
 describe("W6 share-page text", () => {
   const share = (text: string, title = "Pasted session") => parseSharePageText(lines(text), title);
 
-  it("cuts at 'You said:' and 'Claude responded:' and drops everything before the first header", () => {
+  it("cuts at 'You said:' and 'Claude responded:' and drops the top of the page before the first header", () => {
     const session = share(
       "Page title\nShared by Example Person\nYou said: Hi\nHi there\nClaude responded: Hel...\nHello.\n",
     );
@@ -142,13 +143,36 @@ describe("W6 share-page text", () => {
     expect(session?.provider).toBe("claude");
   });
 
-  it("applies when some line starts with 'You said:' or 'Claude responded:', after an inline trim", () => {
-    expect(share(`  \t${NBSP}You said: a\nb`)).not.toBeNull();
-    expect(share("Claude responded: a\nb")).not.toBeNull();
-    expect(share("Intro. You said: a\nb")).toBeNull();
-    expect(share("you said: a\nb")).toBeNull();
-    expect(share("ChatGPT said: a\nb")).toBeNull();
+  it("applies when a line starts with a header of the user and one with a header of an assistant", () => {
+    // After an inline trim, in either order, with any of the assistant headers.
+    expect(share(`  \t${NBSP}You said: a\nb\n${NBSP} Claude responded: c`)).not.toBeNull();
+    expect(share("Claude responded: a\nb\nYou said: c")).not.toBeNull();
+    expect(share("You said: a\nb\nChatGPT said: c")).not.toBeNull();
+    // A header counts also when its turn gives no message.
+    expect(turns(share("You said:\nClaude responded: x\ny"))).toEqual([["assistant", "x\ny"]]);
+    // One speaker alone is no share page, however often it speaks.
+    expect(share("You said: a\nb")).toBeNull();
+    expect(share("Claude responded: a\nb")).toBeNull();
+    expect(share("You said: a\nYou said: b")).toBeNull();
+    expect(share("ChatGPT said: a\nGemini said: b")).toBeNull();
+    // A header is the start of a line, in this spelling.
+    expect(share("Intro. You said: a\nClaude responded: b")).toBeNull();
+    expect(share("you said: a\nClaude responded: b")).toBeNull();
     expect(share("plain text")).toBeNull();
+  });
+
+  it("a text with one speaker goes on to the generic parser, which keeps what stands above", () => {
+    // Read as a share page, such a text lost its first line.
+    expect(
+      turns(only(parseText("Notes about the tool.\nClaude responded: sample\nMore notes.", "x"))),
+    ).toEqual([
+      ["unknown", "Notes about the tool."],
+      ["assistant", "sample\nMore notes."],
+    ]);
+    expect(turns(only(parseText("Draft\n\nYou said: a\nb", "x")))).toEqual([
+      ["unknown", "Draft"],
+      ["user", "a\nb"],
+    ]);
   });
 
   it("also takes 'Claude said:', 'ChatGPT said:' and 'Gemini said:' as assistant headers (D6, fixture 29)", () => {
@@ -164,7 +188,7 @@ describe("W6 share-page text", () => {
     ]);
   });
 
-  it("takes the provider named by most assistant headers; the first seen wins a tie; none is other", () => {
+  it("takes the provider named by most assistant headers; the first seen wins a tie", () => {
     expect(share("You said:\nq\nChatGPT said:\na\nGemini said:\nb\nGemini said:\nc")?.provider).toBe(
       "gemini",
     );
@@ -173,7 +197,7 @@ describe("W6 share-page text", () => {
     expect(share("You said:\nq\nClaude responded:\na\nClaude said:\nb\nGemini said:\nc")?.provider).toBe(
       "claude",
     );
-    expect(share("You said:\nonly a question")?.provider).toBe("other");
+    // Every assistant header names a provider and the parser asks for one, so none is "other" here.
   });
 
   it("uses the text on the header line when a turn has no other text (D6, fixture 30)", () => {
@@ -200,7 +224,7 @@ describe("W6 share-page text", () => {
   });
 
   it("honours the whole-line labels 'You said' and 'Gemini said' only if BOTH occur (fixture 49)", () => {
-    const both = share("Gemini\nYou said\nq1\nGemini said\na1\n  You said  \nq2");
+    const both = share("Conversation with Gemini\nYou said\nq1\nGemini said\na1\n  You said  \nq2");
     expect(turns(both)).toEqual([
       ["user", "q1"],
       ["assistant", "a1"],
@@ -209,9 +233,16 @@ describe("W6 share-page text", () => {
     expect(both?.provider).toBe("gemini");
     expect(share("You said\nq1\nSomething else\na1")).toBeNull();
     expect(share("Gemini said\na1")).toBeNull();
-    // With a colon header present but only one whole-line label, that label is ordinary text.
-    expect(turns(share("You said: q\nq\nGemini said\nstill the question"))).toEqual([
+    // With colon headers present but only one whole-line label, that label is ordinary text.
+    expect(turns(share("You said: q\nq\nGemini said\nstill the question\nClaude responded: a"))).toEqual([
       ["user", "q\nGemini said\nstill the question"],
+      ["assistant", "a"],
+    ]);
+    // A whole-line label and a colon header are a pair of speakers too: a header of either kind counts.
+    expect(turns(share("You said\nq\nGemini said\na\nYou said: again"))).toEqual([
+      ["user", "q"],
+      ["assistant", "a"],
+      ["user", "again"],
     ]);
   });
 
@@ -373,8 +404,8 @@ describe("W6 share-page text", () => {
   });
 
   it("cleans the title as W8 does (D13: no empty or all-space titles)", () => {
-    expect(share("You said:\nq", "  My title \n")?.title).toBe("My title");
-    expect(share("You said:\nq", " \t ")?.title).toBe("Imported session");
+    expect(share("You said:\nq\nClaude responded:\na", "  My title \n")?.title).toBe("My title");
+    expect(share("You said:\nq\nClaude responded:\na", " \t ")?.title).toBe("Imported session");
   });
 });
 
@@ -476,6 +507,294 @@ describe("W5 puller Markdown", () => {
     // Not a URL: the Apple substring test is gone, the labels decide.
     expect(provider("claude.ai/code/x", "note")).toBe("other");
     expect(provider("a page that mentions claude.ai", "ChatGPT: a")).toBe("chatgpt");
+  });
+});
+
+describe("W6: fenced blocks and speaker lines", () => {
+  const share = (text: string, title = "Pasted session") => parseSharePageText(lines(text), title);
+  const F = "```";
+  const BICYCLE = chr(0x1f6b2);
+
+  describe("a block that opens on a speaker line: the turn is read twice for its fences", () => {
+    it("keeps the lines of the block, whatever they say", () => {
+      // Read without the text of the speaker line the turn has no closed block: the line inside
+      // went as page furniture, and the closing fence passed for the text that the speaker line
+      // previews, so the opening fence went too.
+      const inside = ["Report", "Copy", "10:42", "Claude can make mistakes. Please double-check responses."];
+      for (const line of inside) {
+        expect(turns(share(`You said: ${F}\n${line}\n${F}\nClaude responded: Done.`))).toEqual([
+          ["user", `${F}\n${line}\n${F}`],
+          ["assistant", "Done."],
+        ]);
+        expect(turns(share(`You said: q\nClaude responded: ${F}\n${line}\n${F}\n`))).toEqual([
+          ["user", "q"],
+          ["assistant", `${F}\n${line}\n${F}`],
+        ]);
+      }
+    });
+
+    it("keeps the lines that either reading puts inside a closed block (fixture 63)", () => {
+      const text = `You said: ${F}\n${F}\nReport\n${F}\nClaude responded: ${F}\n10:42\n${F}\nRetry\n${F}\n`;
+      expect(turns(share(text))).toEqual([
+        // The fence of the speaker line is a real preview of the next line here: dropped once.
+        ["user", `${F}\nReport\n${F}`],
+        // Each reading closes another block; the lines of both are kept, the label first.
+        ["assistant", `${F}\n10:42\n${F}\nRetry\n${F}`],
+      ]);
+    });
+
+    it("changes nothing for a turn whose speaker line opens no block", () => {
+      // Without text on the speaker line the turn is read once.
+      expect(turns(share(`You said:\n${F}\nCopy\n${F}\nCopy\nClaude responded:\na`))).toEqual([
+        ["user", `${F}\nCopy\n${F}`],
+        ["assistant", "a"],
+      ]);
+      // With text there, both readings mark the same lines.
+      expect(turns(share(`You said: q\nq\nReport\n${F}\nReport\n${F}\nClaude responded: a`))).toEqual([
+        ["user", `q\n${F}\nReport\n${F}`],
+        ["assistant", "a"],
+      ]);
+    });
+  });
+
+  describe("a speaker line inside a closed fenced block is text", () => {
+    it("keeps quoted speaker lines of both kinds in the turn that quotes them (fixture 64)", () => {
+      const text = `You said: look\n${F}\nClaude responded: old\nYou said\nGemini said\n${F}\nClaude responded: I see`;
+      expect(turns(share(text))).toEqual([
+        ["user", `look\n${F}\nClaude responded: old\nYou said\nGemini said\n${F}`],
+        ["assistant", "I see"],
+      ]);
+    });
+
+    it("switches the whole-line labels on by all lines of the text, also by lines inside a block", () => {
+      const session = share(`You said: q\n${F}\nYou said\nGemini said\n${F}\nGemini said\nanswer`);
+      expect(turns(session)).toEqual([
+        ["user", `q\n${F}\nYou said\nGemini said\n${F}`],
+        ["assistant", "answer"],
+      ]);
+      expect(session?.provider).toBe("gemini");
+    });
+
+    it("leaves a text whose speaker lines are all quoted to the generic parser (fixture 65)", () => {
+      const text = `**Human:** Look:\n${F}\nYou said: hi\nClaude responded: hello\n${F}\n**Assistant:** I see.`;
+      expect(share(text)).toBeNull();
+      expect(turns(only(parseText(text, "x")))).toEqual([
+        ["user", `Look:\n${F}\nYou said: hi\nClaude responded: hello\n${F}`],
+        ["assistant", "I see."],
+      ]);
+    });
+
+    it("a speaker line whose text opens a block stays a header (fixture 62)", () => {
+      // As written, the closing fence of the first block pairs with the next fence line, and
+      // "Claude responded:" stands between the two. The second reading opens the block on the
+      // speaker line, so that line is outside every block of it.
+      expect(turns(share(`You said: ${F}\nReport\n${F}\nClaude responded: ${F}\nRetry\n${F}\n`))).toEqual([
+        ["user", `${F}\nReport\n${F}`],
+        ["assistant", `${F}\nRetry\n${F}`],
+      ]);
+    });
+
+    it("with a fence that never closes, every speaker line is a header (fixture 67)", () => {
+      // Without this guard the lone fence pairs with the opening fence of the later block and
+      // hides the two turns between them.
+      const text = `You said: Never closed.\n${F}\nlog\nClaude responded: I see.\nYou said: Second.\n${F}\ncode\n${F}\nClaude responded: Thanks.`;
+      expect(turns(share(text))).toEqual([
+        ["user", `Never closed.\n${F}\nlog`],
+        ["assistant", "I see."],
+        ["user", `Second.\n${F}\ncode\n${F}`],
+        ["assistant", "Thanks."],
+      ]);
+    });
+
+    it("the same when only the reading with the speaker lines' text ends inside a block", () => {
+      // As written, every block closes and "You said: quoted" stands inside one. Read with the
+      // text of the speaker lines, the block that opens on the second "You said:" never closes.
+      const text = `${F}\nYou said: quoted\n${F}\nYou said: ${F}\nreal\nClaude responded: a`;
+      expect(turns(share(text))).toEqual([
+        ["unknown", F],
+        ["user", `quoted\n${F}`],
+        ["user", `${F}\nreal`],
+        ["assistant", "a"],
+      ]);
+    });
+  });
+
+  describe("what stands above the first header", () => {
+    const rest = "You said: q\nClaude responded: a";
+    const body: [string, string][] = [
+      ["user", "q"],
+      ["assistant", "a"],
+    ];
+
+    it("is dropped when it is the top of a share page: few short lines, one of them a sign of a page", () => {
+      const signs = [
+        // Lines the cleaner of W7 removes: boilerplate and a bare time.
+        "Shared by Example Person",
+        "Report",
+        "10:42 AM",
+        // The phrases, anywhere in a line, whatever the case.
+        "Please sign in",
+        "LOG IN to continue",
+        "Created with Example",
+        "Conversation transcript",
+        "A shared conversation",
+        "AI Overview",
+        "Skip to content",
+        "Conversation with Gemini",
+        // Blanks after a sign: the cleaner removes such a line too, since it tests the inline trim.
+        "Report ",
+        "10:42 AM\t",
+      ];
+      for (const sign of signs) {
+        expect(turns(share(`Page title\n${sign}\n\n${rest}`)), sign).toEqual(body);
+      }
+    });
+
+    it("is the first message, with role unknown, when nothing in it is a sign of a page (fixture 68)", () => {
+      expect(turns(share(`Here is what happened yesterday.\n${rest}`))).toEqual([
+        ["unknown", "Here is what happened yesterday."],
+        ...body,
+      ]);
+      // It goes through the cleaner of W7 and the full trim, like a turn.
+      expect(turns(share(`\n\nA note.\nA note.\n\n\nMore.  \n\n${rest}`))).toEqual([
+        ["unknown", "A note.\n\nMore."],
+        ...body,
+      ]);
+      // Nothing is added when the lines hold no text.
+      expect(turns(share(`\n \t\n${rest}`))).toEqual(body);
+    });
+
+    it("is cleaned and fully trimmed like a turn when it is kept", () => {
+      // U+2028 at its start and U+0085 at its end are removed by the full trim only.
+      expect(turns(share(`${LS} Note\n${rest}`))).toEqual([["unknown", "Note"], ...body]);
+      expect(turns(share(`Note${NEL}\n${rest}`))).toEqual([["unknown", "Note"], ...body]);
+    });
+
+    it("finds a sign outside a closed block of the lead, whatever the block holds", () => {
+      expect(turns(share(`Report\n${F}\ncode\n${F}\n${rest}`))).toEqual(body);
+    });
+
+    it("a top has at most 12 lines that are not blank", () => {
+      const twelve = ["Report", ...Array.from({ length: 11 }, (_, index) => `line ${index + 1}`)];
+      expect(turns(share(`${twelve.join("\n\n")}\n${rest}`))).toEqual(body);
+      // With a 13th line it is text: kept, without the line that the cleaner removes.
+      expect(turns(share(`${twelve.join("\n")}\nline 12\n${rest}`))).toEqual([
+        ["unknown", [...twelve.slice(1), "line 12"].join("\n")],
+        ...body,
+      ]);
+    });
+
+    it("a top has fewer than 700 user-perceived characters", () => {
+      // "Report", a line feed and 692 letters are 699.
+      expect(turns(share(`Report\n${"x".repeat(692)}\n${rest}`))).toEqual(body);
+      expect(turns(share(`Report\n${"x".repeat(693)}\n${rest}`))).toEqual([
+        ["unknown", "x".repeat(693)],
+        ...body,
+      ]);
+      // Blank lines and the blanks around a line do not count.
+      expect(turns(share(`Report\n\n\n${"x".repeat(692)}   \n${rest}`))).toEqual(body);
+      // 400 bicycles are 800 UTF-16 units and 400 characters (W15).
+      expect(turns(share(`Report\n${BICYCLE.repeat(400)}\n${rest}`))).toEqual(body);
+      expect(turns(share(`Report\n${BICYCLE.repeat(693)}\n${rest}`))).toEqual([
+        ["unknown", BICYCLE.repeat(693)],
+        ...body,
+      ]);
+    });
+
+    it("only a line that the cleaner could remove is a sign of a page", () => {
+      // An indented line is never removed, so it is no sign, whatever it says.
+      expect(turns(share(`    Report\n${rest}`))).toEqual([["unknown", "Report"], ...body]);
+      expect(turns(share(`Notes\n\tPlease sign in\n${rest}`))).toEqual([
+        ["unknown", "Notes\n\tPlease sign in"],
+        ...body,
+      ]);
+      // Neither is a line inside a closed fenced block.
+      expect(turns(share(`Notes\n${F}\nlog in\nCopy\n${F}\n${rest}`))).toEqual([
+        ["unknown", `Notes\n${F}\nlog in\nCopy\n${F}`],
+        ...body,
+      ]);
+      // A fence that never closes protects nothing (W7).
+      expect(turns(share(`Notes\n${F}\nlog in\n${rest}`))).toEqual(body);
+    });
+
+    it("holds a quoted speaker line that stands above the first header", () => {
+      expect(turns(share(`${F}\nYou said: quoted\n${F}\n${rest}`))).toEqual([
+        ["unknown", `${F}\nYou said: quoted\n${F}`],
+        ...body,
+      ]);
+    });
+
+    it("is not looked at when no turn has text: the text is not for this parser", () => {
+      expect(share("A note above.\nYou said:\nClaude responded:\nCopy")).toBeNull();
+    });
+  });
+});
+
+describe("W6 and W8 together: no line of a pasted text is stored nowhere", () => {
+  // The Apple parser takes every text with a speaker line for a share page and drops what
+  // stands above the first one (D6); a block that opened on a speaker line lost its lines. Here
+  // every line of the text carries a word of its own, and every such word must be in a message,
+  // whatever speaker lines, labels and fences stand around it. No line is page furniture, so
+  // nothing above the first speaker line is the top of a page (W6).
+  const F = "```";
+  const kinds = fc.oneof(
+    { weight: 6, arbitrary: fc.constant("text") },
+    { weight: 1, arbitrary: fc.constant("indented") },
+    { weight: 3, arbitrary: fc.constant("speaker with text") },
+    { weight: 2, arbitrary: fc.constant("speaker with a fence") },
+    { weight: 1, arbitrary: fc.constant("speaker alone") },
+    { weight: 1, arbitrary: fc.constant("whole-line label") },
+    { weight: 3, arbitrary: fc.constant("fence") },
+    { weight: 1, arbitrary: fc.constant("longer fence") },
+    { weight: 1, arbitrary: fc.constant("blank") },
+  );
+  const headers = fc.constantFrom(
+    "You said:",
+    "Claude responded:",
+    "Claude said:",
+    "ChatGPT said:",
+    "Gemini said:",
+  );
+
+  it("for any mixture of text, speaker lines, labels and fence lines", () => {
+    fc.assert(
+      fc.property(fc.array(fc.tuple(kinds, headers, fc.boolean()), { maxLength: 30 }), (spec) => {
+        const words: string[] = [];
+        const written = spec.map(([kind, header, flag], index) => {
+          const word = `w${String(index).padStart(3, "0")}x`;
+          switch (kind) {
+            case "text":
+              words.push(word);
+              return `${word} and more`;
+            case "indented":
+              words.push(word);
+              return `    ${word}`;
+            case "speaker with text":
+              words.push(word);
+              return `${header} ${word}`;
+            case "speaker with a fence":
+              return `${header} ${F}${flag ? "js" : ""}`;
+            case "speaker alone":
+              return header;
+            case "whole-line label":
+              return flag ? "You said" : "Gemini said";
+            case "fence":
+              return F;
+            case "longer fence":
+              return "````";
+            default:
+              return "";
+          }
+        });
+        const stored = parseText(written.join("\n"), "t")
+          .flatMap((session) => session.messages.map((message) => message.text))
+          .join("\n");
+        for (const word of words) {
+          if (!stored.includes(word)) throw new Error(`${word} is lost from ${JSON.stringify(written)}`);
+        }
+      }),
+      { numRuns: 4000, seed: 20261120 },
+    );
   });
 });
 
@@ -759,8 +1078,11 @@ describe("2.2 detection order", () => {
     expect([pulled.title, pulled.provider]).toEqual(["t", "chatgpt"]);
     expect(turns(pulled)).toEqual([["user", "this stays one puller turn\nreally"]]);
 
+    // Share-page text: "User:" is no marker there. The line above the first header is kept as a
+    // note (W6); the generic parser would have made it a turn of the user.
     const share = only(parseText("User: before\nYou said: q\nq\nClaude responded: a\na", "x"));
     expect(turns(share)).toEqual([
+      ["unknown", "User: before"],
       ["user", "q"],
       ["assistant", "a"],
     ]);
@@ -872,7 +1194,7 @@ describe("corrections.md 3, point 8: 'empty' means empty after the full trim", (
 
   it.each(BLANK_NOT_EMPTY)("a title of %j alone falls back, whichever rule reads it", (blank) => {
     expect(generic("x", blank)?.title).toBe("Imported session"); // W8
-    expect(share("You said:\nq", blank)?.title).toBe("Imported session"); // W6
+    expect(share("You said:\nq\nClaude responded:\na", blank)?.title).toBe("Imported session"); // W6
     expect(pack(blank, "q")?.title).toBe("Imported session"); // W14
     expect(parseChatGPTExport(exportOf(blank, ["q"]))?.[0]?.title).toBe("ChatGPT conversation"); // W4
   });
